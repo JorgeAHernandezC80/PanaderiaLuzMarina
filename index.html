@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- SEO -->
+    <meta name="description" content="Panadería Luz Marina — Pan artesanal horneado cada mañana con recetas de familia. Buñuelos, pandebonos, almojábanas y más.">
+    <meta name="keywords" content="panadería, pan artesanal, buñuelos, pandebono, almojábanas, pan colombiano, Luz Marina">
+    <meta name="author" content="Panadería Luz Marina">
+    <link rel="canonical" href="https://panaderialuzmarina.com/index.html">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="./IMG/favicon.svg">
+    <link rel="apple-touch-icon" href="./IMG/apple-touch-icon.png">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="es_CO">
+    <meta property="og:site_name" content="Panadería Luz Marina">
+    <meta property="og:title" content="Panadería Luz Marina | Pan Artesanal">
+    <meta property="og:description" content="El pan de siempre, hecho con cariño. Horneamos hoy lo que comerás mañana.">
+    <meta property="og:image" content="https://panaderialuzmarina.com/IMG/og-image.jpg">
+    <meta property="og:url" content="https://panaderialuzmarina.com/index.html">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Panadería Luz Marina | Pan Artesanal">
+    <meta name="twitter:description" content="El pan de siempre, hecho con cariño. Horneamos hoy lo que comerás mañana.">
+    <meta name="twitter:image" content="https://panaderialuzmarina.com/IMG/og-image.jpg">
+
+    <!-- Apariencia -->
+    <meta name="theme-color" content="#4a2512">
+    <meta name="color-scheme" content="light">
+
+    <title>Panadería Luz Marina | Pan Artesanal</title>
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Estilos de página -->
+    <link rel="stylesheet" href="./CSS/pages/inicio.css">
+
+    <!-- Schema.org -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Bakery",
+        "name": "Panadería Luz Marina",
+        "image": "https://panaderialuzmarina.com/IMG/og-image.jpg",
+        "description": "Pan artesanal horneado cada mañana con recetas de familia.",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Avenida Rústica 1042",
+            "addressCountry": "CO"
+        },
+        "telephone": "+12817703825",
+        "openingHoursSpecification": [
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "07:00", "closes": "20:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "08:00", "closes": "18:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "09:00", "closes": "14:00" }
+        ],
+        "priceRange": "$$",
+        "servesCuisine": "Colombian"
+    }
+    </script>
+</head>
+<body class="page page--home" data-page="inicio">
+
+    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+
+    <!-- HEADER -->
+    <header class="header" data-header data-component="header">
+        <nav class="header__nav container" aria-label="Navegación principal">
+            <a href="index.html" class="header__logo" aria-label="Panadería Luz Marina — Inicio" data-nav="logo">
+                <span class="header__logo-text">Panadería Luz Marina</span>
+            </a>
+
+            <button class="header__toggle" type="button"
+                aria-label="Abrir menú" aria-expanded="false" aria-controls="header-menu"
+                data-header-toggle>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+            </button>
+
+            <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
+                <li class="header__menu-item" role="none">
+                    <a href="index.html" class="header__menu-link header__menu-link--active" role="menuitem" aria-current="page">Inicio</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+                </li>
+                <li class="header__menu-item header__menu-item--cart-mobile" role="none">
+                    <a href="carrito.html" class="header__menu-link header__menu-link--cart" role="menuitem">
+                        <span class="header__cart-icon" aria-hidden="true">🛒</span>
+                        Carrito
+                        <span class="header__cart-count" data-cart-count>0</span>
+                    </a>
+                </li>
+            </ul>
+
+            <a href="carrito.html" class="header__cart" aria-label="Ver carrito" data-header-cart>
+                <span class="header__cart-icon" aria-hidden="true">🛒</span>
+                <span class="header__cart-count" data-cart-count>0</span>
+            </a>
+        </nav>
+        <div class="header__overlay" data-header-overlay aria-hidden="true"></div>
+    </header>
+
+    <!-- MAIN -->
+    <main id="main-content" data-component="main">
+
+        <!-- HERO -->
+        <section class="hero" aria-labelledby="hero-title" data-component="hero">
+            <div class="hero__content container">
+                <span class="hero__badge">🔥 Horno Abierto · Stock en vivo</span>
+                <h1 id="hero-title" class="hero__title">El pan de siempre, hecho con cariño.</h1>
+                <p class="hero__subtitle">Horneamos hoy lo que comerás mañana.</p>
+                <div class="hero__actions">
+                    <a href="catalogo.html" class="btn btn--primary">Ver Stock en Vivo</a>
+                    <a href="https://wa.me/12817703825?text=Hola,%20quiero%20reservar%20pan"
+                       class="btn btn--secondary" target="_blank" rel="noopener">
+                        Reservar por WhatsApp
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- VALORES -->
+        <section class="valores" aria-labelledby="valores-title" data-component="valores">
+            <div class="container">
+                <h2 id="valores-title" class="section__title">¿Por qué elegirnos?</h2>
+                <div class="valores__grid">
+                    <article class="valor" data-valor="frescura">
+                        <span class="valor__icon" aria-hidden="true">🥖</span>
+                        <h3 class="valor__title">Pan fresco cada día</h3>
+                        <p class="valor__text">Horneamos desde temprano para que tengas pan recién hecho.</p>
+                    </article>
+                    <article class="valor" data-valor="recetas">
+                        <span class="valor__icon" aria-hidden="true">👨‍🍳</span>
+                        <h3 class="valor__title">Recetas de familia</h3>
+                        <p class="valor__text">Las recetas de siempre, sin ingredientes raros ni complicaciones.</p>
+                    </article>
+                    <article class="valor" data-valor="atencion">
+                        <span class="valor__icon" aria-hidden="true">💛</span>
+                        <h3 class="valor__title">Atención cercana</h3>
+                        <p class="valor__text">Te conocemos por nombre. Aquí no eres un número.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA FINAL -->
+        <section class="cta" aria-labelledby="cta-title" data-component="cta">
+            <div class="container">
+                <h2 id="cta-title" class="cta__title">¿Listo para probar nuestro pan?</h2>
+                <p class="cta__text">Visítanos o haz tu pedido por WhatsApp</p>
+                <a href="catalogo.html" class="btn btn--light">Ver Catálogo</a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer" data-component="footer">
+        <div class="footer__content container">
+            <div class="footer__section">
+                <h3 class="footer__title">Horario de Atención</h3>
+                <ul class="footer__list">
+                    <li>Lunes a Viernes: 7:00 – 20:00</li>
+                    <li>Sábados: 8:00 – 18:00</li>
+                    <li>Domingos: 9:00 – 14:00</li>
+                </ul>
+            </div>
+            <div class="footer__section">
+                <h3 class="footer__title">Contacto</h3>
+                <ul class="footer__list">
+                    <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
+                    <li>📍 <a href="https://maps.google.com/?q=Avenida+Rústica+1042" target="_blank" rel="noopener">Avenida Rústica 1042</a></li>
+                </ul>
+            </div>
+            <div class="footer__section">
+                <h3 class="footer__title">Enlaces</h3>
+                <ul class="footer__list">
+                    <li><a href="catalogo.html">Catálogo</a></li>
+                    <li><a href="nosotros.html">Nosotros</a></li>
+                    <li><a href="contacto.html">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer__bottom container">
+            <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        </div>
+    </footer>
+
+    <!-- Script de página (ES module) -->
+    <script type="module" src="./JS/pages/inicio.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Página: Catálogo
+   ============================================================ */
+
+@import '../base/_variables.css';
+@import '../base/_reset.css';
+@import '../base/_utilities.css';
+@import '../components/_header.css';
+@import '../components/_footer.css';
+@import '../components/_buttons.css';
+@import '../components/_hero.css';
+@import '../components/_cards.css';
+
+/* --- Filtros --- */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-10);
+}
+
+.filtro-btn {
+  padding: var(--space-2) var(--space-5);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filtro-btn:hover {
+  border-color: var(--color-brown-light);
+  color: var(--color-brown);
+}
+
+.filtro-btn--active,
+.filtro-btn[aria-pressed="true"] {
+  background: var(--color-brown);
+  border-color: var(--color-brown);
+  color: var(--color-text-inverse);
+}
+
+/* --- Grid de productos --- */
+.catalogo {
+  padding: var(--space-16) 0 var(--space-24);
+}
+
+.productos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+/* Item oculto por filtro */
+.producto-card[hidden] {
+  display: none;
+}
+
+/* Estado vacío */
+.productos-vacio {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-20);
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+}
+
+@media (max-width: 640px) {
+  .productos-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 400px) {
+  .productos-grid {
+    grid-template-columns: 1fr;
+  }
+}

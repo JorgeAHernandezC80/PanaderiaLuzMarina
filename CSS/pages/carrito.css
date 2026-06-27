@@ -1,0 +1,146 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Página: Carrito
+   ============================================================ */
+
+@import '../base/_variables.css';
+@import '../base/_reset.css';
+@import '../base/_utilities.css';
+@import '../components/_header.css';
+@import '../components/_footer.css';
+@import '../components/_buttons.css';
+@import '../components/_cards.css';
+
+/* --- Layout principal --- */
+.carrito {
+  padding: var(--space-10) 0 var(--space-24);
+}
+
+.carrito__layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-10);
+  align-items: start;
+}
+
+/* --- Items --- */
+.carrito__items-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.carrito__items {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Estado vacío --- */
+.carrito__vacio {
+  text-align: center;
+  padding: var(--space-20) var(--space-8);
+}
+
+.carrito__vacio-icon {
+  display: block;
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+}
+
+.carrito__vacio-title {
+  font-size: var(--text-2xl);
+  color: var(--color-brown-dark);
+  margin-bottom: var(--space-3);
+}
+
+.carrito__vacio-text {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-8);
+  max-width: 360px;
+  margin-inline: auto;
+}
+
+/* --- Resumen de compra --- */
+.carrito__resumen {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  position: sticky;
+  top: calc(var(--header-h) + var(--space-6));
+}
+
+.carrito__resumen-title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--color-brown-dark);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: var(--space-5);
+}
+
+.resumen__lineas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.resumen__linea {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.resumen__label {
+  color: var(--color-text-muted);
+}
+
+.resumen__valor {
+  font-weight: var(--fw-semi);
+  color: var(--color-text);
+}
+
+.resumen__valor--gratis {
+  color: var(--color-success);
+  font-weight: var(--fw-semi);
+}
+
+.resumen__linea--total {
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.resumen__linea--total .resumen__label,
+.resumen__linea--total .resumen__valor {
+  font-size: var(--text-base);
+  font-weight: var(--fw-bold);
+  color: var(--color-brown-dark);
+}
+
+.carrito__seguir-comprando {
+  display: block;
+  text-align: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.carrito__nota-seguridad {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .carrito__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .carrito__resumen {
+    position: static;
+  }
+}

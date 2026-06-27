@@ -1,0 +1,188 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Página: Nosotros
+   ============================================================ */
+
+@import '../base/_variables.css';
+@import '../base/_reset.css';
+@import '../base/_utilities.css';
+@import '../components/_header.css';
+@import '../components/_footer.css';
+@import '../components/_buttons.css';
+@import '../components/_hero.css';
+
+/* --- Historia --- */
+.historia {
+  padding: var(--space-20) 0;
+  background: var(--color-surface);
+}
+
+.historia__container {
+  max-width: 760px;
+}
+
+.historia__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-brown-dark);
+  margin-bottom: var(--space-6);
+}
+
+.historia__text {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  line-height: var(--lh-relaxed);
+  margin-bottom: var(--space-6);
+}
+
+.historia__imagen-wrapper {
+  margin: var(--space-10) 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 16/7;
+  background: var(--color-surface-alt);
+}
+
+.historia__imagen {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* --- Valores --- */
+.valores {
+  padding: var(--space-20) 0;
+  background: var(--color-bg);
+}
+
+.valores__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-brown-dark);
+  text-align: center;
+  margin-bottom: var(--space-10);
+}
+
+.valores__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.valor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+}
+
+.valor__icon { font-size: 1.75rem; }
+
+.valor__title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--color-brown-dark);
+}
+
+.valor__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--lh-normal);
+}
+
+/* --- Equipo --- */
+.equipo {
+  padding: var(--space-20) 0;
+  background: var(--color-surface);
+}
+
+.equipo__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-brown-dark);
+  text-align: center;
+  margin-bottom: var(--space-10);
+}
+
+.equipo__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-8);
+  justify-items: center;
+}
+
+.miembro {
+  text-align: center;
+  max-width: 240px;
+}
+
+.miembro__foto-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 0 auto var(--space-4);
+  background: var(--color-surface-alt);
+  border: 3px solid var(--color-border-light);
+}
+
+.miembro__foto {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+
+.miembro__nombre {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--color-brown-dark);
+  margin-bottom: var(--space-1);
+}
+
+.miembro__rol {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-brown);
+  margin-bottom: var(--space-3);
+}
+
+.miembro__frase {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  line-height: var(--lh-normal);
+}
+
+/* --- CTA --- */
+.cta {
+  background: linear-gradient(135deg, var(--color-brown-dark), var(--color-brown));
+  padding: var(--space-20) 0;
+  text-align: center;
+}
+
+.cta__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-text-inverse);
+  margin-bottom: var(--space-4);
+}
+
+.cta__text {
+  font-size: var(--text-lg);
+  color: rgba(250,247,242,.75);
+  margin-bottom: var(--space-8);
+}
+
+.cta__acciones {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .valores__grid {
+    grid-template-columns: 1fr;
+  }
+}

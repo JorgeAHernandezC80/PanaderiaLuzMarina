@@ -1,0 +1,215 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Componente: Header
+   ============================================================ */
+
+.header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: var(--space-6);
+}
+
+/* Logo */
+.header__logo {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+}
+
+.header__logo-text {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  color: var(--color-brown-dark);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.header__logo:hover .header__logo-text {
+  color: var(--color-brown);
+}
+
+/* Menú desktop */
+.header__menu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.header__menu-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.header__menu-link:hover {
+  color: var(--color-brown);
+  background: var(--color-surface-alt);
+}
+
+.header__menu-link--active {
+  color: var(--color-brown);
+  font-weight: var(--fw-semi);
+}
+
+/* Carrito desktop */
+.header__cart {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.header__cart:hover {
+  border-color: var(--color-brown);
+  background: var(--color-surface-alt);
+}
+
+.header__cart-icon {
+  font-size: var(--text-lg);
+}
+
+.header__cart-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  background: var(--color-brown);
+  color: var(--color-text-inverse);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-bold);
+  border-radius: var(--radius-full);
+}
+
+/* Botón hamburguesa (oculto en desktop) */
+.header__toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.header__toggle-bar {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--color-brown-dark);
+  border-radius: 2px;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.header__toggle[aria-expanded="true"] .header__toggle-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.header__toggle[aria-expanded="true"] .header__toggle-bar:nth-child(2) {
+  opacity: 0;
+}
+.header__toggle[aria-expanded="true"] .header__toggle-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Overlay móvil */
+.header__overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 999;
+}
+
+.header__overlay.is-visible {
+  display: block;
+}
+
+/* Carrito en menú móvil (oculto en desktop) */
+.header__menu-item--cart-mobile {
+  display: none;
+}
+
+/* Carrito desktop: ocultar en items del menú */
+.header__menu-link--cart {
+  display: none;
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 768px) {
+  .header__toggle {
+    display: flex;
+  }
+
+  .header__cart {
+    display: none; /* se muestra dentro del menú */
+  }
+
+  .header__menu-item--cart-mobile {
+    display: list-item;
+    border-top: 1px solid var(--color-border-light);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+  }
+
+  .header__menu-link--cart {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .header__menu {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    bottom: 0;
+    width: min(280px, 80vw);
+    background: var(--color-surface);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--space-4);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+
+  .header__menu.is-open {
+    transform: translateX(0);
+  }
+
+  .header__menu-link {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+  }
+}

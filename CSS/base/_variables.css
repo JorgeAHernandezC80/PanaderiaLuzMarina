@@ -1,0 +1,99 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Design Tokens
+   Palette: warm ivory + saddle brown + wheat + amber accent
+   ============================================================ */
+
+:root {
+  /* --- Colores base --- */
+  --color-bg:           #faf7f2;   /* ivory cálido */
+  --color-surface:      #ffffff;
+  --color-surface-alt:  #f3ede3;   /* trigo claro */
+
+  --color-brown-dark:   #4a2512;   /* café oscuro — headings */
+  --color-brown:        #7c3d1e;   /* café medio — primary */
+  --color-brown-light:  #a85c35;   /* café claro — hover */
+
+  --color-amber:        #d48c2e;   /* ámbar — accent badge/tags */
+  --color-amber-light:  #f0d49a;   /* ámbar suave */
+
+  --color-text:         #2c1a0e;   /* texto principal */
+  --color-text-muted:   #7a6050;   /* texto secundario */
+  --color-text-inverse: #faf7f2;
+
+  --color-border:       #ddd0bc;
+  --color-border-light: #ede5d8;
+
+  --color-success:      #2e7d4f;
+  --color-danger:       #b91c1c;
+  --color-danger-light: #fee2e2;
+
+  /* --- Tipografía --- */
+  --font-display:  'Georgia', 'Times New Roman', serif;
+  --font-body:     'Helvetica Neue', 'Arial', sans-serif;
+
+  --text-xs:    0.75rem;
+  --text-sm:    0.875rem;
+  --text-base:  1rem;
+  --text-lg:    1.125rem;
+  --text-xl:    1.25rem;
+  --text-2xl:   1.5rem;
+  --text-3xl:   1.875rem;
+  --text-4xl:   2.25rem;
+  --text-5xl:   3rem;
+
+  --fw-normal:  400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+
+  --lh-tight:   1.2;
+  --lh-snug:    1.4;
+  --lh-normal:  1.6;
+  --lh-relaxed: 1.8;
+
+  /* --- Espaciado --- */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* --- Layout --- */
+  --container-max: 1100px;
+  --container-pad: var(--space-6);
+
+  /* --- Radios --- */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-full: 9999px;
+
+  /* --- Sombras --- */
+  --shadow-sm:  0 1px 3px rgba(74,37,18,.08);
+  --shadow-md:  0 4px 12px rgba(74,37,18,.12);
+  --shadow-lg:  0 8px 24px rgba(74,37,18,.16);
+
+  /* --- Transiciones --- */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* --- Header --- */
+  --header-h: 64px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --container-pad: var(--space-4);
+    --text-5xl: 2.25rem;
+    --text-4xl: 1.875rem;
+    --text-3xl: 1.5rem;
+  }
+}

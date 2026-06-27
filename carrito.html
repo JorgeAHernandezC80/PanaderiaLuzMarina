@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Revisa los productos de tu canasta antes de finalizar tu pedido en Panadería Luz Marina.">
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#4a2512">
+    <title>Tu Canasta | Panadería Luz Marina</title>
+    <link rel="stylesheet" href="./CSS/pages/carrito.css">
+</head>
+<body class="page page--carrito" data-page="carrito">
+
+    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+
+    <!-- HEADER -->
+    <header class="header" data-header>
+        <nav class="header__nav container" aria-label="Navegación principal">
+            <a href="index.html" class="header__logo" aria-label="Panadería Luz Marina — Inicio">
+                <span class="header__logo-text">Panadería Luz Marina</span>
+            </a>
+            <button class="header__toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="header-menu" data-header-toggle>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+                <span class="header__toggle-bar" aria-hidden="true"></span>
+            </button>
+            <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
+                <li class="header__menu-item" role="none">
+                    <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+                </li>
+                <li class="header__menu-item" role="none">
+                    <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+                </li>
+                <li class="header__menu-item header__menu-item--cart-mobile" role="none">
+                    <a href="carrito.html" class="header__menu-link header__menu-link--cart header__menu-link--active" role="menuitem" aria-current="page">
+                        <span class="header__cart-icon" aria-hidden="true">🛒</span>
+                        Carrito
+                        <span class="header__cart-count" data-cart-count>0</span>
+                    </a>
+                </li>
+            </ul>
+            <a href="carrito.html" class="header__cart" aria-label="Ver carrito" data-header-cart>
+                <span class="header__cart-icon" aria-hidden="true">🛒</span>
+                <span class="header__cart-count" data-cart-count>0</span>
+            </a>
+        </nav>
+        <div class="header__overlay" data-header-overlay aria-hidden="true"></div>
+    </header>
+
+    <!-- MAIN -->
+    <main id="main-content">
+
+        <section class="page-title container" aria-labelledby="carrito-title">
+            <h1 id="carrito-title" class="page-title__text">Tu Canasta</h1>
+            <p class="page-title__subtitle" data-carrito-cantidad-texto>0 productos</p>
+            <button class="btn btn--link btn--danger" data-btn-vaciar-carrito hidden>
+                Vaciar canasta
+            </button>
+        </section>
+
+        <section class="carrito container" aria-label="Productos en tu canasta">
+            <div class="carrito__layout">
+
+                <!-- Lista de productos -->
+                <div class="carrito__items-wrapper">
+                    <div class="carrito__items" data-carrito-items></div>
+
+                    <div class="carrito__vacio" data-carrito-vacio hidden>
+                        <span class="carrito__vacio-icon" aria-hidden="true">🧺</span>
+                        <h2 class="carrito__vacio-title">Tu canasta está vacía</h2>
+                        <p class="carrito__vacio-text">Aún no has añadido nada. ¡Explora el catálogo y elige tu pan favorito!</p>
+                        <a href="catalogo.html" class="btn btn--primary">Ir al catálogo</a>
+                    </div>
+                </div>
+
+                <!-- Resumen -->
+                <aside class="carrito__resumen" data-carrito-resumen aria-label="Resumen del pedido">
+                    <h2 class="carrito__resumen-title">Resumen del pedido</h2>
+                    <div class="resumen__lineas">
+                        <div class="resumen__linea">
+                            <span class="resumen__label">Subtotal</span>
+                            <span class="resumen__valor" data-resumen-subtotal>$0</span>
+                        </div>
+                        <div class="resumen__linea">
+                            <span class="resumen__label">Retiro en local</span>
+                            <span class="resumen__valor resumen__valor--gratis">Gratis</span>
+                        </div>
+                        <div class="resumen__linea resumen__linea--total">
+                            <span class="resumen__label">Total a pagar</span>
+                            <span class="resumen__valor" data-resumen-total>$0</span>
+                        </div>
+                    </div>
+                    <button class="btn btn--primary btn--block" data-btn-proceder-pago disabled>
+                        Proceder al Pago
+                    </button>
+                    <a href="catalogo.html" class="carrito__seguir-comprando">← Seguir comprando</a>
+                    <p class="carrito__nota-seguridad">🔒 Pago en efectivo contra entrega</p>
+                </aside>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer__content container">
+            <div class="footer__section">
+                <h3 class="footer__title">Horario de Atención</h3>
+                <ul class="footer__list">
+                    <li>Lunes a Viernes: 7:00 – 20:00</li>
+                    <li>Sábados: 8:00 – 18:00</li>
+                    <li>Domingos: 9:00 – 14:00</li>
+                </ul>
+            </div>
+            <div class="footer__section">
+                <h3 class="footer__title">Contacto</h3>
+                <ul class="footer__list">
+                    <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
+                    <li>📍 Avenida Rústica 1042</li>
+                </ul>
+            </div>
+            <div class="footer__section">
+                <h3 class="footer__title">Enlaces</h3>
+                <ul class="footer__list">
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="catalogo.html">Catálogo</a></li>
+                    <li><a href="nosotros.html">Nosotros</a></li>
+                    <li><a href="contacto.html">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer__bottom container">
+            <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="./JS/pages/carrito.js"></script>
+</body>
+</html>
