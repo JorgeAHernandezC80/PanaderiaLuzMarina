@@ -249,7 +249,6 @@
 @media (max-width: 1024px) {
   .header__nav { padding: 0 var(--space-6); }
   .header__menu { margin: 0 var(--space-6); }
-  #lang-toggle { display: none; }
 }
 
 @media (max-width: 768px) {
@@ -329,17 +328,22 @@
   .header__menu-link::after { display: none; }
 
   /* CARRITO SIEMPRE VISIBLE en header__actions */
-  #lang-toggle, #theme-toggle { display: none; }
+  /* lang y theme también visibles en mobile/tablet */
+  #lang-toggle { display: inline-flex; width: auto; padding: 0 var(--space-2); gap: var(--space-1); }
+  #theme-toggle { display: inline-flex; }
   .header__actions::before { display: none; }
-  .header__actions { gap: var(--space-2); }
+  .header__actions { gap: var(--space-1); }
   .header__menu-item--cart-mobile { display: none; }
 }
 
 @media (max-width: 480px) {
   .header__nav { padding: 0 var(--space-3); }
   .header__logo-text { font-size: var(--text-lg); }
-  .header__icon-btn { width: 34px; height: 34px; font-size: var(--text-sm); }
+  .header__icon-btn { width: 32px; height: 32px; font-size: var(--text-sm); }
   .header__actions { gap: var(--space-1); }
+  /* En pantalla muy pequeña ocultar label de texto del idioma, solo el ícono */
+  .header__lang-label { display: none; }
+  #lang-toggle { padding: 0; width: 32px; }
 }
 
 @media (min-width: 1440px) {
