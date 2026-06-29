@@ -3,9 +3,14 @@
  * Comportamientos compartidos en todas las páginas:
  *   - Contador del carrito en el header
  *   - Menú hamburguesa (móvil)
+ *   - Clase scrolled en header
+ *   - Toggle de tema dark/light
+ *   - Toggle de idioma ES/EN
  */
 
 import { getCartCount } from './cart.js';
+import { initTheme }    from './theme.js';
+import { initI18n }     from './i18n.js';
 
 /** Actualiza todos los badges del carrito en el DOM */
 export function updateCartBadges() {
@@ -13,6 +18,13 @@ export function updateCartBadges() {
   document.querySelectorAll('[data-cart-count]').forEach(el => {
     el.textContent = count;
     el.setAttribute('aria-label', `${count} productos en el carrito`);
+    if (el.classList.contains('header__badge')) {
+      if (count > 0) {
+        el.removeAttribute('hidden');
+      } else {
+        el.setAttribute('hidden', '');
+      }
+    }
   });
 }
 
@@ -47,23 +59,34 @@ function initMobileMenu() {
 
   overlay?.addEventListener('click', closeMenu);
 
-  // Cerrar con Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeMenu();
   });
 
-  // Cerrar al redimensionar a desktop
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768) closeMenu();
   });
 }
 
+/** Agrega clase al header al hacer scroll */
+function initHeaderScroll() {
+  const header = document.querySelector('[data-header]');
+  if (!header) return;
+  const onScroll = () => {
+    header.classList.toggle('header--scrolled', window.scrollY > 10);
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
+
 /** Punto de entrada — llamar una vez por página */
 export function initUI() {
+  initTheme();
+  initI18n();
   updateCartBadges();
   initMobileMenu();
+  initHeaderScroll();
 
-  // Actualizar badges cuando el carrito cambie (desde otras pestañas o misma página)
   window.addEventListener('cart:updated', updateCartBadges);
   window.addEventListener('storage', e => {
     if (e.key === 'plm_cart') updateCartBadges();

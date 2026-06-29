@@ -1,55 +1,89 @@
 /* ============================================================
-   PANADERÍA LUZ MARINA — Design Tokens
-   Palette: warm ivory + saddle brown + wheat + amber accent
+   PANADERÍA LUZ MARINA — Design Tokens v3
+   Inspiración: De Baere Bakery (debaere.co.uk)
+   Paleta: blanco puro + crema cálida + carbón + acento terracota/trigo
    ============================================================ */
 
 :root {
-  /* --- Colores base --- */
-  --color-bg:           #faf7f2;   /* ivory cálido */
-  --color-surface:      #ffffff;
-  --color-surface-alt:  #f3ede3;   /* trigo claro */
+  /* --- Fondos y superficies --- */
+  --color-bg:           #ffffff;
+  --color-surface:      #faf8f5;   /* crema muy suave */
+  --color-surface-alt:  #f4f0ea;   /* crema cálida — cards, secciones alt */
+  --color-overlay:      rgba(255, 255, 255, 0.90);
 
-  --color-brown-dark:   #4a2512;   /* café oscuro — headings */
-  --color-brown:        #7c3d1e;   /* café medio — primary */
-  --color-brown-light:  #a85c35;   /* café claro — hover */
+  /* --- Acento principal — terracota/trigo cálido --- */
+  --color-accent:       #8b5e3c;   /* café tostado premium */
+  --color-accent-light: #b07d56;   /* café claro — hover */
+  --color-accent-muted: #d4b896;   /* café muy suave — bordes, fondo */
+  --color-accent-bg:    rgba(139, 94, 60, 0.06);
 
-  --color-amber:        #d48c2e;   /* ámbar — accent badge/tags */
-  --color-amber-light:  #f0d49a;   /* ámbar suave */
+  /* --- Texto --- */
+  --color-text:         #1a1612;   /* casi negro cálido */
+  --color-text-muted:   #6b5f55;   /* marrón grisáceo */
+  --color-text-light:   #a8998e;   /* gris cálido — placeholders */
+  --color-text-inverse: #ffffff;
 
-  --color-text:         #2c1a0e;   /* texto principal */
-  --color-text-muted:   #7a6050;   /* texto secundario */
-  --color-text-inverse: #faf7f2;
+  /* --- Bordes --- */
+  --color-border:       #e8e0d6;   /* beige claro */
+  --color-border-light: #f0ebe4;   /* beige muy sutil */
+  --color-border-dark:  #c9bfb4;   /* beige medio */
 
-  --color-border:       #ddd0bc;
-  --color-border-light: #ede5d8;
+  /* --- Estado --- */
+  --color-success:      #3a7d5a;
+  --color-success-bg:   rgba(58, 125, 90, 0.08);
+  --color-danger:       #c0392b;
+  --color-danger-bg:    rgba(192, 57, 43, 0.08);
+  --color-danger-light: rgba(192, 57, 43, 0.10);
 
-  --color-success:      #2e7d4f;
-  --color-danger:       #b91c1c;
-  --color-danger-light: #fee2e2;
+  /* --- Foco --- */
+  --color-focus:        #8b5e3c;
+  --color-focus-ring:   0 0 0 3px rgba(139, 94, 60, 0.20);
 
-  /* --- Tipografía --- */
-  --font-display:  'Georgia', 'Times New Roman', serif;
-  --font-body:     'Helvetica Neue', 'Arial', sans-serif;
+  /* --- WhatsApp --- */
+  --color-whatsapp:     #25d366;
+  --color-whatsapp-dark:#1ebe5d;
 
-  --text-xs:    0.75rem;
-  --text-sm:    0.875rem;
-  --text-base:  1rem;
-  --text-lg:    1.125rem;
-  --text-xl:    1.25rem;
-  --text-2xl:   1.5rem;
-  --text-3xl:   1.875rem;
-  --text-4xl:   2.25rem;
-  --text-5xl:   3rem;
+  /* --- Footer — fondo oscuro independiente del tema --- */
+  --color-footer-bg:    #1a1612;   /* carbón cálido oscuro */
+  --color-footer-text:  #ffffff;
 
-  --fw-normal:  400;
-  --fw-medium:  500;
-  --fw-semi:    600;
-  --fw-bold:    700;
+  /* --- Tipografía premium ---
+     Agregar en <head> de cada HTML:
+     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  */
+  --font-display: 'Georgia', 'Times New Roman', serif;
 
-  --lh-tight:   1.2;
-  --lh-snug:    1.4;
-  --lh-normal:  1.6;
-  --lh-relaxed: 1.8;
+  /* Stack: Manrope → Montserrat → San Francisco / Segoe UI → fallbacks */
+  --font-body:    'Manrope', 'Montserrat',
+                  system-ui, -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+  --text-xs:    0.85rem;    /* 11px */
+  --text-sm:    0.95rem;   /* 13px */
+  --text-base:  1.05rem;       /* 16px */
+  --text-lg:    1.15rem;   /* 18px */
+  --text-xl:    1.25rem;    /* 20px */
+  --text-2xl:   1.5rem;     /* 24px */
+  --text-3xl:   1.875rem;   /* 30px */
+  --text-4xl:   2.5rem;     /* 40px */
+  --text-5xl:   3.5rem;     /* 56px */
+  --text-6xl:   4.5rem;     /* 72px */
+
+  --fw-light:   600;
+  --fw-normal:  650;
+  --fw-medium:  700;
+  --fw-semi:    750;
+  --fw-bold:    800;
+
+  --lh-tight:   1.25;
+  --lh-snug:    1.35;
+  --lh-normal:  1.65;
+  --lh-relaxed: 1.85;
+
+  --ls-tight:  -0.02em;
+  --ls-normal:  0;
+  --ls-wide:    0.06em;
+  --ls-wider:   0.12em;
 
   /* --- Espaciado --- */
   --space-1:  0.25rem;
@@ -66,19 +100,21 @@
   --space-24: 6rem;
 
   /* --- Layout --- */
-  --container-max: 1100px;
+  --container-max: 1200px;
   --container-pad: var(--space-6);
 
   /* --- Radios --- */
-  --radius-sm:   4px;
-  --radius-md:   8px;
+  --radius-sm:   3px;
+  --radius-md:   6px;
   --radius-lg:   12px;
+  --radius-xl:   20px;
   --radius-full: 9999px;
 
-  /* --- Sombras --- */
-  --shadow-sm:  0 1px 3px rgba(74,37,18,.08);
-  --shadow-md:  0 4px 12px rgba(74,37,18,.12);
-  --shadow-lg:  0 8px 24px rgba(74,37,18,.16);
+  /* --- Sombras — sutiles, cálidas --- */
+  --shadow-sm:   0 1px 3px rgba(26,22,18,0.06), 0 1px 2px rgba(26,22,18,0.04);
+  --shadow-md:   0 4px 16px rgba(26,22,18,0.08), 0 2px 6px rgba(26,22,18,0.05);
+  --shadow-lg:   0 8px 32px rgba(26,22,18,0.10), 0 4px 12px rgba(26,22,18,0.06);
+  --shadow-accent: 0 4px 20px rgba(139,94,60,0.16);
 
   /* --- Transiciones --- */
   --transition-fast:   150ms ease;
@@ -86,14 +122,96 @@
   --transition-slow:   400ms ease;
 
   /* --- Header --- */
-  --header-h: 64px;
+  --header-h:       68px;
+  --header-bg:      rgba(255, 255, 255, 0.95);
+  --header-backdrop: blur(12px);
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+  :root { --container-pad: var(--space-6); }
 }
 
 @media (max-width: 768px) {
   :root {
     --container-pad: var(--space-4);
-    --text-5xl: 2.25rem;
-    --text-4xl: 1.875rem;
-    --text-3xl: 1.5rem;
+    --header-h:      60px;
+    --text-6xl:      3rem;
+    --text-5xl:      2.25rem;
+    --text-4xl:      1.875rem;
+    --text-3xl:      1.5rem;
   }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --text-5xl:  2rem;
+    --text-4xl:  1.625rem;
+    --text-3xl:  1.375rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --container-max: 1400px;
+    --text-6xl:      5.5rem;
+    --text-5xl:      4rem;
+    --text-4xl:      3rem;
+    --space-24:      8rem;
+  }
+}
+
+/* ============================================================
+   TEMA OSCURO — se activa con data-theme="dark" en <html>
+   ============================================================ */
+
+[data-theme="dark"] {
+  /* --- Fondos --- */
+  --color-bg:           #111009;   /* fondo principal — carbón muy cálido */
+  --color-surface:      #1c1a16;   /* superficie elevada */
+  --color-surface-alt:  #252119;   /* cards, secciones alternas */
+  --color-overlay:      rgba(17, 16, 9, 0.88);
+
+  /* --- Acento dorado --- */
+  --color-accent:       #d4ae78;   /* dorado más brillante en dark */
+  --color-accent-light: #ecd49a;
+  --color-accent-muted: #8a6e48;
+  --color-accent-bg:    rgba(212, 174, 120, 0.10);
+
+  /* --- Texto — alta legibilidad en dark --- */
+  --color-text:         #f5f0e8;   /* blanco cálido — texto principal */
+  --color-text-muted:   #c4b8a8;   /* gris cálido más claro — nav links, subtítulos */
+  --color-text-light:   #8a8078;   /* gris medio — placeholders */
+  --color-text-disabled:#4e4840;
+  --color-text-inverse: #111009;
+
+  /* --- Bordes --- */
+  --color-border:       #332e26;
+  --color-border-light: #252119;
+  --color-border-dark:  #4a4438;
+
+  /* --- Estado --- */
+  --color-success:      #56c48e;
+  --color-success-bg:   rgba(86, 196, 142, 0.12);
+  --color-danger:       #e87070;
+  --color-danger-bg:    rgba(232, 112, 112, 0.12);
+  --color-danger-light: rgba(232, 112, 112, 0.14);
+
+  /* --- Foco --- */
+  --color-focus:        #ecd49a;
+  --color-focus-ring:   0 0 0 3px rgba(236, 212, 154, 0.40);
+
+  /* --- Sombras --- */
+  --shadow-sm:     0 1px 4px rgba(0,0,0,0.50);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.60);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.70);
+  --shadow-accent: 0 4px 24px rgba(212,174,120,0.22);
+
+  /* --- Header --- */
+  --header-bg:       rgba(17, 16, 9, 0.95);
+  --header-backdrop: blur(14px);
+
+  /* --- Footer en dark mode — ligeramente más claro que el bg --- */
+  --color-footer-bg:   #1c1a16;
+  --color-footer-text: #ffffff;
 }

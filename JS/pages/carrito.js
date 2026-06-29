@@ -58,7 +58,7 @@ function renderCarrito() {
   if (!wrapper) return;
 
   wrapper.innerHTML = items.map(renderItem).join('');
-  if (vacio)              vacio.hidden = hay;
+  if (vacio) vacio.hidden = hay;   /* ocultar "vacío" cuando hay items */
 
   const total = getCartTotal();
   const count = items.reduce((s, i) => s + i.cantidad, 0);

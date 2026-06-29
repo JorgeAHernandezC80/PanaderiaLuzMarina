@@ -81,7 +81,11 @@ export function getCartTotal() {
   return getCart().reduce((sum, i) => sum + i.precio * i.cantidad, 0);
 }
 
-/** Formatea número como precio colombiano */
+/** Formatea número como precio en USD */
 export function formatPrice(value) {
-  return '$' + Number(value).toLocaleString('es-CO');
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(Number(value));
 }

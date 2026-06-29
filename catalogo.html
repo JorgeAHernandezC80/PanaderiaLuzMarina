@@ -5,21 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Catálogo de productos frescos de Panadería Luz Marina. Pan, bollería, repostería y frituras horneadas cada día.">
     <link rel="canonical" href="https://panaderialuzmarina.com/catalogo.html">
-    <meta name="theme-color" content="#4a2512">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#ffffff">
     <title>Catálogo | Panadería Luz Marina</title>
     <link rel="stylesheet" href="./CSS/pages/catalogo.css">
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Tipografía -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="page page--catalogo" data-page="catalogo">
 
     <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
 
     <!-- HEADER -->
-    <header class="header" data-header>
+    <header class="header" data-header data-component="header">
         <nav class="header__nav container" aria-label="Navegación principal">
-            <a href="index.html" class="header__logo" aria-label="Panadería Luz Marina — Inicio">
+            <a href="index.html" class="header__logo" aria-label="Panadería Luz Marina — Inicio" data-nav="logo">
                 <span class="header__logo-text">Panadería Luz Marina</span>
             </a>
-            <button class="header__toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="header-menu" data-header-toggle>
+            <button class="header__toggle" type="button"
+                aria-label="Abrir menú" aria-expanded="false" aria-controls="header-menu"
+                data-header-toggle>
                 <span class="header__toggle-bar" aria-hidden="true"></span>
                 <span class="header__toggle-bar" aria-hidden="true"></span>
                 <span class="header__toggle-bar" aria-hidden="true"></span>
@@ -37,18 +48,19 @@
                 <li class="header__menu-item" role="none">
                     <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
                 </li>
-                <li class="header__menu-item header__menu-item--cart-mobile" role="none">
-                    <a href="carrito.html" class="header__menu-link header__menu-link--cart" role="menuitem">
-                        <span class="header__cart-icon" aria-hidden="true">🛒</span>
-                        Carrito
-                        <span class="header__cart-count" data-cart-count>0</span>
-                    </a>
-                </li>
             </ul>
-            <a href="carrito.html" class="header__cart" aria-label="Ver carrito" data-header-cart>
-                <span class="header__cart-icon" aria-hidden="true">🛒</span>
-                <span class="header__cart-count" data-cart-count>0</span>
-            </a>
+            <div class="header__actions">
+                <button id="lang-toggle" class="header__icon-btn" aria-label="Cambiar idioma" data-lang-toggle>
+                    <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                </button>
+                <button id="theme-toggle" class="header__icon-btn" aria-label="Cambiar tema" data-theme-toggle>
+                    <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
+                </button>
+                <a href="carrito.html" class="header__icon-btn header__cart-btn" aria-label="Ver carrito" data-header-cart>
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                    <span class="header__badge" id="cart-count" data-cart-count>0</span>
+                </a>
+            </div>
         </nav>
         <div class="header__overlay" data-header-overlay aria-hidden="true"></div>
     </header>
@@ -93,7 +105,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="1"
                                 data-producto-nombre="Donas Glaseadas"
-                                data-producto-precio="2500">
+                                data-producto-precio="2.50">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -113,7 +125,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="2"
                                 data-producto-nombre="Buñuelos"
-                                data-producto-precio="1800">
+                                data-producto-precio="2.50">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -133,7 +145,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="5"
                                 data-producto-nombre="Almojábanas"
-                                data-producto-precio="2000">
+                                data-producto-precio="2.50">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -153,7 +165,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="6"
                                 data-producto-nombre="Pandebono"
-                                data-producto-precio="2800">
+                                data-producto-precio="2.50">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -173,7 +185,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="7"
                                 data-producto-nombre="Pan de Yuca"
-                                data-producto-precio="4500">
+                                data-producto-precio="2.50">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -193,7 +205,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="3"
                                 data-producto-nombre="Roscón de Arequipe"
-                                data-producto-precio="1500">
+                                data-producto-precio="3.00">
                                 Añadir al carrito
                             </button>
                         </div>
@@ -213,7 +225,7 @@
                             <button class="btn btn--add"
                                 data-producto-id="4"
                                 data-producto-nombre="Croissant"
-                                data-producto-precio="3200">
+                                data-producto-precio="2.00">
                                 Añadir al carrito
                             </button>
                         </div>

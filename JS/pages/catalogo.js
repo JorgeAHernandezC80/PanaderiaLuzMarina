@@ -48,10 +48,16 @@ function initAddToCart() {
 
     const { productoId, productoNombre, productoPrecio } = btn.dataset;
 
+    /* Capturar la imagen del card */
+    const card    = btn.closest('.producto-card');
+    const imgEl   = card?.querySelector('.producto-card__imagen img');
+    const imagen  = imgEl?.getAttribute('src') ?? '';
+
     addToCart({
       id:     productoId,
       nombre: productoNombre,
       precio: Number(productoPrecio),
+      imagen: imagen,
     });
 
     // Feedback visual
