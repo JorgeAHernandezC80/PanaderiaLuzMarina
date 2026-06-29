@@ -2,15 +2,52 @@
  * PANADERÍA LUZ MARINA — Página: Checkout
  * - Carga items del carrito
  * - Valida formulario
- * - Abre WhatsApp hacia el número de LA PANADERÍA para que el cliente
- *   envíe su pedido directamente desde su teléfono.
+ * - Genera número de orden + fecha para trazabilidad
+ * - Guarda la orden en localStorage
+ * - Abre WhatsApp con el pedido completo
+ * - Muestra pantalla de confirmación con los datos de trazabilidad
  */
 
 import { initUI } from '../core/ui.js';
 import { getCart, getCartTotal, formatPrice, clearCart } from '../core/cart.js';
 
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
-const WA_BUSINESS = '12817703825'; // dígitos puros, con código de país
+const WA_BUSINESS = '12817703825';
+
+/* ---- Trazabilidad ---- */
+
+/** Genera número de orden único: LM-YYYYMMDD-XXXX */
+function generarNumeroOrden() {
+  const ahora  = new Date();
+  const fecha  = ahora.toISOString().slice(0, 10).replace(/-/g, '');
+  const sufijo = String(Math.floor(1000 + Math.random() * 9000));
+  return `LM-${fecha}-${sufijo}`;
+}
+
+/** Formatea fecha y hora en español legible */
+function formatearFechaHora(date) {
+  const dias   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses  = ['enero','febrero','marzo','abril','mayo','junio',
+                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const dia    = dias[date.getDay()];
+  const numero = date.getDate();
+  const mes    = meses[date.getMonth()];
+  const anio   = date.getFullYear();
+  const hora   = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${dia} ${numero} de ${mes}, ${anio} · ${hora}`;
+}
+
+/** Guarda la orden en localStorage para historial */
+function guardarOrdenEnHistorial(orden) {
+  try {
+    const historial = JSON.parse(localStorage.getItem('plm_ordenes') ?? '[]');
+    historial.unshift(orden); // más reciente primero
+    // Conservar solo las últimas 20 órdenes
+    localStorage.setItem('plm_ordenes', JSON.stringify(historial.slice(0, 20)));
+  } catch {
+    /* localStorage no disponible — continuar igual */
+  }
+}
 
 /* ---- Renderizar resumen de items ---- */
 function renderItems() {
@@ -71,8 +108,8 @@ function validateForm(form) {
   return valid ? { nombre, telefono, hora, minuto } : null;
 }
 
-/* ---- Construir mensaje que el CLIENTE envía a la panadería ---- */
-function buildPedido(datos, items, total) {
+/* ---- Construir mensaje WhatsApp con trazabilidad ---- */
+function buildPedido(datos, items, total, orden) {
   const lineas = items.map(i =>
     `• ${i.nombre} × ${i.cantidad} = ${formatPrice(i.precio * i.cantidad)}`
   ).join('\n');
@@ -80,20 +117,74 @@ function buildPedido(datos, items, total) {
   return [
     `Hola Panadería Luz Marina 👋`,
     '',
-    `Mi nombre es *${datos.nombre}*`,
-    `📱 Teléfono: ${datos.telefono}`,
+    `🔖 *Orden:* ${orden.numero}`,
+    `📅 *Fecha:* ${orden.fechaTexto}`,
     '',
-    '🛒 *Mi pedido:*',
+    `👤 *Cliente:* ${datos.nombre}`,
+    `📱 *Teléfono:* ${datos.telefono}`,
+    '',
+    '🛒 *Pedido:*',
     '',
     lineas,
     '',
     `*Total: ${formatPrice(total)}*`,
     '',
-    `🕐 Paso a retirar a las *${datos.hora}:${datos.minuto}*`,
-    '💵 Pago en efectivo al retirar',
+    `🕐 Retiro a las *${datos.hora}:${datos.minuto}*`,
+    `📍 Avenida Rústica 1042`,
+    `💵 Pago en efectivo al retirar`,
     '',
-    '¡Gracias!',
+    '¡Gracias por su compra!',
   ].join('\n');
+}
+
+/* ---- Mostrar pantalla de confirmación ---- */
+function mostrarConfirmacion(orden, datos) {
+  const formSection = document.querySelector('.checkout');
+  const stepper     = document.querySelector('.checkout__stepper');
+  const pageTitle   = document.querySelector('.page-title');
+
+  if (pageTitle) {
+    pageTitle.querySelector('.page-title__text').textContent = '¡Pedido enviado!';
+    pageTitle.querySelector('.page-title__subtitle').textContent =
+      'Tu pedido fue enviado por WhatsApp a la panadería.';
+  }
+
+  if (stepper) stepper.hidden = true;
+
+  if (formSection) {
+    formSection.innerHTML = `
+      <div class="confirmacion container">
+        <div class="confirmacion__card">
+          <span class="confirmacion__icono" aria-hidden="true">✅</span>
+
+          <div class="confirmacion__trazabilidad">
+            <div class="confirmacion__dato">
+              <span class="confirmacion__dato-label">Número de orden</span>
+              <span class="confirmacion__dato-valor confirmacion__dato-valor--orden">${orden.numero}</span>
+            </div>
+            <div class="confirmacion__dato">
+              <span class="confirmacion__dato-label">Fecha y hora</span>
+              <span class="confirmacion__dato-valor">${orden.fechaTexto}</span>
+            </div>
+            <div class="confirmacion__dato">
+              <span class="confirmacion__dato-label">Cliente</span>
+              <span class="confirmacion__dato-valor">${datos.nombre}</span>
+            </div>
+            <div class="confirmacion__dato">
+              <span class="confirmacion__dato-label">Retiro</span>
+              <span class="confirmacion__dato-valor">${datos.hora}:${datos.minuto} — Avenida Rústica 1042</span>
+            </div>
+          </div>
+
+          <p class="confirmacion__nota">
+            Guarda tu número de orden. La panadería te confirmará el pedido pronto.
+          </p>
+
+          <a href="catalogo.html" class="btn btn--primary">Seguir comprando</a>
+        </div>
+      </div>
+    `;
+  }
 }
 
 /* ---- Submit ---- */
@@ -107,16 +198,37 @@ function initForm() {
     const datos = validateForm(form);
     if (!datos) return;
 
-    const items   = getCart();
-    const total   = getCartTotal();
-    const mensaje = encodeURIComponent(buildPedido(datos, items, total));
+    const items     = getCart();
+    const total     = getCartTotal();
+    const ahora     = new Date();
 
-    // El cliente abre WhatsApp y le escribe directamente a la panadería
-    const url = `https://wa.me/${WA_BUSINESS}?text=${mensaje}`;
+    /* Crear objeto de orden con trazabilidad */
+    const orden = {
+      numero:    generarNumeroOrden(),
+      fechaISO:  ahora.toISOString(),
+      fechaTexto:formatearFechaHora(ahora),
+      cliente:   datos.nombre,
+      telefono:  datos.telefono,
+      retiro:    `${datos.hora}:${datos.minuto}`,
+      items:     items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+      total:     total,
+    };
 
-    // Primero abrir WhatsApp, luego limpiar el carrito
-    window.open(url, '_blank', 'noopener,noreferrer');
-    clearCart();
+    /* Guardar en historial de localStorage */
+    guardarOrdenEnHistorial(orden);
+
+    /* Construir URL de WhatsApp */
+    const mensaje = encodeURIComponent(buildPedido(datos, items, total, orden));
+    const url     = `https://api.whatsapp.com/send?phone=${WA_BUSINESS}&text=${mensaje}`;
+
+    /* Limpiar carrito con delay para asegurar que la redirección inició */
+    setTimeout(() => clearCart(), 1500);
+
+    /* Mostrar confirmación en la página */
+    mostrarConfirmacion(orden, datos);
+
+    /* Redirigir a WhatsApp — location.href nunca es bloqueado */
+    window.location.href = url;
   });
 }
 
