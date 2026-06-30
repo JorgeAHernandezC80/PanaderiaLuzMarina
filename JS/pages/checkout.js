@@ -9,7 +9,7 @@
  */
 
 import { initUI } from '../core/ui.js';
-import { getCart, getCartTotal, formatPrice, clearCart } from '../core/cart.js';
+import { getCart, getCartTotal, formatPrice, clearCart, escapeHTML } from '../core/cart.js';
 
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
 const WA_BUSINESS = '12817703825';
@@ -64,10 +64,10 @@ function renderItems() {
 
   if (container) {
     container.innerHTML = items.map(item => `
-      <div class="checkout-item" data-item-id="${item.id}">
+      <div class="checkout-item" data-item-id="${escapeHTML(item.id)}">
         <div class="checkout-item__info">
-          <span class="checkout-item__nombre">${item.nombre}</span>
-          <span class="checkout-item__cantidad">× ${item.cantidad}</span>
+          <span class="checkout-item__nombre">${escapeHTML(item.nombre)}</span>
+          <span class="checkout-item__cantidad">× ${Number(item.cantidad)}</span>
         </div>
         <span class="checkout-item__precio">${formatPrice(item.precio * item.cantidad)}</span>
       </div>
@@ -99,13 +99,15 @@ function validateForm(form) {
 
   let valid = true;
 
-  if (!nombre)   { showError('nombre',  true);  valid = false; } else showError('nombre',  false);
-  if (!telefono || telefono.replace(/\D/g, '').length < 7)
+  if (!nombre || nombre.length > 80) { showError('nombre', true); valid = false; } else showError('nombre', false);
+
+  const telefonoDigitos = telefono.replace(/\D/g, '');
+  if (!telefonoDigitos || telefonoDigitos.length < 7 || telefonoDigitos.length > 15)
                  { showError('telefono',true);  valid = false; } else showError('telefono',false);
-  if (!hora || !minuto)
+  if (!hora || !minuto || !/^\d{1,2}$/.test(hora) || !/^\d{1,2}$/.test(minuto))
                  { showError('horario', true);  valid = false; } else showError('horario', false);
 
-  return valid ? { nombre, telefono, hora, minuto } : null;
+  return valid ? { nombre, telefono: telefonoDigitos, hora, minuto } : null;
 }
 
 /* ---- Construir mensaje WhatsApp con trazabilidad ---- */
@@ -168,11 +170,11 @@ function mostrarConfirmacion(orden, datos) {
             </div>
             <div class="confirmacion__dato">
               <span class="confirmacion__dato-label">Cliente</span>
-              <span class="confirmacion__dato-valor">${datos.nombre}</span>
+              <span class="confirmacion__dato-valor">${escapeHTML(datos.nombre)}</span>
             </div>
             <div class="confirmacion__dato">
               <span class="confirmacion__dato-label">Retiro</span>
-              <span class="confirmacion__dato-valor">${datos.hora}:${datos.minuto} — Avenida Rústica 1042</span>
+              <span class="confirmacion__dato-valor">${escapeHTML(datos.hora)}:${escapeHTML(datos.minuto)} — Avenida Rústica 1042</span>
             </div>
           </div>
 

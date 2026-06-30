@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis Estructurado — Panadería Luz Marina</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0D1B3E; --navy-mid: #1B2F5E; --blue: #1A4FC4; --blue-light: #2563EB;
+    --accent: #D4853A; --accent-light: #FFF4D6;
+    --green: #0F6E56; --green-light: #E1F5EE;
+    --red: #993C1D; --red-light: #FAECE7;
+    --purple: #534AB7; --purple-light: #EEEDFE;
+    --gray-100: #F8F7F4; --gray-200: #EFEFEB; --gray-400: #B4B2A9;
+    --text: #0D1B3E; --text-muted: #5F5E5A; --border: #D3D1C7;
+    --white: #FFFFFF; --page-bg: #F3F2EE;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--page-bg); color:var(--text); line-height:1.7; font-size:15px; }
+
+  .cover {
+    background: linear-gradient(135deg, #1a1612 0%, #3d2b1f 50%, #8b5e3c 100%);
+    min-height:100vh; display:flex; flex-direction:column; justify-content:center;
+    padding:80px 72px; position:relative; overflow:hidden;
+  }
+  .cover::before {
+    content:''; position:absolute; top:-120px; right:-120px;
+    width:520px; height:520px; border-radius:50%;
+    border:1px solid rgba(212,133,58,0.20);
+  }
+  .cover-tag { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:32px; }
+  .cover h1 { font-family:'Syne',sans-serif; font-size:52px; font-weight:800; color:#fff; line-height:1.1; max-width:640px; margin-bottom:24px; }
+  .cover h1 span { color:var(--accent); }
+  .cover-subtitle { font-size:17px; color:rgba(255,255,255,0.65); max-width:500px; font-weight:300; line-height:1.6; margin-bottom:48px; }
+  .cover-pills { display:flex; gap:10px; flex-wrap:wrap; }
+  .cover-pill { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:100px; padding:8px 18px; font-size:13px; color:rgba(255,255,255,0.80); }
+  .cover-footer { position:absolute; bottom:48px; right:72px; font-size:12px; color:rgba(255,255,255,0.30); font-family:'Syne',sans-serif; }
+
+  .page { max-width:900px; margin:0 auto; padding:64px 72px; background:var(--white); border-top:1px solid var(--border); }
+
+  .section-tag { font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--blue); margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+  .section-tag::after { content:''; flex:1; height:1px; background:var(--border); }
+  .section-num { display:inline-block; width:28px; height:28px; background:var(--navy); color:#fff; border-radius:50%; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; text-align:center; line-height:28px; margin-right:4px; }
+
+  h2 { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; color:var(--navy); line-height:1.2; margin-bottom:20px; }
+  h3 { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; color:var(--navy); margin-bottom:12px; margin-top:36px; }
+  h4 { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; color:var(--navy); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em; }
+  p { color:var(--text-muted); margin-bottom:14px; font-size:15px; }
+  p strong { color:var(--text); font-weight:500; }
+
+  .lead { font-size:17px; font-weight:300; color:var(--text-muted); line-height:1.7; margin-bottom:36px; border-left:3px solid var(--accent); padding-left:20px; }
+
+  .callout { background:var(--navy); color:#fff; border-radius:12px; padding:22px 26px; margin:28px 0; display:flex; gap:14px; align-items:flex-start; }
+  .callout-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+  .callout-body strong { display:block; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--accent); margin-bottom:4px; text-transform:uppercase; letter-spacing:.06em; }
+  .callout-body p { color:rgba(255,255,255,0.75); margin:0; font-size:14px; line-height:1.6; }
+
+  .patron {
+    border:1px solid var(--border); border-radius:12px; padding:22px 24px;
+    margin-bottom:20px; background:var(--white);
+    border-left:4px solid var(--accent);
+  }
+  .patron-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
+  .patron-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--navy); }
+  .patron-meta { font-size:12px; color:var(--text-muted); white-space:nowrap; }
+  .patron p { margin-bottom:8px; font-size:14px; }
+
+  .friccion { border-left-color:#993C1D; }
+  .friccion .patron-title::before { content:'⚠️ '; }
+
+  code { font-family:monospace; font-size:13px; background:#f1f0ed; padding:2px 6px; border-radius:4px; color:#553322; }
+  pre { background:#0d1b3e; color:#e8d5b0; border-radius:10px; padding:20px; margin:16px 0; overflow-x:auto; font-size:13px; line-height:1.6; }
+
+  .badge { display:inline-block; padding:3px 10px; border-radius:100px; font-size:12px; font-weight:500; margin-right:6px; }
+  .badge-red { background:var(--red-light); color:var(--red); }
+  .badge-green { background:var(--green-light); color:var(--green); }
+  .badge-amber { background:#FEF3C7; color:#92400E; }
+  .badge-blue { background:#DBEAFE; color:#1E40AF; }
+  .badge-purple { background:var(--purple-light); color:var(--purple); }
+
+  .matrix { width:100%; border-collapse:collapse; margin:20px 0 28px; font-size:14px; }
+  .matrix thead th { background:var(--navy); color:#fff; padding:10px 14px; text-align:left; font-family:'Syne',sans-serif; font-weight:600; font-size:12px; letter-spacing:.05em; text-transform:uppercase; }
+  .matrix thead th:first-child { border-radius:8px 0 0 0; }
+  .matrix thead th:last-child { border-radius:0 8px 0 0; }
+  .matrix tbody tr:nth-child(even) { background:var(--gray-100); }
+  .matrix tbody td { padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text-muted); line-height:1.5; }
+  .matrix tbody td:first-child { font-weight:500; color:var(--navy); }
+
+  .oportunidad { border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+  .oportunidad-header { display:flex; align-items:center; gap:12px; padding:14px 20px; background:var(--navy); }
+  .oportunidad-header span { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:#fff; }
+  .oportunidad-header .tag { margin-left:auto; background:var(--accent); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; text-transform:uppercase; letter-spacing:.06em; }
+  .oportunidad-body { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .oportunidad-col h5 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--text-muted); margin-bottom:6px; }
+  .oportunidad-col p { font-size:13.5px; color:var(--text-muted); margin:0; line-height:1.5; }
+
+  .score-row { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+  .score-item { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .score-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; }
+  .score-val { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--accent); }
+  .score-total { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--navy); margin-left:8px; align-self:flex-end; }
+
+  .divider { height:1px; background:var(--border); margin:40px 0; }
+
+  .jtbd { background:var(--accent-light); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:16px 20px; margin:16px 0; }
+  .jtbd h4 { color:var(--accent); margin-bottom:8px; }
+  .jtbd p { color:#5a3a20; margin:0; font-size:14px; }
+
+  .por-que { counter-reset:porq; margin:16px 0; }
+  .por-que li { counter-increment:porq; list-style:none; display:flex; gap:14px; align-items:flex-start; margin-bottom:10px; font-size:14px; color:var(--text-muted); }
+  .por-que li::before { content:counter(porq)'.'; font-family:'Syne',sans-serif; font-weight:700; font-size:16px; color:var(--accent); flex-shrink:0; width:20px; }
+
+  .flujo { display:flex; align-items:stretch; margin:24px 0; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+  .flujo-step { flex:1; padding:16px 14px; background:var(--white); border-right:1px solid var(--border); position:relative; }
+  .flujo-step:last-child { border-right:none; }
+  .flujo-step-num { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; color:var(--gray-200); line-height:1; margin-bottom:6px; }
+  .flujo-step-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+  .flujo-step p { font-size:12px; line-height:1.4; margin:0; color:var(--text-muted); }
+  .flujo-step.critico { background:#fff5f0; }
+  .flujo-step.critico .flujo-step-num { color:#ffd5c5; }
+  .flujo-step.critico .flujo-step-title { color:var(--red); }
+
+  .checklist { list-style:none; margin:14px 0 20px; }
+  .checklist li { display:flex; gap:10px; align-items:flex-start; margin-bottom:8px; font-size:14.5px; color:var(--text-muted); line-height:1.5; }
+  .checklist li::before { content:'◻'; color:var(--blue); font-size:16px; flex-shrink:0; }
+  .checklist li strong { color:var(--text); font-weight:500; }
+
+  .req-box { background:#0D1B3E; border-radius:10px; padding:20px 24px; margin:16px 0; }
+  .req-label { font-family:'Syne',sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  .req-text { font-family:monospace; font-size:13px; color:rgba(255,255,255,0.85); line-height:1.7; white-space:pre-wrap; margin:0; }
+
+  @media (max-width:700px) {
+    .page { padding:40px 24px; }
+    .cover { padding:48px 32px; }
+    .cover h1 { font-size:34px; }
+    .oportunidad-body { grid-template-columns:1fr; }
+    .flujo { flex-direction:column; }
+    .flujo-step { border-right:none; border-bottom:1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<div class="cover">
+  <div class="cover-tag">Pipeline de Agentes · Análisis Estructurado · Fase 2</div>
+  <h1>Análisis <span>Panadería<br>Luz Marina</span></h1>
+  <p class="cover-subtitle">Diagnóstico técnico y estratégico completo: patrones, necesidades reales, fricción, diferenciación, oportunidades y matriz de priorización.</p>
+  <div class="cover-pills">
+    <span class="cover-pill">🔍 6 Patrones detectados</span>
+    <span class="cover-pill">🎯 2 Jobs-to-be-Done</span>
+    <span class="cover-pill">⚡ 5 Puntos de fricción</span>
+    <span class="cover-pill">💡 5 Oportunidades</span>
+    <span class="cover-pill">📊 7 Hallazgos priorizados</span>
+  </div>
+  <div class="cover-footer">Agentes: Creador → Revisor → Auditor → Aprobador · Junio 2026</div>
+</div>
+
+<!-- SECCIÓN 1 — PATRONES -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">1</span> Detección de patrones</div>
+  <h2>Recurrencias confirmadas en el código fuente</h2>
+  <p class="lead">Cada patrón aparece en al menos 2 módulos independientes. Se descartan las anécdotas de sesión única.</p>
+
+  <div class="patron">
+    <div class="patron-header">
+      <div class="patron-title">P1 · Inconsistencia de estado entre módulos</div>
+      <div class="patron-meta"><span class="badge badge-red">🔴 Riesgo alto</span> 4 módulos</div>
+    </div>
+    <p>El carrito usa <code>localStorage</code> como fuente de verdad pero cada página lo relee de forma independiente. No existe un bus de eventos centralizado ni un singleton observable. Cuando <code>catalogo.js</code> despacha <code>cart:updated</code>, los listeners en otras páginas ya no están activos. Resultado: precios y cantidades que no coinciden entre la página de catálogo y el resumen del carrito.</p>
+    <pre>// Cada módulo lee localStorage por su cuenta — sin singleton
+export function getCart() {
+  return JSON.parse(localStorage.getItem('plm_cart') ?? '[]');
+}</pre>
+    <p><strong>Causa raíz:</strong> Ausencia de patrón Pub/Sub o CartStore centralizado. Próximo paso: implementar un <code>CartStore</code> con <code>subscribe()</code> y <code>dispatch()</code>.</p>
+  </div>
+
+  <div class="patron">
+    <div class="patron-header">
+      <div class="patron-title">P2 · Precios como strings vs números en el pipeline</div>
+      <div class="patron-meta"><span class="badge badge-red">🔴 Riesgo alto</span> Confirmado en producción</div>
+    </div>
+    <p>Los <code>data-producto-precio</code> del HTML vivían como <code>"2500"</code> (pesos colombianos) mientras <code>formatPrice</code> usaba <code>toLocaleString('es-CO')</code>, y el catálogo mostraba <code>$2.50</code> (USD). La misma función de formato producía resultados radicalmente distintos según el contexto. Corregido con <code>Intl.NumberFormat('en-US', {currency:'USD'})</code>, pero el patrón raíz persiste: sin validación de tipos al borde del sistema.</p>
+    <p><strong>Riesgo de regresión:</strong> cualquier edición de <code>catalogo.html</code> sin conocer la convención USD vuelve a romper la coherencia de precios.</p>
+  </div>
+
+  <div class="patron friccion">
+    <div class="patron-header">
+      <div class="patron-title">P3 · CSS que no respeta el sistema de tokens</div>
+      <div class="patron-meta"><span class="badge badge-amber">🟡 Riesgo medio</span> 3 componentes</div>
+    </div>
+    <p>Los componentes mezclan colores literales con tokens CSS. El caso más crítico: <code>.footer { background: var(--color-text) }</code> — en light mode es carbón oscuro, pero en dark mode ese token se convierte en <code>#f5f0e8</code> (blanco), produciendo footer blanco con letras blancas. El ícono del carrito tenía <code>opacity: 0.30</code> hardcodeado. El header ocultaba los botones de tema e idioma con selectores de ID en lugar de clases del design system.</p>
+    <p><strong>Causa raíz:</strong> No existe un lint de CSS que valide el uso de tokens. El design system vive en <code>_variables.css</code> pero no se hace cumplir automáticamente.</p>
+  </div>
+
+  <div class="patron friccion">
+    <div class="patron-header">
+      <div class="patron-title">P4 · WhatsApp como único canal de conversión sin fallback</div>
+      <div class="patron-meta"><span class="badge badge-red">🔴 Riesgo alto</span> Estructural</div>
+    </div>
+    <p>Toda la conversión depende de que el cliente abra WhatsApp correctamente. Si falla la redirección (bloqueador, sin datos móviles, app no instalada), la transacción desaparece sin trazabilidad. El carrito se vaciaba sincrónicamente antes de confirmar que WhatsApp abrió — corregido con <code>setTimeout(clearCart, 1500)</code> pero sigue siendo frágil. Cada fallo de redirección es una venta perdida invisible para el operador.</p>
+  </div>
+
+  <div class="patron">
+    <div class="patron-header">
+      <div class="patron-title">P5 · Menú mobile con tres implementaciones distintas</div>
+      <div class="patron-meta"><span class="badge badge-amber">🟡 Riesgo medio</span> Historial de 3 sesiones</div>
+    </div>
+    <p>Panel lateral con <code>transform: translateX</code> → <code>display: flex</code> forzado en <code>.is-open</code> → dropdown con <code>max-height + opacity</code>. La inconsistencia surgió porque el CSS de desktop declaraba <code>display: flex</code> en <code>.header__menu</code> y los breakpoints mobile no lo sobreescribían de forma determinista. Los botones de idioma y tema se ocultaban con selectores de ID (<code>#lang-toggle, #theme-toggle { display: none }</code>) en lugar de clases — una especificidad alta que dificultaba el override.</p>
+  </div>
+
+  <div class="patron">
+    <div class="patron-header">
+      <div class="patron-title">P6 · Ausencia de validación de esquema en datos de productos</div>
+      <div class="patron-meta"><span class="badge badge-amber">🟡 Riesgo medio</span> Estructural</div>
+    </div>
+    <p>Los datos de productos viven en atributos HTML sin validación de tipos, rangos ni valores por defecto. Si un <code>data-producto-precio</code> es vacío o no numérico, <code>formatPrice(NaN)</code> produce <code>"$NaN"</code> en el carrito. No existe una función de validación en el borde del sistema que garantice la integridad de los datos antes de añadir al carrito.</p>
+  </div>
+</div>
+
+<!-- SECCIÓN 2 — NECESIDADES REALES -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">2</span> Necesidades reales</div>
+  <h2>Jobs-to-be-Done: más allá del deseo superficial</h2>
+  <p class="lead">El e-commerce no es el canal de compra — es el canal de validación. El cliente usa el sitio para construir confianza antes de comprometerse a ir físicamente.</p>
+
+  <h3>Cliente — ¿Por qué visita el sitio y no llama directamente?</h3>
+  <p><strong>Deseo superficial:</strong> "Quiero ver los productos y hacer un pedido."</p>
+  
+  <ul class="por-que">
+    <li>¿Por qué el cliente visita el catálogo? → Para ver qué hay disponible hoy.</li>
+    <li>¿Por qué en el sitio y no llamando? → Porque no quiere interrumpir para preguntar; prefiere decidir solo.</li>
+    <li>¿Por qué prefiere decidir solo? → Porque siente presión cuando hay un vendedor esperando respuesta.</li>
+    <li>¿Por qué importa para la conversión? → Si el catálogo no es claro (precios, disponibilidad, foto), el cliente abandona antes de llegar a WhatsApp.</li>
+    <li>¿Qué necesita realmente? → Certeza visual de que lo que quiere existe y vale lo que espera pagar.</li>
+  </ul>
+
+  <div class="jtbd">
+    <h4>Job real del cliente</h4>
+    <p>"Ayúdame a confirmar que puedo fiar en esta panadería antes de salir de casa."</p>
+  </div>
+
+  <div class="callout">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Implicación de diseño</strong>
+      <p>La página más importante del sitio no es el catálogo general — es la página de producto individual con foto real, precio exacto y señales de confianza (hora de horneado, stock disponible). Esta página no existe aún en el proyecto.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>Operador (dueño) — ¿Qué necesita realmente del sistema?</h3>
+  <p><strong>Deseo superficial:</strong> "Quiero que los clientes pidan por WhatsApp."</p>
+  
+  <ul class="por-que">
+    <li>¿Por qué WhatsApp y no llamadas? → Porque queda registro escrito del pedido.</li>
+    <li>¿Por qué el registro importa? → Porque hornea en cantidad y necesita anticipar cuánto producir.</li>
+    <li>¿Por qué no puede anticipar ahora? → Porque lee cada mensaje manualmente y no tiene vista agregada.</li>
+    <li>¿Qué necesita realmente? → Visibilidad de pedidos del día agrupados por horario de retiro.</li>
+    <li>¿Qué lo bloquea? → No existe interfaz de administración — el sistema actual asume que el operador lee WhatsApp en tiempo real.</li>
+  </ul>
+
+  <div class="jtbd">
+    <h4>Job real del operador</h4>
+    <p>"Dame visibilidad de mis pedidos sin tener que transcribir conversaciones de voz ni leer cada mensaje de WhatsApp por separado."</p>
+  </div>
+</div>
+
+<!-- SECCIÓN 3 — MAPA DE INCIDENTES -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">3</span> Mapa de incidentes</div>
+  <h2>Puntos de fricción en el flujo de conversión</h2>
+  <p class="lead">Flujo completo: Catálogo → Carrito → Checkout → WhatsApp → Retiro. Cinco fricciones identificadas, dos críticas.</p>
+
+  <div class="flujo">
+    <div class="flujo-step">
+      <div class="flujo-step-num">01</div>
+      <div class="flujo-step-title">Catálogo</div>
+      <p>Foto de producto sin tratamiento visual</p>
+    </div>
+    <div class="flujo-step">
+      <div class="flujo-step-num">02</div>
+      <div class="flujo-step-title">Carrito</div>
+      <p>Estado vacío con CTA poco prominente</p>
+    </div>
+    <div class="flujo-step">
+      <div class="flujo-step-num">03</div>
+      <div class="flujo-step-title">Checkout</div>
+      <p>Formulario sin indicadores de progreso</p>
+    </div>
+    <div class="flujo-step critico">
+      <div class="flujo-step-num">04</div>
+      <div class="flujo-step-title">WhatsApp</div>
+      <p>Punto único de falla sin fallback</p>
+    </div>
+    <div class="flujo-step critico">
+      <div class="flujo-step-num">05</div>
+      <div class="flujo-step-title">Retiro</div>
+      <p>Sin confirmación del operador al cliente</p>
+    </div>
+  </div>
+
+  <h3>F1 — Foto de producto deficiente</h3>
+  <p><span class="badge badge-amber">🟡 Media</span> Las imágenes de productos son fotografías sin tratamiento uniforme: fondo variable, iluminación inconsistente. Font Awesome actúa como fallback pero es un ícono genérico. El usuario no puede evaluar la calidad visual del producto antes de añadirlo al carrito. Frecuencia: cada sesión de catálogo.</p>
+
+  <h3>F2 — Estado "canasta vacía" confuso</h3>
+  <p><span class="badge badge-amber">🟡 Media</span> El ícono de canasta tenía <code>opacity: 0.30</code> — casi invisible. El mensaje "Tu canasta está vacía" no tiene CTA suficientemente prominente. El botón "Ir al catálogo" existe pero es secundario visualmente. Corregido parcialmente: opacity a <code>0.65</code>.</p>
+
+  <h3>F3 — Formulario de checkout sin retroalimentación</h3>
+  <p><span class="badge badge-amber">🟡 Media</span> El formulario tiene campos para nombre, teléfono y horario de retiro, pero no hay indicación de cuántos pasos faltan ni validación en tiempo real visible. El <code>stepper</code> existe en el HTML pero no está implementado funcionalmente. El cliente no sabe si sus datos son correctos hasta el submit.</p>
+
+  <h3>F4 — WhatsApp como punto único de falla <span class="badge badge-red">🔴 Crítica</span></h3>
+  <p>Si <code>window.location.href</code> falla por cualquier razón (sin datos móviles, app no instalada, browser restrictivo), el pedido se pierde completamente. El cliente ve una pantalla de confirmación con número de orden pero no puede verificar si el mensaje llegó. El operador tampoco recibe señal de que algo falló.</p>
+  <div class="callout">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <strong>Fix implementado — parcialmente efectivo</strong>
+      <p>La pantalla de confirmación con el número de orden LM-YYYYMMDD-XXXX aparece antes de redirigir, lo que permite al cliente anotar la orden y contactar por otro medio. Pero el operador nunca sabrá cuántas redirecciones fallaron.</p>
+    </div>
+  </div>
+
+  <h3>F5 — Sin confirmación del operador al cliente <span class="badge badge-red">🔴 Crítica</span></h3>
+  <p>El cliente llega a retirar sin saber si el pedido fue aceptado. No hay respuesta automática ni confirmación. El sistema asume que el operador ve el WhatsApp y responde en tiempo real, lo cual no ocurre en horarios de producción temprana (4-6 AM). Esta fricción ocurre después de la conversión pero antes de la retención — un cliente que llega y no encuentra su pedido no vuelve.</p>
+</div>
+
+<!-- SECCIÓN 4 — DIFERENCIACIÓN -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">4</span> Diferenciación competitiva</div>
+  <h2>Zona de Oro y ventaja sostenible</h2>
+  <p class="lead">La panadería compite en un segmento que los grandes players no pueden ocupar: producto artesanal real con relación directa panadería-cliente sin intermediario.</p>
+
+  <h3>Posicionamiento en la Matriz 2×2</h3>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>Dimensión</th>
+        <th>Rappi / iFood</th>
+        <th>Tienda vecina</th>
+        <th>Gran panadería</th>
+        <th>Luz Marina</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Diferenciación de producto</td><td>Baja (todo igual)</td><td>Alta (único local)</td><td>Baja (industrial)</td><td><strong>Alta (artesanal)</strong></td></tr>
+      <tr><td>Fricción digital</td><td>Baja (app nativa)</td><td>Muy alta (sin digital)</td><td>Media (app propia)</td><td><strong>Media-baja (WA)</strong></td></tr>
+      <tr><td>Costo de comisión</td><td>30% del pedido</td><td>0%</td><td>0%</td><td><strong>0%</strong></td></tr>
+      <tr><td>Relación con el cliente</td><td>Ninguna (intermediario)</td><td>Personal pero sin escala</td><td>Corporativa</td><td><strong>Directa y escalable</strong></td></tr>
+      <tr><td>Trazabilidad de pedidos</td><td>Backend completo</td><td>Ninguna</td><td>App propia</td><td><strong>Número de orden + localStorage</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-icon">🎯</div>
+    <div class="callout-body">
+      <strong>Zona de Oro de Luz Marina</strong>
+      <p>Alta diferenciación de producto + fricción digital moderada-baja + 0% de comisión + relación directa. El checkout de WhatsApp es simultáneamente la limitación técnica del sistema y la ventaja relacional del negocio. El cliente habla directamente con quien hornea — ningún competidor grande puede replicar eso.</p>
+    </div>
+  </div>
+
+  <h3>Amenaza principal</h3>
+  <p>La amenaza no es Rappi. Es que otra panadería artesanal del mismo sector implemente un sistema similar antes. La ventaja tecnológica actual (trazabilidad, dark mode, checkout sin registro) tiene una vida útil de 6-12 meses antes de que sea replicable con herramientas no-code.</p>
+</div>
+
+<!-- SECCIÓN 5 — OPORTUNIDADES -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">5</span> Oportunidades no cubiertas</div>
+  <h2>Brechas de mercado ordenadas por ratio Impacto / Esfuerzo</h2>
+
+  <div class="oportunidad">
+    <div class="oportunidad-header">
+      <span>📊 Panel de administración de órdenes</span>
+      <span class="tag">24/25 · Prioridad absoluta</span>
+    </div>
+    <div class="oportunidad-body">
+      <div class="oportunidad-col">
+        <h5>Necesidad del operador</h5>
+        <p>Ver pedidos del día agrupados por horario de retiro sin leer WhatsApp manualmente. Poder marcar órdenes como "preparadas" para evitar dobles envíos.</p>
+      </div>
+      <div class="oportunidad-col">
+        <h5>Tu oportunidad</h5>
+        <p><code>/admin.html</code> con contraseña simple en JS que lee <code>plm_ordenes</code> del localStorage. Tabla agrupada por retiro. Total del día en USD. Sin backend, 2-3 horas de trabajo.</p>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px;">
+      <div class="score-row">
+        <div class="score-item"><div class="score-label">Urgencia</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Frecuencia</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Sol. actual</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Factibilidad</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Retención</div><div class="score-val">4</div></div>
+        <div class="score-total">= 24/25</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="oportunidad">
+    <div class="oportunidad-header">
+      <span>🟢 Stock en vivo (gestión manual)</span>
+      <span class="tag">23/25 · Alta prioridad</span>
+    </div>
+    <div class="oportunidad-body">
+      <div class="oportunidad-col">
+        <h5>Necesidad del cliente</h5>
+        <p>Saber qué hay disponible hoy antes de entrar al catálogo completo. Evitar seleccionar un producto que ya se agotó.</p>
+      </div>
+      <div class="oportunidad-col">
+        <h5>Tu oportunidad</h5>
+        <p>Atributo <code>data-producto-stock="disponible|agotado"</code> en el HTML. Badge visual. Botón "Añadir" deshabilitado si agotado. El operador actualiza el HTML cada mañana.</p>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px;">
+      <div class="score-row">
+        <div class="score-item"><div class="score-label">Urgencia</div><div class="score-val">4</div></div>
+        <div class="score-item"><div class="score-label">Frecuencia</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Sol. actual</div><div class="score-val">5</div></div>
+        <div class="score-item"><div class="score-label">Factibilidad</div><div class="score-val">4</div></div>
+        <div class="score-item"><div class="score-label">Retención</div><div class="score-val">5</div></div>
+        <div class="score-total">= 23/25</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="oportunidad">
+    <div class="oportunidad-header">
+      <span>📄 Página de producto individual</span>
+      <span class="tag">21/25 · Alta prioridad</span>
+    </div>
+    <div class="oportunidad-body">
+      <div class="oportunidad-col">
+        <h5>Necesidad del cliente</h5>
+        <p>Validar la calidad del producto antes de comprometerse. Ver ingredientes, foto grande, y precio claro antes de añadir al carrito.</p>
+      </div>
+      <div class="oportunidad-col">
+        <h5>Tu oportunidad</h5>
+        <p><code>/producto/{id}.html</code> generado estáticamente. Foto grande, descripción, ingredientes principales, precio, botón "Añadir". Mismo stack: HTML/CSS/JS vanilla.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="oportunidad">
+    <div class="oportunidad-header">
+      <span>✅ Confirmación de pedido por WhatsApp</span>
+      <span class="tag">20/25 · Alta prioridad</span>
+    </div>
+    <div class="oportunidad-body">
+      <div class="oportunidad-col">
+        <h5>Necesidad del cliente</h5>
+        <p>Saber que su pedido fue recibido y aceptado sin esperar respuesta manual. Reducir la ansiedad del periodo entre envío y retiro.</p>
+      </div>
+      <div class="oportunidad-col">
+        <h5>Tu oportunidad</h5>
+        <p>Plantilla de confirmación copiable en la pantalla de confirmación. El operador la pega en WhatsApp Business como mensaje de bienvenida automático (sin costo de API).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="oportunidad">
+    <div class="oportunidad-header">
+      <span>❤️ Wishlist de favoritos persistente</span>
+      <span class="tag">19/25 · Backlog Sprint 3</span>
+    </div>
+    <div class="oportunidad-body">
+      <div class="oportunidad-col">
+        <h5>Necesidad del cliente recurrente</h5>
+        <p>Guardar sus productos habituales para hacer pedidos rápidos sin buscar en el catálogo cada vez.</p>
+      </div>
+      <div class="oportunidad-col">
+        <h5>Tu oportunidad</h5>
+        <p><code>plm_wishlist</code> en localStorage. Corazón en cada card. Sección "Mis favoritos" en el carrito que añade todo de un clic. Zero backend.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECCIÓN 6 — PRIORIZACIÓN -->
+<div class="page">
+  <div class="section-tag"><span class="section-num">6</span> Matriz de priorización</div>
+  <h2>De insights a decisiones accionables</h2>
+  <p class="lead">7 hallazgos ordenados por valor real para el negocio. La columna "Acción" indica en qué sprint debe entrar cada uno.</p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Hallazgo</th>
+        <th>Tipo</th>
+        <th>Valor</th>
+        <th>Esfuerzo</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Panel de administración de órdenes</td>
+        <td><span class="badge badge-purple">Oportunidad</span></td>
+        <td><span class="badge badge-green">Muy alta</span></td>
+        <td><span class="badge badge-green">Bajo</span></td>
+        <td>🚀 Sprint 1</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Stock en vivo (gestión manual del HTML)</td>
+        <td><span class="badge badge-purple">Oportunidad</span></td>
+        <td><span class="badge badge-green">Alta</span></td>
+        <td><span class="badge badge-green">Bajo</span></td>
+        <td>🚀 Sprint 1</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Validación de esquema en datos de productos</td>
+        <td><span class="badge badge-red">Fricción</span></td>
+        <td><span class="badge badge-green">Alta</span></td>
+        <td><span class="badge badge-green">Bajo</span></td>
+        <td>🚀 Sprint 1</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Página de producto individual</td>
+        <td><span class="badge badge-purple">Oportunidad</span></td>
+        <td><span class="badge badge-green">Alta</span></td>
+        <td><span class="badge badge-amber">Medio</span></td>
+        <td>📅 Sprint 2</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>CartStore centralizado (bus de eventos)</td>
+        <td><span class="badge badge-red">Fricción</span></td>
+        <td><span class="badge badge-green">Alta</span></td>
+        <td><span class="badge badge-amber">Medio</span></td>
+        <td>📅 Sprint 2</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Confirmación automática de pedido</td>
+        <td><span class="badge badge-purple">Oportunidad</span></td>
+        <td><span class="badge badge-amber">Media</span></td>
+        <td><span class="badge badge-amber">Medio</span></td>
+        <td>📅 Sprint 2</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Wishlist de favoritos persistente</td>
+        <td><span class="badge badge-purple">Oportunidad</span></td>
+        <td><span class="badge badge-amber">Media</span></td>
+        <td><span class="badge badge-green">Bajo</span></td>
+        <td>📅 Sprint 3</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <h3>Requerimientos técnicos — Sprint 1</h3>
+
+  <div class="req-box">
+    <div class="req-label">📋 Prompt 1 — Panel Admin</div>
+    <p class="req-text">Crear /admin.html con un dashboard que:
+1. Solicite contraseña "plm2026" al cargar (sin autenticación real)
+2. Lea plm_ordenes del localStorage y muestre tabla ordenada por fecha
+3. Agrupe pedidos por horario de retiro (datos.retiro)
+4. Permita marcar órdenes como "preparadas" (color verde)
+5. Muestre resumen del día: total de órdenes, total en USD
+Stack: HTML/CSS/JS vanilla, sin dependencias externas</p>
+  </div>
+
+  <div class="req-box">
+    <div class="req-label">📋 Prompt 2 — Stock en vivo</div>
+    <p class="req-text">Agregar sistema de stock manual a catalogo.html:
+1. Atributo data-producto-stock="disponible|agotado" en cada .producto-card
+2. Badge visual sobre imagen: "Disponible" (verde) / "Agotado" (rojo)
+3. Deshabilitar botón "Añadir al carrito" si stock === "agotado"
+4. En JS: verificar data-producto-stock antes de addToCart()
+5. CSS: .producto-card--agotado con overlay semitransparente</p>
+  </div>
+
+  <div class="req-box">
+    <div class="req-label">📋 Prompt 3 — Validación de esquema</div>
+    <p class="req-text">Agregar función validateProductData() en cart.js:
+1. Recibe el elemento HTML del producto
+2. Valida: precio > 0 y es número, nombre !== '', id !== ''
+3. Si falla: throw Error con mensaje descriptivo
+4. Envolver addToCart() en try/catch — mostrar error en UI, no alert()
+5. Tests: precio NaN, precio negativo, nombre vacío</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>Checklist final — ¿El análisis está completo?</h3>
+  <ul class="checklist">
+    <li><strong>Patrones:</strong> ✅ 6 patrones con frecuencia, fuente y riesgo documentados</li>
+    <li><strong>Necesidades:</strong> ✅ 2 Jobs-to-be-Done con los 5 Por Qués aplicados</li>
+    <li><strong>Incidentes:</strong> ✅ 5 fricciones mapeadas al flujo de conversión con criticidad</li>
+    <li><strong>Diferenciación:</strong> ✅ Matriz 2×2 completada, Zona de Oro identificada</li>
+    <li><strong>Oportunidades:</strong> ✅ 5 oportunidades con puntuación Impacto/Esfuerzo (19-24/25)</li>
+    <li><strong>Priorización:</strong> ✅ Top 7 hallazgos accionables con sprint asignado</li>
+    <li><strong>Especificación:</strong> ✅ 3 prompts de desarrollo listos para Fase 3</li>
+    <li><strong>Validación:</strong> ✅ Todos los hallazgos respaldados por código fuente real del proyecto</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-icon">🎯</div>
+    <div class="callout-body">
+      <strong>Síntesis ejecutiva</strong>
+      <p>El proyecto tiene bases técnicas sólidas (modularidad CSS, ES modules, trazabilidad de órdenes) pero tres riesgos estructurales: estado del carrito sin singleton, WhatsApp como punto único de falla, y ausencia de una interfaz para el operador. Las tres oportunidades de Sprint 1 (panel admin, stock en vivo, validación de esquema) son de bajo esfuerzo y alto impacto — ideales para entregar valor en la siguiente sesión de desarrollo.</p>
+    </div>
+  </div>
+
+  <p style="text-align:center; font-size:13px; color:var(--gray-400); margin-top:40px; font-family:'Syne',sans-serif; letter-spacing:.08em;">
+    ANÁLISIS ESTRUCTURADO · PANADERÍA LUZ MARINA · PIPELINE DE AGENTES · JUNIO 2026
+  </p>
+</div>
+
+</body>
+</html>
