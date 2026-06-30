@@ -1,14 +1,17 @@
 /**
  * Panel Admin · Panadería Luz Marina
- * Organización: Configuración → Auth → Storage → Render → App
+ * Organización: Configuración → Auth → API → Render → App
  */
+
+import { escapeHTML } from '../core/cart.js';
 
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
+const API_BASE = 'http://localhost:3001';
+
 const CONFIG = Object.freeze({
   PASSWORD: 'plm2026',
-  STORAGE_KEY: 'plm_ordenes',
   SESSION_KEY: 'plm_admin_session',
   SELECTORS: {
     loginView:     '#login-view',
@@ -48,36 +51,50 @@ const Auth = {
 };
 
 /* ═══════════════════════════════════════════
-   3. MÓDULO: ALMACENAMIENTO
+   3. MÓDULO: API (backend)
    ═══════════════════════════════════════════ */
-const Storage = {
-  getOrders() {
+const Api = {
+  async getTodayOrders() {
+    const fecha = new Date().toISOString().slice(0, 10);
     try {
-      return JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    } catch {
-      console.error('[Storage] Error leyendo órdenes');
-      return [];
+      const res = await fetch(`${API_BASE}/ordenes?fecha=${fecha}`);
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Api] Error obteniendo órdenes:', err.message);
+      return null; // null = error de red, distinto de [] = sin pedidos
     }
   },
 
-  saveOrders(orders) {
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(orders));
-  },
-
-  getTodayOrders() {
-    const today = new Date().toISOString().slice(0, 10);
-    return this.getOrders().filter(o => o.fecha && o.fecha.startsWith(today));
-  },
-
-  markAsPrepared(orderId) {
-    const orders = this.getOrders();
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      order.preparada = true;
-      this.saveOrders(orders);
-      return true;
+  async markAsPrepared(numero) {
+    try {
+      const res = await fetch(`${API_BASE}/ordenes/${encodeURIComponent(numero)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'preparada' }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('[Api] Error actualizando orden:', err.message);
+      return false;
     }
-    return false;
+  },
+
+  /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae. */
+  connectLive(onMessage) {
+    let socket;
+    const wsUrl = API_BASE.replace(/^http/, 'ws');
+
+    const connect = () => {
+      socket = new WebSocket(wsUrl);
+      socket.addEventListener('message', e => {
+        try { onMessage(JSON.parse(e.data)); } catch { /* mensaje no válido, ignorar */ }
+      });
+      socket.addEventListener('close', () => setTimeout(connect, 3000));
+      socket.addEventListener('error', () => socket.close());
+    };
+
+    connect();
   },
 };
 
@@ -108,9 +125,10 @@ const Format = {
    ═══════════════════════════════════════════ */
 const Render = {
   updateStats(orders) {
-    const total = orders.length;
-    const ingresos = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
-    const preparadas = orders.filter(o => o.preparada).length;
+    const lista = orders || [];
+    const total = lista.length;
+    const ingresos = lista.reduce((s, o) => s + (Number(o.total) || 0), 0);
+    const preparadas = lista.filter(o => o.estado === 'preparada').length;
     const pendientes = total - preparadas;
 
     this._setStat(CONFIG.SELECTORS.statOrdenes, total);
@@ -130,6 +148,11 @@ const Render = {
     const container = document.querySelector(CONFIG.SELECTORS.orders);
     container.innerHTML = '';
 
+    if (orders === null) {
+      container.appendChild(this._emptyState('No se pudo conectar con el servidor de pedidos. Verifica que el backend esté corriendo.'));
+      return;
+    }
+
     if (orders.length === 0) {
       container.appendChild(this._emptyState());
       return;
@@ -145,21 +168,21 @@ const Render = {
 
   _groupByPickup(orders) {
     return orders.reduce((acc, order) => {
-      const time = order.datos?.retiro || 'Sin horario definido';
+      const time = order.retiro || 'Sin horario definido';
       if (!acc[time]) acc[time] = [];
       acc[time].push(order);
       return acc;
     }, {});
   },
 
-  _emptyState() {
+  _emptyState(mensaje) {
     const div = document.createElement('div');
     div.className = 'empty-state';
     div.innerHTML = `
-      <span class="empty-state__icon" aria-hidden="true">🧺</span>
-      <h2 class="empty-state__title">Sin pedidos hoy</h2>
+      <span class="empty-state__icon" aria-hidden="true">${mensaje ? '⚠️' : '🧺'}</span>
+      <h2 class="empty-state__title">${mensaje ? 'No se pudo cargar' : 'Sin pedidos hoy'}</h2>
       <p class="empty-state__text">
-        Los pedidos aparecerán aquí cuando los clientes completen el checkout.
+        ${mensaje || 'Los pedidos aparecerán aquí cuando los clientes completen el checkout.'}
       </p>
     `;
     return div;
@@ -188,25 +211,26 @@ const Render = {
     const row = tpl.content.cloneNode(true);
     const tr = row.querySelector('tr');
 
-    if (order.preparada) tr.classList.add('order-row--done');
+    const estaPreparada = order.estado === 'preparada';
+    if (estaPreparada) tr.classList.add('order-row--done');
 
-    row.querySelector('.order-table__id').textContent = order.id || '—';
-    row.querySelector('.order-table__cliente').textContent = order.datos?.nombre || '—';
+    row.querySelector('.order-table__id').textContent = order.numero || '—';
+    row.querySelector('.order-table__cliente').textContent = order.cliente || '—';
 
-    const tel = order.datos?.telefono || '';
+    const tel = order.telefono || '';
     row.querySelector('.order-table__telefono').innerHTML = tel
-      ? `<a href="tel:${tel}">${tel}</a>`
+      ? `<a href="tel:${escapeHTML(tel)}">${escapeHTML(tel)}</a>`
       : '—';
 
-    const productos = (order.productos || [])
-      .map(p => `${p.cantidad}× ${p.nombre}`)
+    const productos = (order.items || [])
+      .map(p => `${Number(p.cantidad) || 0}× ${escapeHTML(p.nombre)}`)
       .join('<br>');
     row.querySelector('.order-table__productos').innerHTML = productos || '—';
 
     row.querySelector('.order-table__total').textContent = Format.currency(order.total);
 
     const estadoCell = row.querySelector('.order-table__estado');
-    if (order.preparada) {
+    if (estaPreparada) {
       estadoCell.innerHTML = `
         <span class="order-status order-status--done">✓ Lista</span>
       `;
@@ -215,9 +239,18 @@ const Render = {
       btn.type = 'button';
       btn.className = 'btn btn--action';
       btn.textContent = 'Marcar lista';
-      btn.addEventListener('click', () => {
-        Storage.markAsPrepared(order.id);
-        App.refresh();
+      btn.disabled = false;
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Guardando…';
+        const ok = await Api.markAsPrepared(order.numero);
+        if (ok) {
+          App.refresh();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Marcar lista';
+          alert('No se pudo actualizar la orden. Intenta de nuevo.');
+        }
       });
       estadoCell.appendChild(btn);
     }
@@ -230,15 +263,22 @@ const Render = {
    6. APP: ORQUESTADOR PRINCIPAL
    ═══════════════════════════════════════════ */
 const App = {
+  _liveConnected: false,
+
   init() {
     this._bindEvents();
     this._showCorrectView();
   },
 
-  refresh() {
-    const orders = Storage.getTodayOrders();
+  async refresh() {
+    const orders = await Api.getTodayOrders();
     Render.updateStats(orders);
     Render.renderOrders(orders);
+
+    if (orders !== null && !this._liveConnected) {
+      this._liveConnected = true;
+      Api.connectLive(() => this.refresh());
+    }
   },
 
   _bindEvents() {

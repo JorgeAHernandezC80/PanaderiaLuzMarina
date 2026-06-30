@@ -2,22 +2,22 @@
   "name": "luzmarpanaderia",
   "version": "1.0.0",
   "description": "🍞 Masa Madre - Panadería Artesanal\r Sistema de e-commerce para panadería artesanal con integración de WhatsApp, gestión de inventario en tiempo real y sistema de suscripciones.",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JorgeAHernandezC80/LuzMarPanaderia.git"
+    "url": "git+https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/JorgeAHernandezC80/LuzMarPanaderia/issues"
+    "url": "https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina/issues"
   },
-  "homepage": "https://github.com/JorgeAHernandezC80/LuzMarPanaderia#readme",
+  "homepage": "https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina#readme",
   "dependencies": {
     "express": "^5.2.1",
     "sqlite3": "^6.0.1",

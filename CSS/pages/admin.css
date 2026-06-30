@@ -64,6 +64,13 @@ img { max-width: 100%; display: block; }
 
 button { font: inherit; cursor: pointer; }
 
+/* El navegador ya hace esto por defecto, pero cualquier regla del autor
+   con `display` (ej. .view--login { display: flex }) le gana a la regla
+   nativa [hidden] { display: none }, porque CSS de autor > CSS de UA
+   sin importar especificidad. Sin esta línea, hidden=true en JS no oculta
+   nada si el elemento tiene display:flex/grid/etc. definido en otra regla. */
+[hidden] { display: none !important; }
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;

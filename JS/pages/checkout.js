@@ -14,6 +14,9 @@ import { getCart, getCartTotal, formatPrice, clearCart, escapeHTML } from '../co
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
 const WA_BUSINESS = '12817703825';
 
+/* ---- Backend ---- */
+const API_BASE = 'http://localhost:3001';
+
 /* ---- Trazabilidad ---- */
 
 /** Genera número de orden único: LM-YYYYMMDD-XXXX */
@@ -189,6 +192,26 @@ function mostrarConfirmacion(orden, datos) {
   }
 }
 
+/** Envía la orden al backend para que el panel admin la vea en vivo.
+ *  No bloqueante: si el backend está caído, el flujo de WhatsApp
+ *  (canal principal del negocio) continúa sin interrupción.
+ */
+async function enviarOrdenAlBackend(orden) {
+  try {
+    const res = await fetch(`${API_BASE}/ordenes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orden),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.warn('[checkout] Backend rechazó la orden:', body.error || res.status);
+    }
+  } catch (err) {
+    console.warn('[checkout] No se pudo contactar al backend:', err.message);
+  }
+}
+
 /* ---- Submit ---- */
 function initForm() {
   const form = document.querySelector('[data-checkout-form]');
@@ -216,8 +239,11 @@ function initForm() {
       total:     total,
     };
 
-    /* Guardar en historial de localStorage */
+    /* Guardar en historial de localStorage (respaldo local) */
     guardarOrdenEnHistorial(orden);
+
+    /* Enviar al backend para que el panel admin la vea — no bloqueante */
+    enviarOrdenAlBackend(orden);
 
     /* Construir URL de WhatsApp */
     const mensaje = encodeURIComponent(buildPedido(datos, items, total, orden));
