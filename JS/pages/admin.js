@@ -8,7 +8,7 @@ import { escapeHTML } from '../core/cart.js';
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
-const API_BASE = 'http://localhost:3001';
+const API_BASE = 'https://panaderialuzmarina.onrender.com';
 
 const CONFIG = Object.freeze({
   PASSWORD: 'plm2026',

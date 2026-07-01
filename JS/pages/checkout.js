@@ -15,7 +15,7 @@ import { getCart, getCartTotal, formatPrice, clearCart, escapeHTML } from '../co
 const WA_BUSINESS = '12817703825';
 
 /* ---- Backend ---- */
-const API_BASE = 'http://localhost:3001';
+const API_BASE = 'https://panaderialuzmarina.onrender.com';
 
 /* ---- Trazabilidad ---- */
 
