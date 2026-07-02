@@ -137,7 +137,7 @@ const translations = {
 function getSavedLang() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved && translations[saved]) return saved;
-  const nav = navigator.language?.slice(0, 2).toLowerCase();
+  const nav = (navigator.language ?? '').slice(0, 2).toLowerCase();
   return nav === 'es' ? 'es' : 'en';
 }
 

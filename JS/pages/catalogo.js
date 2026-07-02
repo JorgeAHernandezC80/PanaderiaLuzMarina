@@ -53,26 +53,39 @@ function initAddToCart() {
     const imgEl   = card?.querySelector('.producto-card__imagen img');
     const imagen  = imgEl?.getAttribute('src') ?? '';
 
-    addToCart({
-      id:     productoId,
-      nombre: productoNombre,
-      precio: Number(productoPrecio),
-      imagen: imagen,
-    });
+    try {
+      addToCart({
+        id:     productoId,
+        nombre: productoNombre,
+        precio: Number(productoPrecio),
+        imagen: imagen,
+      });
 
-    // Feedback visual
-    const originalText = btn.textContent;
-    btn.textContent = '✓ Añadido';
-    btn.classList.add('is-added');
-    btn.disabled = true;
+      // Feedback visual — éxito
+      const originalText = btn.textContent;
+      btn.textContent = '✓ Añadido';
+      btn.classList.add('is-added');
+      btn.disabled = true;
 
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('is-added');
-      btn.disabled = false;
-    }, 1200);
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('is-added');
+        btn.disabled = false;
+      }, 1200);
 
-    updateCartBadges();
+      updateCartBadges();
+
+    } catch (err) {
+      // Feedback visual — error (datos de producto inválidos)
+      console.warn('[catalogo] addToCart falló:', err.message);
+      const originalText = btn.textContent;
+      btn.textContent = '✗ Error';
+      btn.classList.add('is-error');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('is-error');
+      }, 1500);
+    }
   });
 }
 

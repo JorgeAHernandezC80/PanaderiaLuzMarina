@@ -72,9 +72,17 @@ function initMobileMenu() {
 function initHeaderScroll() {
   const header = document.querySelector('[data-header]');
   if (!header) return;
+
+  let ticking = false;
   const onScroll = () => {
-    header.classList.toggle('header--scrolled', window.scrollY > 10);
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      header.classList.toggle('header--scrolled', window.scrollY > 10);
+      ticking = false;
+    });
   };
+
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 }

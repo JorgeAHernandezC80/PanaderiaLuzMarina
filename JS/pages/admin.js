@@ -56,13 +56,24 @@ const Auth = {
 const Api = {
   async getTodayOrders() {
     const fecha = new Date().toISOString().slice(0, 10);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
     try {
-      const res = await fetch(`${API_BASE}/ordenes?fecha=${fecha}`);
+      const res = await fetch(`${API_BASE}/ordenes?fecha=${fecha}`, {
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
       return await res.json();
     } catch (err) {
-      console.error('[Api] Error obteniendo órdenes:', err.message);
-      return null; // null = error de red, distinto de [] = sin pedidos
+      if (err.name === 'AbortError') {
+        console.error('[Api] Timeout obteniendo órdenes (el servidor puede estar iniciando).');
+      } else {
+        console.error('[Api] Error obteniendo órdenes:', err.message);
+      }
+      return null;
+    } finally {
+      clearTimeout(timeout);
     }
   },
 
@@ -248,8 +259,14 @@ const Render = {
           App.refresh();
         } else {
           btn.disabled = false;
-          btn.textContent = 'Marcar lista';
-          alert('No se pudo actualizar la orden. Intenta de nuevo.');
+          btn.textContent = '✗ Reintentar';
+          btn.classList.add('btn--error');
+          btn.title = 'No se pudo actualizar. Haz clic para intentar de nuevo.';
+          setTimeout(() => {
+            btn.textContent = 'Marcar lista';
+            btn.classList.remove('btn--error');
+            btn.title = '';
+          }, 3000);
         }
       });
       estadoCell.appendChild(btn);

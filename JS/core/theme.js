@@ -20,7 +20,7 @@ function getSavedTheme() {
 function applyTheme(theme) {
   const html = document.documentElement;
   const btn  = document.querySelector('[data-theme-toggle]');
-  const icon = btn?.querySelector('[data-theme-icon]') ?? btn?.querySelector('i');
+  const icon = btn?.querySelector('[data-theme-icon]');
 
   if (theme === 'dark') {
     html.setAttribute('data-theme', 'dark');

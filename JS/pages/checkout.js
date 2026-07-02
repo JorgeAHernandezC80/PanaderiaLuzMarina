@@ -197,18 +197,28 @@ function mostrarConfirmacion(orden, datos) {
  *  (canal principal del negocio) continúa sin interrupción.
  */
 async function enviarOrdenAlBackend(orden) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000); // 10s máx
+
   try {
     const res = await fetch(`${API_BASE}/ordenes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orden),
+      signal: controller.signal,
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       console.warn('[checkout] Backend rechazó la orden:', body.error || res.status);
     }
   } catch (err) {
-    console.warn('[checkout] No se pudo contactar al backend:', err.message);
+    if (err.name === 'AbortError') {
+      console.warn('[checkout] Backend tardó demasiado, se omitió el registro (WhatsApp sigue activo).');
+    } else {
+      console.warn('[checkout] No se pudo contactar al backend:', err.message);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -242,15 +252,15 @@ function initForm() {
     /* Guardar en historial de localStorage (respaldo local) */
     guardarOrdenEnHistorial(orden);
 
+    /* Limpiar carrito inmediatamente — antes de cualquier redirección */
+    clearCart();
+
     /* Enviar al backend para que el panel admin la vea — no bloqueante */
     enviarOrdenAlBackend(orden);
 
     /* Construir URL de WhatsApp */
     const mensaje = encodeURIComponent(buildPedido(datos, items, total, orden));
     const url     = `https://api.whatsapp.com/send?phone=${WA_BUSINESS}&text=${mensaje}`;
-
-    /* Limpiar carrito con delay para asegurar que la redirección inició */
-    setTimeout(() => clearCart(), 1500);
 
     /* Mostrar confirmación en la página */
     mostrarConfirmacion(orden, datos);

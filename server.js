@@ -11,11 +11,50 @@ const { validarOrden, ValidationError } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
 
+/* FRONTEND_ORIGIN debe estar configurado como variable de entorno en Render.
+   Si no está, el servidor arranca pero rechaza todos los orígenes cruzados —
+   esto es intencional: no queremos CORS abierto en producción. */
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
+if (!FRONTEND_ORIGIN) {
+  console.warn('[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.');
+}
+
 const app = express();
 app.use(express.json({ limit: '100kb' }));
 
+/* Rate limiting: máximo 20 peticiones por IP por 15 minutos en POST /ordenes.
+   Previene spam de órdenes falsas hacia el WhatsApp del negocio. */
+const rateLimitMap = new Map();
+function rateLimit(req, res, next) {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  const ahora = Date.now();
+  const ventana = 15 * 60 * 1000; // 15 minutos
+  const limite = 20;
+
+  const registro = rateLimitMap.get(ip) || { count: 0, desde: ahora };
+  if (ahora - registro.desde > ventana) {
+    registro.count = 0;
+    registro.desde = ahora;
+  }
+  registro.count++;
+  rateLimitMap.set(ip, registro);
+
+  if (registro.count > limite) {
+    return res.status(429).json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' });
+  }
+  next();
+}
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_ORIGIN || '*');
+  const origin = req.headers.origin;
+  if (FRONTEND_ORIGIN && origin === FRONTEND_ORIGIN) {
+    res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+  } else if (!FRONTEND_ORIGIN) {
+    // Sin variable configurada: rechaza silenciosamente (no envía el header)
+  } else if (!origin) {
+    // Petición sin Origin (ej. Postman, curl) — permitir para facilitar pruebas locales
+    res.header('Access-Control-Allow-Origin', '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -32,8 +71,13 @@ function broadcast(payload) {
   });
 }
 
+/* ---- GET /health ---- */
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', ts: new Date().toISOString() });
+});
+
 /* ---- POST /ordenes ---- */
-app.post('/ordenes', (req, res) => {
+app.post('/ordenes', rateLimit, (req, res) => {
   let orden;
   try {
     orden = validarOrden(req.body);

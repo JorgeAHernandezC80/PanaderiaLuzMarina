@@ -9,7 +9,7 @@
 import { initUI } from '../core/ui.js';
 import {
   getCart, updateQuantity, removeFromCart,
-  clearCart, getCartTotal, formatPrice
+  clearCart, getCartTotal, formatPrice, escapeHTML
 } from '../core/cart.js';
 
 /* ---- Elementos del DOM ---- */
@@ -25,25 +25,27 @@ const els = {
 
 /** Genera el HTML de un item del carrito */
 function renderItem(item) {
-  const subtotal = item.precio * item.cantidad;
-  const imgSrc   = item.imagen || '';
-  const imgEl    = imgSrc
-    ? `<img src="${imgSrc}" alt="${item.nombre}" loading="lazy">`
+  const subtotal    = item.precio * item.cantidad;
+  const imgSrc      = item.imagen || '';
+  const nombreSafe  = escapeHTML(item.nombre);
+  const idSafe      = escapeHTML(String(item.id));
+  const imgEl       = imgSrc
+    ? `<img src="${escapeHTML(imgSrc)}" alt="${nombreSafe}" loading="lazy">`
     : `<span class="producto-card__imagen-fallback" aria-hidden="true">🍞</span>`;
 
   return `
-    <article class="carrito-item" data-item-id="${item.id}">
+    <article class="carrito-item" data-item-id="${idSafe}">
       <div class="carrito-item__imagen">${imgEl}</div>
       <div class="carrito-item__info">
-        <h3 class="carrito-item__nombre">${item.nombre}</h3>
+        <h3 class="carrito-item__nombre">${nombreSafe}</h3>
         <p class="carrito-item__precio">${formatPrice(item.precio)} × ${item.cantidad} = ${formatPrice(subtotal)}</p>
       </div>
       <div class="carrito-item__cantidad-control">
-        <button type="button" class="carrito-item__btn" data-action="decrement" aria-label="Disminuir cantidad de ${item.nombre}">−</button>
-        <span class="carrito-item__cantidad" data-item-cantidad>${item.cantidad}</span>
-        <button type="button" class="carrito-item__btn" data-action="increment" aria-label="Aumentar cantidad de ${item.nombre}">+</button>
+        <button type="button" class="carrito-item__btn" data-action="decrement" aria-label="Disminuir cantidad de ${nombreSafe}">−</button>
+        <span class="carrito-item__cantidad" data-item-cantidad>${Number(item.cantidad)}</span>
+        <button type="button" class="carrito-item__btn" data-action="increment" aria-label="Aumentar cantidad de ${nombreSafe}">+</button>
       </div>
-      <button type="button" class="carrito-item__eliminar" data-action="remove" aria-label="Eliminar ${item.nombre}">🗑️</button>
+      <button type="button" class="carrito-item__eliminar" data-action="remove" aria-label="Eliminar ${nombreSafe}">🗑️</button>
     </article>
   `;
 }
