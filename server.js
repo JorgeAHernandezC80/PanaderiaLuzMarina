@@ -19,6 +19,30 @@ if (!FRONTEND_ORIGIN) {
   console.warn('[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.');
 }
 
+/* ADMIN_TOKEN: contraseña del panel admin, definida como variable de entorno en Render.
+   Nunca debe estar en el código fuente.
+   Ejemplo: ADMIN_TOKEN=LuzMarina2026 (cambia esto por algo tuyo).
+   Si no está configurada, el panel admin no va a funcionar — intencional. */
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+if (!ADMIN_TOKEN) {
+  console.warn('[server] ADVERTENCIA: ADMIN_TOKEN no está configurado. El panel admin estará inaccesible.');
+}
+
+/** Middleware que protege endpoints del panel admin.
+ *  Requiere header: Authorization: Bearer <ADMIN_TOKEN>
+ */
+function requireAuth(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Panel admin no configurado en el servidor.' });
+  }
+  const auth = req.headers['authorization'] ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'No autorizado.' });
+  }
+  next();
+}
+
 const app = express();
 app.use(express.json({ limit: '100kb' }));
 
@@ -76,6 +100,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
+/* ---- POST /auth — validar password del panel admin ---- */
+app.post('/auth', (req, res) => {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Panel admin no configurado.' });
+  }
+  const { password } = req.body ?? {};
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Falta la contraseña.' });
+  }
+  /* Comparación de tiempo constante para evitar timing attacks */
+  const expected = Buffer.from(ADMIN_TOKEN);
+  const received = Buffer.from(password.slice(0, 200)); // límite razonable
+  const match = expected.length === received.length &&
+    require('crypto').timingSafeEqual(expected, received);
+
+  if (!match) {
+    return res.status(401).json({ error: 'Contraseña incorrecta.' });
+  }
+  res.json({ token: ADMIN_TOKEN });
+});
+
 /* ---- POST /ordenes ---- */
 app.post('/ordenes', rateLimit, (req, res) => {
   let orden;
@@ -110,8 +155,8 @@ app.post('/ordenes', rateLimit, (req, res) => {
   }
 });
 
-/* ---- GET /ordenes ---- */
-app.get('/ordenes', (req, res) => {
+/* ---- GET /ordenes — solo panel admin autenticado ---- */
+app.get('/ordenes', requireAuth, (req, res) => {
   const { fecha, estado } = req.query;
 
   let sql = 'SELECT * FROM ordenes WHERE 1=1';
@@ -147,8 +192,8 @@ app.get('/ordenes', (req, res) => {
   }
 });
 
-/* ---- PATCH /ordenes/:numero ---- */
-app.patch('/ordenes/:numero', (req, res) => {
+/* ---- PATCH /ordenes/:numero — solo panel admin autenticado ---- */
+app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   const { numero } = req.params;
   const { estado } = req.body ?? {};
 

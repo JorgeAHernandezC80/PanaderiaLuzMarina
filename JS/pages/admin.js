@@ -11,8 +11,8 @@ import { escapeHTML } from '../core/cart.js';
 const API_BASE = 'https://panaderialuzmarina.onrender.com';
 
 const CONFIG = Object.freeze({
-  PASSWORD: 'plm2026',
   SESSION_KEY: 'plm_admin_session',
+  TOKEN_KEY:   'plm_admin_token',  // token recibido del backend tras autenticación
   SELECTORS: {
     loginView:     '#login-view',
     dashboardView: '#dashboard-view',
@@ -35,18 +35,35 @@ const CONFIG = Object.freeze({
    2. MÓDULO: AUTENTICACIÓN
    ═══════════════════════════════════════════ */
 const Auth = {
-  login(password) {
-    if (password !== CONFIG.PASSWORD) return false;
-    sessionStorage.setItem(CONFIG.SESSION_KEY, '1');
-    return true;
+  /** Envía la password al backend. Si es correcta, guarda el token en sessionStorage. */
+  async login(password) {
+    try {
+      const res = await fetch(`${API_BASE}/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) return false;
+      const { token } = await res.json();
+      sessionStorage.setItem(CONFIG.SESSION_KEY, '1');
+      sessionStorage.setItem(CONFIG.TOKEN_KEY, token);
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   logout() {
     sessionStorage.removeItem(CONFIG.SESSION_KEY);
+    sessionStorage.removeItem(CONFIG.TOKEN_KEY);
   },
 
   isAuthenticated() {
     return sessionStorage.getItem(CONFIG.SESSION_KEY) === '1';
+  },
+
+  getToken() {
+    return sessionStorage.getItem(CONFIG.TOKEN_KEY) ?? '';
   },
 };
 
@@ -62,6 +79,7 @@ const Api = {
     try {
       const res = await fetch(`${API_BASE}/ordenes?fecha=${fecha}`, {
         signal: controller.signal,
+        headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
       });
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
       return await res.json();
@@ -81,7 +99,10 @@ const Api = {
     try {
       const res = await fetch(`${API_BASE}/ordenes/${encodeURIComponent(numero)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Auth.getToken()}`,
+        },
         body: JSON.stringify({ estado: 'preparada' }),
       });
       return res.ok;
@@ -301,12 +322,21 @@ const App = {
   _bindEvents() {
     // Login
     document.querySelector(CONFIG.SELECTORS.loginForm)
-      .addEventListener('submit', e => {
+      .addEventListener('submit', async e => {
         e.preventDefault();
         const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
         const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
+        const submitBtn = e.target.querySelector('button[type="submit"]');
 
-        if (Auth.login(pwd)) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verificando…';
+
+        const ok = await Auth.login(pwd);
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
+
+        if (ok) {
           errorEl.hidden = true;
           this._showCorrectView();
         } else {
