@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Contacta a Panadería Luz Marina. Visítanos en Avenida Rústica 1042 o haz tu pedido por WhatsApp.">
-    <link rel="canonical" href="https://panaderialuzmarina.com/contacto.html">
+    <link rel="canonical" href="https://panaderialuzmarina.netlify.app/contacto.html">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#ffffff">
     <title>Contacto | Panadería Luz Marina</title>
@@ -60,6 +60,7 @@
             <div class="header__actions">
                 <button id="lang-toggle" class="header__icon-btn" aria-label="Cambiar idioma" data-lang-toggle>
                     <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                    <span class="header__lang-label" data-lang-label aria-hidden="true">ES</span>
                 </button>
                 <button id="theme-toggle" class="header__icon-btn" aria-label="Cambiar tema" data-theme-toggle>
                     <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
@@ -145,17 +146,21 @@
         <section class="mapa" aria-label="Ubicación en el mapa">
             <div class="container mapa__container">
                 <div class="mapa__wrapper">
-                    <!-- TODO: Reemplazar con el iframe de Google Maps de tu local real -->
-                    <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434509374!2d144.9537353153167!3d-37.81627997975171!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad65d4c2b349649%3A0xb6899234e561db11!2sEnvato!5e0!3m2!1sen!2sus!4v1620000000000!5m2!1sen!2sus"
-                        class="mapa__iframe"
-                        width="100%" height="100%"
-                        style="border:0;"
-                        allowfullscreen
-                        loading="lazy"
-                        title="Mapa de ubicación de Panadería Luz Marina"
-                        referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
+                    <!-- 
+                        PENDIENTE: Reemplazar con el iframe real de Google Maps de tu local.
+                        Para obtenerlo: Google Maps → busca tu dirección → Compartir → Incorporar un mapa → copiar iframe
+                    -->
+                    <div class="mapa__placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;background:#f5f0e8;border-radius:8px;">
+                        <div style="text-align:center;color:#6b5d47;padding:2rem;">
+                            <p style="font-size:2rem;margin-bottom:0.5rem">📍</p>
+                            <p style="font-weight:600;">Avenida Rústica 1042</p>
+                            <a href="https://maps.google.com/?q=Avenida+Rústica+1042+Houston+TX" 
+                               target="_blank" rel="noopener"
+                               style="color:#27ae60;font-size:0.9rem;">
+                                Ver en Google Maps →
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

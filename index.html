@@ -9,7 +9,7 @@
     <meta name="description" content="Panadería Luz Marina — Pan artesanal horneado cada mañana con recetas de familia. Buñuelos, pandebonos, almojábanas y más.">
     <meta name="keywords" content="panadería, pan artesanal, buñuelos, pandebono, almojábanas, pan colombiano, Luz Marina">
     <meta name="author" content="Panadería Luz Marina">
-    <link rel="canonical" href="https://panaderialuzmarina.com/index.html">
+    <link rel="canonical" href="https://panaderialuzmarina.netlify.app/index.html">
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="./IMG/favicon.svg">
@@ -21,14 +21,14 @@
     <meta property="og:site_name" content="Panadería Luz Marina">
     <meta property="og:title" content="Panadería Luz Marina | Pan Artesanal">
     <meta property="og:description" content="El pan de siempre, hecho con cariño. Horneamos hoy lo que comerás mañana.">
-    <meta property="og:image" content="https://panaderialuzmarina.com/IMG/og-image.jpg">
-    <meta property="og:url" content="https://panaderialuzmarina.com/index.html">
+    <meta property="og:image" content="https://panaderialuzmarina.netlify.app/IMG/og-image.jpg">
+    <meta property="og:url" content="https://panaderialuzmarina.netlify.app/index.html">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Panadería Luz Marina | Pan Artesanal">
     <meta name="twitter:description" content="El pan de siempre, hecho con cariño. Horneamos hoy lo que comerás mañana.">
-    <meta name="twitter:image" content="https://panaderialuzmarina.com/IMG/og-image.jpg">
+    <meta name="twitter:image" content="https://panaderialuzmarina.netlify.app/IMG/og-image.jpg">
 
     <!-- Apariencia -->
     <meta name="theme-color" content="#0f0e0c">
@@ -69,7 +69,7 @@
         "address": {
             "@type": "PostalAddress",
             "streetAddress": "Avenida Rústica 1042",
-            "addressCountry": "CO"
+            "addressCountry": "US"
         },
         "telephone": "+12817703825",
         "openingHoursSpecification": [
@@ -116,6 +116,7 @@
             <div class="header__actions">
                 <button id="lang-toggle" class="header__icon-btn" aria-label="Cambiar idioma" data-lang-toggle>
                     <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                    <span class="header__lang-label" data-lang-label aria-hidden="true">ES</span>
                 </button>
                 <button id="theme-toggle" class="header__icon-btn" aria-label="Cambiar tema" data-theme-toggle>
                     <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
@@ -135,14 +136,13 @@
         <!-- HERO -->
         <section class="hero" aria-labelledby="hero-title" data-component="hero">
             <div class="hero__content container">
-                <span class="hero__badge" role="status" aria-live="polite" aria-label="Horno abierto. Stock en vivo">
+                <span class="hero__badge" role="status" aria-live="polite" aria-label="Horno abierto hoy">
                     <span class="hero__badge-icon" aria-hidden="true">🔥</span>
                     Horno Abierto
                     <span class="hero__badge-sep" aria-hidden="true"></span>
                     <span class="hero__badge-dot" aria-hidden="true"></span>
                     <span class="hero__badge-stock">
-                        <span class="hero__badge-count" data-stock-count>24</span>
-                        <span class="hero__badge-label">unidades disponibles</span>
+                        <span class="hero__badge-label">Hornada de hoy disponible</span>
                     </span>
                 </span>
                 <h1 id="hero-title" class="hero__title">El pan de siempre, hecho con cariño.</h1>

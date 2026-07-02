@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Conoce la historia real de Panadería Luz Marina. Pan horneado cada mañana con recetas de familia y mucho cariño.">
-    <link rel="canonical" href="https://panaderialuzmarina.com/nosotros.html">
+    <link rel="canonical" href="https://panaderialuzmarina.netlify.app/nosotros.html">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#ffffff">
     <title>Nosotros | Panadería Luz Marina</title>
@@ -60,6 +60,7 @@
             <div class="header__actions">
                 <button id="lang-toggle" class="header__icon-btn" aria-label="Cambiar idioma" data-lang-toggle>
                     <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                    <span class="header__lang-label" data-lang-label aria-hidden="true">ES</span>
                 </button>
                 <button id="theme-toggle" class="header__icon-btn" aria-label="Cambiar tema" data-theme-toggle>
                     <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
@@ -94,7 +95,11 @@
                         pronto se convirtió en el sustento y la alegría de nuestros vecinos.
                     </p>
                     <div class="historia__imagen-wrapper">
-                        <img src="./IMG/luz-marina.jpg" alt="Luz Marina, fundadora de la panadería" class="historia__imagen" loading="lazy">
+                        <img src="./IMG/luz-marina.jpg" 
+                             alt="Luz Marina, fundadora de la panadería" 
+                             class="historia__imagen" 
+                             loading="lazy"
+                             onerror="this.style.display='none'">
                     </div>
                     <p class="historia__text">
                         Hoy continuamos con esa misma pasión. No usamos procesos industriales ni ingredientes complicados.
@@ -140,7 +145,11 @@
                 <div class="equipo__grid">
                     <article class="miembro">
                         <div class="miembro__foto-wrapper">
-                            <img src="./IMG/luz-marina-foto.jpg" alt="Foto de Luz Marina" class="miembro__foto" loading="lazy">
+                            <img src="./IMG/luz-marina-foto.jpg" 
+                                 alt="Foto de Luz Marina" 
+                                 class="miembro__foto" 
+                                 loading="lazy"
+                                 onerror="this.parentElement.innerHTML='<span style=\'font-size:4rem\'>👩‍🍳</span>'">
                         </div>
                         <h3 class="miembro__nombre">Luz Marina</h3>
                         <p class="miembro__rol">Fundadora</p>
