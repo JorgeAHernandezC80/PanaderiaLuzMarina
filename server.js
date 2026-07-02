@@ -74,13 +74,12 @@ app.use((req, res, next) => {
   if (FRONTEND_ORIGIN && origin === FRONTEND_ORIGIN) {
     res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
   } else if (!FRONTEND_ORIGIN) {
-    // Sin variable configurada: rechaza silenciosamente (no envía el header)
+    // Sin variable configurada: rechaza silenciosamente
   } else if (!origin) {
-    // Petición sin Origin (ej. Postman, curl) — permitir para facilitar pruebas locales
     res.header('Access-Control-Allow-Origin', '*');
   }
   res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
