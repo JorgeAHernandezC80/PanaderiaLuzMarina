@@ -9,13 +9,12 @@
  */
 
 import { initUI } from '../core/ui.js';
-import { getCart, getCartTotal, formatPrice, clearCart, escapeHTML } from '../core/cart.js';
+import { getCart, getCartTotal, clearCart, escapeHTML } from '../core/cart.js';
+import { formatPrice } from '../core/format.js';
+import { apiFetch } from '../core/api.js';
 
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
 const WA_BUSINESS = '12817703825';
-
-/* ---- Backend ---- */
-const API_BASE = 'https://panaderialuzmarina.onrender.com';
 
 /* ---- Trazabilidad ---- */
 
@@ -197,15 +196,12 @@ function mostrarConfirmacion(orden, datos) {
  *  (canal principal del negocio) continúa sin interrupción.
  */
 async function enviarOrdenAlBackend(orden) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000); // 10s máx
-
   try {
-    const res = await fetch(`${API_BASE}/ordenes`, {
+    const res = await apiFetch('/ordenes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orden),
-      signal: controller.signal,
+      timeout: 10_000, // 10s máx
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -217,8 +213,6 @@ async function enviarOrdenAlBackend(orden) {
     } else {
       console.warn('[checkout] No se pudo contactar al backend:', err.message);
     }
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
