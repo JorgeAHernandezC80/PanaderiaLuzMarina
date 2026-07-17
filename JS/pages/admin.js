@@ -19,6 +19,7 @@ const CONFIG = Object.freeze({
     loginForm:     '#login-form',
     password:      '#password',
     loginError:    '#login-error',
+    loginErrorMsg: '#login-error [data-login-error-msg]',
     logoutBtn:     '#btn-logout',
     date:          '#dashboard-date',
     statOrdenes:   '#stat-ordenes',
@@ -35,22 +36,31 @@ const CONFIG = Object.freeze({
    2. MÓDULO: AUTENTICACIÓN
    ═══════════════════════════════════════════ */
 const Auth = {
-  /** Envía la password al backend. Si es correcta, guarda el token en sessionStorage. */
+  /**
+   * Envía la password al backend. Si es correcta, guarda el token en sessionStorage.
+   * No traga los errores de red/servidor: solo una respuesta 401 significa
+   * "contraseña incorrecta". Cualquier otro fallo se propaga para que la UI
+   * pueda distinguir entre credenciales erróneas y el servidor caído.
+   * @param {string} password
+   * @returns {Promise<{ ok: boolean, reason?: 'invalid' }>}
+   * @throws {Error} si hay un fallo de red o el servidor responde de forma inesperada
+   */
   async login(password) {
-    try {
-      const res = await fetch(`${API_BASE}/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) return false;
-      const { token } = await res.json();
-      sessionStorage.setItem(CONFIG.SESSION_KEY, '1');
-      sessionStorage.setItem(CONFIG.TOKEN_KEY, token);
-      return true;
-    } catch {
-      return false;
-    }
+    const res = await fetch(`${API_BASE}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+
+    if (res.status === 401) return { ok: false, reason: 'invalid' };
+    if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
+
+    const { token } = await res.json();
+    if (!token) throw new Error('El servidor no devolvió un token válido.');
+
+    sessionStorage.setItem(CONFIG.SESSION_KEY, '1');
+    sessionStorage.setItem(CONFIG.TOKEN_KEY, token);
+    return { ok: true };
   },
 
   logout() {
@@ -112,18 +122,35 @@ const Api = {
     }
   },
 
-  /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae. */
+  /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae,
+   *  con backoff exponencial (máx. 30s) para no martillar un servidor caído. */
   connectLive(onMessage) {
-    let socket;
     const wsUrl = API_BASE.replace(/^http/, 'ws');
+    let intento = 0;
 
     const connect = () => {
-      socket = new WebSocket(wsUrl);
+      const socket = new WebSocket(wsUrl);
+
+      socket.addEventListener('open', () => { intento = 0; });
+
       socket.addEventListener('message', e => {
-        try { onMessage(JSON.parse(e.data)); } catch { /* mensaje no válido, ignorar */ }
+        try {
+          onMessage(JSON.parse(e.data));
+        } catch (err) {
+          console.warn('[Api] Mensaje WebSocket ignorado (no es JSON válido):', err.message);
+        }
       });
-      socket.addEventListener('close', () => setTimeout(connect, 3000));
-      socket.addEventListener('error', () => socket.close());
+
+      socket.addEventListener('error', () => {
+        console.warn('[Api] Error en la conexión WebSocket; se intentará reconectar.');
+        socket.close();
+      });
+
+      socket.addEventListener('close', () => {
+        const espera = Math.min(30_000, 1_000 * 2 ** intento);
+        intento++;
+        setTimeout(connect, espera);
+      });
     };
 
     connect();
@@ -331,17 +358,20 @@ const App = {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Verificando…';
 
-        const ok = await Auth.login(pwd);
-
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
-
-        if (ok) {
-          errorEl.hidden = true;
-          this._showCorrectView();
-        } else {
-          errorEl.hidden = false;
-          document.querySelector(CONFIG.SELECTORS.password).focus();
+        try {
+          const result = await Auth.login(pwd);
+          if (result.ok) {
+            errorEl.hidden = true;
+            this._showCorrectView();
+            return;
+          }
+          this._showLoginError('Contraseña incorrecta. Intenta de nuevo.');
+        } catch (err) {
+          console.error('[Auth] No se pudo iniciar sesión:', err.message);
+          this._showLoginError('No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
         }
       });
 
@@ -351,6 +381,14 @@ const App = {
         Auth.logout();
         this._showCorrectView();
       });
+  },
+
+  _showLoginError(mensaje) {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
+    const msgEl = document.querySelector(CONFIG.SELECTORS.loginErrorMsg);
+    if (msgEl) msgEl.textContent = mensaje;
+    if (errorEl) errorEl.hidden = false;
+    document.querySelector(CONFIG.SELECTORS.password).focus();
   },
 
   _showCorrectView() {
