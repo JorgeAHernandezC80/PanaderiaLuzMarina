@@ -224,6 +224,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor.' });
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] Panadería Luz Marina backend escuchando en http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`[server] Panadería Luz Marina backend escuchando en http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { app, server, wss };
