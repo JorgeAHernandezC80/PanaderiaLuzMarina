@@ -1,1 +1,14 @@
 node_modules/
+
+# Base de datos SQLite — contiene datos de clientes (PII). No versionar.
+luzmarina.db
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Variables de entorno / secretos
+.env
+.env.*
+!.env.example
