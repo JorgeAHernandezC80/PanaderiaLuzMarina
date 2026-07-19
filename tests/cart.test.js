@@ -12,8 +12,8 @@ import {
   clearCart,
   getCartCount,
   getCartTotal,
-  formatPrice,
 } from '../JS/core/cart.js';
+import { formatPrice } from '../JS/core/format.js';
 
 const CART_KEY = 'plm_cart';
 

@@ -132,7 +132,6 @@ app.post('/ordenes', rateLimit, (req, res) => {
     throw err;
   }
 
-  let ordenGuardada;
   try {
     const stmt = db.prepare(`
       INSERT INTO ordenes (numero, fecha_iso, fecha_texto, cliente, telefono, retiro, items_json, total)
@@ -142,24 +141,17 @@ app.post('/ordenes', rateLimit, (req, res) => {
       orden.numero, orden.fechaISO, orden.fechaTexto, orden.cliente,
       orden.telefono, orden.retiro, JSON.stringify(orden.items), orden.total
     );
-    ordenGuardada = { ...orden, estado: 'pendiente' };
+    const ordenGuardada = { ...orden, estado: 'pendiente' };
+    broadcast({ tipo: 'orden:nueva', orden: ordenGuardada });
+    res.status(201).json(ordenGuardada);
   } catch (err) {
     const esConflicto = /UNIQUE constraint failed/i.test(err.message || '');
     if (esConflicto) {
       return res.status(409).json({ error: 'Ya existe una orden con ese número.' });
     }
     console.error('[POST /ordenes]', err.message);
-    return res.status(500).json({ error: 'Error al guardar la orden.' });
+    res.status(500).json({ error: 'Error al guardar la orden.' });
   }
-
-  /* La orden ya está persistida: un fallo al notificar por WebSocket no debe
-     convertir un guardado exitoso en un 500 para el cliente. */
-  try {
-    broadcast({ tipo: 'orden:nueva', orden: ordenGuardada });
-  } catch (err) {
-    console.error('[POST /ordenes] fallo al notificar por WebSocket:', err.message);
-  }
-  res.status(201).json(ordenGuardada);
 });
 
 /* ---- GET /ordenes — solo panel admin autenticado ---- */
@@ -216,17 +208,12 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Orden no encontrada.' });
     }
+    broadcast({ tipo: 'orden:actualizada', numero, estado });
+    res.json({ numero, estado });
   } catch (err) {
     console.error('[PATCH /ordenes/:numero]', err.message);
-    return res.status(500).json({ error: 'Error al actualizar la orden.' });
+    res.status(500).json({ error: 'Error al actualizar la orden.' });
   }
-
-  try {
-    broadcast({ tipo: 'orden:actualizada', numero, estado });
-  } catch (err) {
-    console.error('[PATCH /ordenes/:numero] fallo al notificar por WebSocket:', err.message);
-  }
-  res.json({ numero, estado });
 });
 
 /* ---- 404 y errores ---- */
@@ -235,33 +222,6 @@ app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
 app.use((err, req, res, next) => {
   console.error('[unhandled]', err);
   res.status(500).json({ error: 'Error interno del servidor.' });
-});
-
-/* Errores del WebSocketServer: sin este handler, un error del socket subyacente
-   emite un 'error' no capturado que tumba el proceso. */
-wss.on('error', (err) => {
-  console.error('[wss] Error en el servidor WebSocket:', err.message);
-});
-
-/* Errores al arrancar el servidor (p. ej. EADDRINUSE) no deben pasar en silencio. */
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`[server] El puerto ${PORT} ya está en uso. Cierra el proceso que lo ocupa o cambia PORT.`);
-  } else {
-    console.error('[server] Error del servidor HTTP:', err.message);
-  }
-  process.exit(1);
-});
-
-/* Red de seguridad global: registrar (en vez de tragar) errores asíncronos
-   que de otro modo terminarían el proceso sin dejar rastro. */
-process.on('unhandledRejection', (reason) => {
-  console.error('[process] Promesa rechazada sin manejar:', reason);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('[process] Excepción no capturada:', err);
-  process.exit(1);
 });
 
 if (require.main === module) {
