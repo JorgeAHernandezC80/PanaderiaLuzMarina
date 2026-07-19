@@ -2,7 +2,9 @@
    PANADERÍA LUZ MARINA — Reset & Base
    ============================================================ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -26,7 +28,10 @@ body {
   min-height: 100vh;
 }
 
-img, svg, video, picture {
+img,
+svg,
+video,
+picture {
   display: block;
   max-width: 100%;
   height: auto;
@@ -38,9 +43,14 @@ a {
   transition: color var(--transition-fast);
 }
 
-a:hover { color: var(--color-accent-light); }
+a:hover {
+  color: var(--color-accent-light);
+}
 
-ul, ol { list-style: none; }
+ul,
+ol {
+  list-style: none;
+}
 
 button {
   cursor: pointer;
@@ -50,26 +60,41 @@ button {
   color: inherit;
 }
 
-input, select, textarea { font: inherit; }
+input,
+select,
+textarea {
+  font: inherit;
+}
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-display);
   font-weight: var(--fw-light);
   line-height: var(--lh-tight);
   color: var(--color-text);
 }
 
-address { font-style: normal; }
+address {
+  font-style: normal;
+}
 
 /* Garantizar que [hidden] siempre oculte, sin importar display del selector */
-[hidden] { display: none !important; }
+[hidden] {
+  display: none !important;
+}
 
 .sr-only {
   position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
@@ -89,9 +114,10 @@ address { font-style: normal; }
 
 .skip-link:not(:focus) {
   position: absolute;
-  width: 1px; height: 1px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
+  clip: rect(0, 0, 0, 0);
 }
 
 :focus-visible {
@@ -101,7 +127,9 @@ address { font-style: normal; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

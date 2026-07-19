@@ -25,7 +25,11 @@ function validarItem(item, idx) {
   if (!item || typeof item !== 'object') {
     throw new ValidationError(`Item #${idx}: se esperaba un objeto.`);
   }
-  if (typeof item.nombre !== 'string' || item.nombre.trim() === '' || item.nombre.length > MAX_NOMBRE_LEN) {
+  if (
+    typeof item.nombre !== 'string' ||
+    item.nombre.trim() === '' ||
+    item.nombre.length > MAX_NOMBRE_LEN
+  ) {
     throw new ValidationError(`Item #${idx}: nombre inválido.`);
   }
   if (!Number.isInteger(item.cantidad) || item.cantidad <= 0 || item.cantidad > 999) {
@@ -93,7 +97,7 @@ function validarOrden(orden) {
     cliente: cliente.trim(),
     telefono: telefonoDigitos,
     retiro,
-    items: items.map(i => ({
+    items: items.map((i) => ({
       nombre: i.nombre.trim(),
       cantidad: i.cantidad,
       precio: Number(i.precio),

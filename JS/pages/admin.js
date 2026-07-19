@@ -12,23 +12,23 @@ import { API_BASE, apiFetch } from '../core/api.js';
    ═══════════════════════════════════════════ */
 const CONFIG = Object.freeze({
   SESSION_KEY: 'plm_admin_session',
-  TOKEN_KEY:   'plm_admin_token',  // token recibido del backend tras autenticación
+  TOKEN_KEY: 'plm_admin_token', // token recibido del backend tras autenticación
   SELECTORS: {
-    loginView:     '#login-view',
+    loginView: '#login-view',
     dashboardView: '#dashboard-view',
-    loginForm:     '#login-form',
-    password:      '#password',
-    loginError:    '#login-error',
+    loginForm: '#login-form',
+    password: '#password',
+    loginError: '#login-error',
     loginErrorMsg: '#login-error [data-login-error-msg]',
-    logoutBtn:     '#btn-logout',
-    date:          '#dashboard-date',
-    statOrdenes:   '#stat-ordenes',
-    statIngresos:  '#stat-ingresos',
-    statPrep:      '#stat-preparadas',
-    statPend:      '#stat-pendientes',
-    orders:        '#orders-container',
-    tplGroup:      '#tpl-order-group',
-    tplRow:        '#tpl-order-row',
+    logoutBtn: '#btn-logout',
+    date: '#dashboard-date',
+    statOrdenes: '#stat-ordenes',
+    statIngresos: '#stat-ingresos',
+    statPrep: '#stat-preparadas',
+    statPend: '#stat-pendientes',
+    orders: '#orders-container',
+    tplGroup: '#tpl-order-group',
+    tplRow: '#tpl-order-row',
   },
 });
 
@@ -87,7 +87,7 @@ const Api = {
     try {
       const res = await apiFetch(`/ordenes?fecha=${fecha}`, {
         timeout: 10_000,
-        headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
       });
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
       return await res.json();
@@ -107,7 +107,7 @@ const Api = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Auth.getToken()}`,
+          Authorization: `Bearer ${Auth.getToken()}`,
         },
         body: JSON.stringify({ estado: 'preparada' }),
       });
@@ -127,9 +127,11 @@ const Api = {
     const connect = () => {
       const socket = new WebSocket(wsUrl);
 
-      socket.addEventListener('open', () => { intento = 0; });
+      socket.addEventListener('open', () => {
+        intento = 0;
+      });
 
-      socket.addEventListener('message', e => {
+      socket.addEventListener('message', (e) => {
         try {
           onMessage(JSON.parse(e.data));
         } catch (err) {
@@ -177,7 +179,7 @@ const Render = {
     const lista = orders || [];
     const total = lista.length;
     const ingresos = lista.reduce((s, o) => s + (Number(o.total) || 0), 0);
-    const preparadas = lista.filter(o => o.estado === 'preparada').length;
+    const preparadas = lista.filter((o) => o.estado === 'preparada').length;
     const pendientes = total - preparadas;
 
     this._setStat(CONFIG.SELECTORS.statOrdenes, total);
@@ -198,7 +200,11 @@ const Render = {
     container.innerHTML = '';
 
     if (orders === null) {
-      container.appendChild(this._emptyState('No se pudo conectar con el servidor de pedidos. Verifica que el backend esté corriendo.'));
+      container.appendChild(
+        this._emptyState(
+          'No se pudo conectar con el servidor de pedidos. Verifica que el backend esté corriendo.',
+        ),
+      );
       return;
     }
 
@@ -210,7 +216,7 @@ const Render = {
     const groups = this._groupByPickup(orders);
     const sortedTimes = Object.keys(groups).sort();
 
-    sortedTimes.forEach(time => {
+    sortedTimes.forEach((time) => {
       container.appendChild(this._renderGroup(time, groups[time]));
     });
   },
@@ -245,12 +251,11 @@ const Render = {
     const subtotal = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
 
     node.querySelector('.order-group__time-value').textContent = time;
-    node.querySelector('.order-group__count').textContent =
-      pluralizeEs(orders.length, 'pedido');
+    node.querySelector('.order-group__count').textContent = pluralizeEs(orders.length, 'pedido');
     node.querySelector('.order-group__subtotal').textContent = Format.currency(subtotal);
 
     const tbody = node.querySelector('.order-table tbody');
-    orders.forEach(order => tbody.appendChild(this._renderRow(order)));
+    orders.forEach((order) => tbody.appendChild(this._renderRow(order)));
 
     return article;
   },
@@ -272,7 +277,7 @@ const Render = {
       : '—';
 
     const productos = (order.items || [])
-      .map(p => `${Number(p.cantidad) || 0}× ${escapeHTML(p.nombre)}`)
+      .map((p) => `${Number(p.cantidad) || 0}× ${escapeHTML(p.nombre)}`)
       .join('<br>');
     row.querySelector('.order-table__productos').innerHTML = productos || '—';
 
@@ -338,39 +343,40 @@ const App = {
 
   _bindEvents() {
     // Login
-    document.querySelector(CONFIG.SELECTORS.loginForm)
-      .addEventListener('submit', async e => {
-        e.preventDefault();
-        const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
-        const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
-        const submitBtn = e.target.querySelector('button[type="submit"]');
+    document.querySelector(CONFIG.SELECTORS.loginForm).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
+      const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
+      const submitBtn = e.target.querySelector('button[type="submit"]');
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Verificando…';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verificando…';
 
-        try {
-          const result = await Auth.login(pwd);
-          if (result.ok) {
-            errorEl.hidden = true;
-            this._showCorrectView();
-            return;
-          }
-          this._showLoginError('Contraseña incorrecta. Intenta de nuevo.');
-        } catch (err) {
-          console.error('[Auth] No se pudo iniciar sesión:', err.message);
-          this._showLoginError('No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.');
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
+      try {
+        const result = await Auth.login(pwd);
+        if (result.ok) {
+          errorEl.hidden = true;
+          this._showCorrectView();
+          return;
         }
-      });
+        this._showLoginError('Contraseña incorrecta. Intenta de nuevo.');
+      } catch (err) {
+        console.error('[Auth] No se pudo iniciar sesión:', err.message);
+        this._showLoginError(
+          'No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.',
+        );
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML =
+          '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
+      }
+    });
 
     // Logout
-    document.querySelector(CONFIG.SELECTORS.logoutBtn)
-      .addEventListener('click', () => {
-        Auth.logout();
-        this._showCorrectView();
-      });
+    document.querySelector(CONFIG.SELECTORS.logoutBtn).addEventListener('click', () => {
+      Auth.logout();
+      this._showCorrectView();
+    });
   },
 
   _showLoginError(mensaje) {

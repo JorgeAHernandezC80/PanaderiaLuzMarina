@@ -12,125 +12,125 @@ const STORAGE_KEY = 'plm_lang';
 const translations = {
   es: {
     /* Nav */
-    nav_home:    'Inicio',
+    nav_home: 'Inicio',
     nav_catalog: 'Catálogo',
-    nav_us:      'Nosotros',
+    nav_us: 'Nosotros',
     nav_contact: 'Contacto',
 
     /* Hero */
-    hero_badge:    'Horno Abierto',
-    hero_units:    'unidades disponibles',
-    hero_title:    'El pan de siempre, hecho con cariño.',
+    hero_badge: 'Horno Abierto',
+    hero_units: 'unidades disponibles',
+    hero_title: 'El pan de siempre, hecho con cariño.',
     hero_subtitle: 'Horneamos hoy lo que comerás mañana.',
-    hero_cta_stock:'Ver Stock en Vivo',
-    hero_cta_wa:   'Reservar por WhatsApp',
+    hero_cta_stock: 'Ver Stock en Vivo',
+    hero_cta_wa: 'Reservar por WhatsApp',
 
     /* Valores */
-    valores_title:    '¿Por qué elegirnos?',
-    valor_fresh:      'Pan fresco cada día',
+    valores_title: '¿Por qué elegirnos?',
+    valor_fresh: 'Pan fresco cada día',
     valor_fresh_desc: 'Horneamos desde temprano para que tengas pan recién hecho.',
-    valor_recipes:    'Recetas de familia',
-    valor_recipes_desc:'Las recetas de siempre, sin ingredientes raros ni complicaciones.',
-    valor_service:    'Atención cercana',
-    valor_service_desc:'Te conocemos por nombre. Aquí no eres un número.',
+    valor_recipes: 'Recetas de familia',
+    valor_recipes_desc: 'Las recetas de siempre, sin ingredientes raros ni complicaciones.',
+    valor_service: 'Atención cercana',
+    valor_service_desc: 'Te conocemos por nombre. Aquí no eres un número.',
 
     /* CTA */
     cta_title: '¿Listo para probar nuestro pan?',
-    cta_text:  'Visítanos o haz tu pedido por WhatsApp',
-    cta_btn:   'Ver Catálogo',
+    cta_text: 'Visítanos o haz tu pedido por WhatsApp',
+    cta_btn: 'Ver Catálogo',
 
     /* Catálogo */
-    catalog_title:   'Nuestra Hornada Diaria',
-    catalog_subtitle:'Productos frescos horneados cada mañana',
-    filter_all:   'Todos',
+    catalog_title: 'Nuestra Hornada Diaria',
+    catalog_subtitle: 'Productos frescos horneados cada mañana',
+    filter_all: 'Todos',
     filter_bread: 'Panadería',
-    filter_pastry:'Bollería',
-    filter_sweets:'Repostería',
+    filter_pastry: 'Bollería',
+    filter_sweets: 'Repostería',
     filter_fried: 'Frituras',
-    add_cart:     'Añadir al carrito',
+    add_cart: 'Añadir al carrito',
 
     /* Carrito */
-    cart_title:   'Tu Canasta',
-    cart_empty:   'Tu canasta está vacía',
-    cart_empty_sub:'Aún no has añadido nada. ¡Explora el catálogo!',
-    cart_go:      'Ir al catálogo',
+    cart_title: 'Tu Canasta',
+    cart_empty: 'Tu canasta está vacía',
+    cart_empty_sub: 'Aún no has añadido nada. ¡Explora el catálogo!',
+    cart_go: 'Ir al catálogo',
     cart_summary: 'Resumen del pedido',
-    cart_subtotal:'Subtotal',
-    cart_pickup:  'Retiro en local',
-    cart_free:    'Gratis',
-    cart_total:   'Total a pagar',
+    cart_subtotal: 'Subtotal',
+    cart_pickup: 'Retiro en local',
+    cart_free: 'Gratis',
+    cart_total: 'Total a pagar',
     cart_proceed: 'Proceder al Pago',
-    cart_continue:'← Seguir comprando',
-    cart_clear:   'Vaciar canasta',
-    cart_note:    '🔒 Pago en efectivo contra entrega',
+    cart_continue: '← Seguir comprando',
+    cart_clear: 'Vaciar canasta',
+    cart_note: '🔒 Pago en efectivo contra entrega',
 
     /* Footer */
     footer_schedule: 'Horario de Atención',
-    footer_contact:  'Contacto',
-    footer_links:    'Enlaces',
-    footer_copy:     '© 2026 Panadería Luz Marina. Hecho con cariño.',
+    footer_contact: 'Contacto',
+    footer_links: 'Enlaces',
+    footer_copy: '© 2026 Panadería Luz Marina. Hecho con cariño.',
   },
 
   en: {
     /* Nav */
-    nav_home:    'Home',
+    nav_home: 'Home',
     nav_catalog: 'Catalog',
-    nav_us:      'About Us',
+    nav_us: 'About Us',
     nav_contact: 'Contact',
 
     /* Hero */
-    hero_badge:    'Oven Open',
-    hero_units:    'units available',
-    hero_title:    'Traditional bread, made with love.',
-    hero_subtitle: 'We bake today what you\'ll enjoy tomorrow.',
-    hero_cta_stock:'View Live Stock',
-    hero_cta_wa:   'Reserve via WhatsApp',
+    hero_badge: 'Oven Open',
+    hero_units: 'units available',
+    hero_title: 'Traditional bread, made with love.',
+    hero_subtitle: "We bake today what you'll enjoy tomorrow.",
+    hero_cta_stock: 'View Live Stock',
+    hero_cta_wa: 'Reserve via WhatsApp',
 
     /* Valores */
-    valores_title:    'Why choose us?',
-    valor_fresh:      'Fresh bread every day',
+    valores_title: 'Why choose us?',
+    valor_fresh: 'Fresh bread every day',
     valor_fresh_desc: 'We bake early every morning so you always get fresh bread.',
-    valor_recipes:    'Family recipes',
-    valor_recipes_desc:'Traditional recipes, simple ingredients, no shortcuts.',
-    valor_service:    'Personal service',
-    valor_service_desc:'We know our customers by name. You\'re not just a number here.',
+    valor_recipes: 'Family recipes',
+    valor_recipes_desc: 'Traditional recipes, simple ingredients, no shortcuts.',
+    valor_service: 'Personal service',
+    valor_service_desc: "We know our customers by name. You're not just a number here.",
 
     /* CTA */
     cta_title: 'Ready to try our bread?',
-    cta_text:  'Visit us or place your order on WhatsApp',
-    cta_btn:   'View Catalog',
+    cta_text: 'Visit us or place your order on WhatsApp',
+    cta_btn: 'View Catalog',
 
     /* Catálogo */
-    catalog_title:   'Today\'s Bake',
-    catalog_subtitle:'Fresh products baked every morning',
-    filter_all:   'All',
+    catalog_title: "Today's Bake",
+    catalog_subtitle: 'Fresh products baked every morning',
+    filter_all: 'All',
     filter_bread: 'Bread',
-    filter_pastry:'Pastry',
-    filter_sweets:'Sweets',
+    filter_pastry: 'Pastry',
+    filter_sweets: 'Sweets',
     filter_fried: 'Fried',
-    add_cart:     'Add to cart',
+    add_cart: 'Add to cart',
 
     /* Carrito */
-    cart_title:   'Your Basket',
-    cart_empty:   'Your basket is empty',
-    cart_empty_sub:'You haven\'t added anything yet. Explore the catalog!',
-    cart_go:      'Go to catalog',
+    cart_title: 'Your Basket',
+    cart_empty: 'Your basket is empty',
+    cart_empty_sub: "You haven't added anything yet. Explore the catalog!",
+    cart_go: 'Go to catalog',
     cart_summary: 'Order summary',
-    cart_subtotal:'Subtotal',
-    cart_pickup:  'Pick up in store',
-    cart_free:    'Free',
-    cart_total:   'Total',
+    cart_subtotal: 'Subtotal',
+    cart_pickup: 'Pick up in store',
+    cart_free: 'Free',
+    cart_total: 'Total',
     cart_proceed: 'Proceed to Checkout',
-    cart_continue:'← Continue shopping',
-    cart_clear:   'Clear basket',
-    cart_note:    '🔒 Cash on pickup',
+    cart_continue: '← Continue shopping',
+    cart_clear: 'Clear basket',
+    cart_note: '🔒 Cash on pickup',
 
     /* Footer */
     footer_schedule: 'Business Hours',
-    footer_contact:  'Contact',
-    footer_links:    'Links',
-    footer_copy:     '© 2026 Panadería Luz Marina. Made with love.',
-  }
+    footer_contact: 'Contact',
+    footer_links: 'Links',
+    footer_copy: '© 2026 Panadería Luz Marina. Made with love.',
+  },
 };
 
 /** Obtiene el idioma guardado o el del navegador */
@@ -147,7 +147,7 @@ function applyLang(lang) {
   if (!dict) return;
 
   /* Actualizar elementos con data-i18n */
-  document.querySelectorAll('[data-i18n]').forEach(el => {
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
     const key = el.getAttribute('data-i18n');
     if (dict[key] !== undefined) el.textContent = dict[key];
   });
@@ -158,9 +158,7 @@ function applyLang(lang) {
 
   const btn = document.querySelector('[data-lang-toggle]');
   if (btn) {
-    btn.setAttribute('aria-label',
-      lang === 'es' ? 'Switch to English' : 'Cambiar a Español'
-    );
+    btn.setAttribute('aria-label', lang === 'es' ? 'Switch to English' : 'Cambiar a Español');
   }
 
   /* Actualizar atributo lang del documento */

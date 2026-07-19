@@ -31,7 +31,11 @@ afterAll(() => {
   server.close();
   db.close();
   for (const suffix of ['', '-wal', '-shm']) {
-    try { fs.unlinkSync(dbPath + suffix); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(dbPath + suffix);
+    } catch {
+      /* ignore */
+    }
   }
 });
 
@@ -119,7 +123,9 @@ describe('POST /ordenes', () => {
   });
 
   test('rechaza una orden inválida con 400', async () => {
-    const res = await request(app).post('/ordenes').send(ordenValida({ numero: 'malo' }));
+    const res = await request(app)
+      .post('/ordenes')
+      .send(ordenValida({ numero: 'malo' }));
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/Número de orden/);
   });
@@ -134,12 +140,22 @@ describe('POST /ordenes', () => {
 
 describe('GET /ordenes (protegido)', () => {
   beforeEach(async () => {
-    await request(app).post('/ordenes').send(ordenValida({
-      numero: 'LM-20260117-1111', fechaISO: '2026-01-17T09:00:00.000Z',
-    }));
-    await request(app).post('/ordenes').send(ordenValida({
-      numero: 'LM-20260118-2222', fechaISO: '2026-01-18T09:00:00.000Z',
-    }));
+    await request(app)
+      .post('/ordenes')
+      .send(
+        ordenValida({
+          numero: 'LM-20260117-1111',
+          fechaISO: '2026-01-17T09:00:00.000Z',
+        }),
+      );
+    await request(app)
+      .post('/ordenes')
+      .send(
+        ordenValida({
+          numero: 'LM-20260118-2222',
+          fechaISO: '2026-01-18T09:00:00.000Z',
+        }),
+      );
   });
 
   test('rechaza sin autorización con 401', async () => {
@@ -173,7 +189,9 @@ describe('GET /ordenes (protegido)', () => {
   });
 
   test('ignora filtros con formato inválido', async () => {
-    const res = await request(app).get('/ordenes?fecha=xx&estado=raro').set('Authorization', auth());
+    const res = await request(app)
+      .get('/ordenes?fecha=xx&estado=raro')
+      .set('Authorization', auth());
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
   });

@@ -43,22 +43,26 @@ describe('validarOrden — orden válida', () => {
   });
 
   test('recorta espacios en fechaTexto, cliente y nombres de items', () => {
-    const out = validarOrden(ordenValida({
-      fechaTexto: '  hoy  ',
-      cliente: '  Ana  ',
-      items: [{ nombre: '  Pan  ', cantidad: 1, precio: 5 }],
-      total: 5,
-    }));
+    const out = validarOrden(
+      ordenValida({
+        fechaTexto: '  hoy  ',
+        cliente: '  Ana  ',
+        items: [{ nombre: '  Pan  ', cantidad: 1, precio: 5 }],
+        total: 5,
+      }),
+    );
     expect(out.fechaTexto).toBe('hoy');
     expect(out.cliente).toBe('Ana');
     expect(out.items[0].nombre).toBe('Pan');
   });
 
   test('normaliza precio de string numérico a number', () => {
-    const out = validarOrden(ordenValida({
-      items: [{ nombre: 'Pan', cantidad: 2, precio: '2.5' }],
-      total: 5,
-    }));
+    const out = validarOrden(
+      ordenValida({
+        items: [{ nombre: 'Pan', cantidad: 2, precio: '2.5' }],
+        total: 5,
+      }),
+    );
     expect(out.items[0].precio).toBe(2.5);
     expect(typeof out.items[0].precio).toBe('number');
   });
@@ -70,12 +74,9 @@ describe('validarOrden — orden válida', () => {
 });
 
 describe('validarOrden — cuerpo/estructura', () => {
-  test.each([null, undefined, 'texto', 42, []])(
-    'rechaza cuerpo no-objeto: %p',
-    (body) => {
-      expect(() => validarOrden(body)).toThrow(ValidationError);
-    }
-  );
+  test.each([null, undefined, 'texto', 42, []])('rechaza cuerpo no-objeto: %p', (body) => {
+    expect(() => validarOrden(body)).toThrow(ValidationError);
+  });
 
   test('el error lanzado es ValidationError con statusCode 400', () => {
     expect.assertions(2);
@@ -161,7 +162,7 @@ describe('validarOrden — retiro', () => {
     'rechaza horario de retiro con formato inválido: %p',
     (retiro) => {
       expect(() => validarOrden(ordenValida({ retiro }))).toThrow('retiro');
-    }
+    },
   );
 
   test('acepta hora de un solo dígito', () => {
@@ -191,53 +192,54 @@ describe('validarOrden — items', () => {
   });
 
   test('rechaza item que no es objeto', () => {
-    expect(() => validarOrden(ordenValida({ items: ['x'], total: 5 }))).toThrow('se esperaba un objeto');
+    expect(() => validarOrden(ordenValida({ items: ['x'], total: 5 }))).toThrow(
+      'se esperaba un objeto',
+    );
   });
 
   test('rechaza nombre de item vacío', () => {
-    expect(() => validarOrden(ordenValida({ items: [{ nombre: '  ', cantidad: 1, precio: 5 }], total: 5 })))
-      .toThrow('nombre inválido');
+    expect(() =>
+      validarOrden(ordenValida({ items: [{ nombre: '  ', cantidad: 1, precio: 5 }], total: 5 })),
+    ).toThrow('nombre inválido');
   });
 
   test('rechaza nombre de item demasiado largo', () => {
-    expect(() => validarOrden(ordenValida({ items: [{ nombre: 'a'.repeat(121), cantidad: 1, precio: 5 }], total: 5 })))
-      .toThrow('nombre inválido');
+    expect(() =>
+      validarOrden(
+        ordenValida({ items: [{ nombre: 'a'.repeat(121), cantidad: 1, precio: 5 }], total: 5 }),
+      ),
+    ).toThrow('nombre inválido');
   });
 
-  test.each([0, -1, 1000, 1.5, '2'])(
-    'rechaza cantidad de item inválida: %p',
-    (cantidad) => {
-      expect(() => validarOrden(ordenValida({ items: [{ nombre: 'Pan', cantidad, precio: 5 }], total: 5 })))
-        .toThrow('cantidad inválida');
-    }
-  );
+  test.each([0, -1, 1000, 1.5, '2'])('rechaza cantidad de item inválida: %p', (cantidad) => {
+    expect(() =>
+      validarOrden(ordenValida({ items: [{ nombre: 'Pan', cantidad, precio: 5 }], total: 5 })),
+    ).toThrow('cantidad inválida');
+  });
 
-  test.each([0, -5, 1001, NaN, 'abc'])(
-    'rechaza precio de item inválido: %p',
-    (precio) => {
-      expect(() => validarOrden(ordenValida({ items: [{ nombre: 'Pan', cantidad: 1, precio }], total: 5 })))
-        .toThrow('precio inválido');
-    }
-  );
+  test.each([0, -5, 1001, NaN, 'abc'])('rechaza precio de item inválido: %p', (precio) => {
+    expect(() =>
+      validarOrden(ordenValida({ items: [{ nombre: 'Pan', cantidad: 1, precio }], total: 5 })),
+    ).toThrow('precio inválido');
+  });
 });
 
 describe('validarOrden — total', () => {
-  test.each([0, -1, 50001, NaN, 'abc'])(
-    'rechaza total inválido: %p',
-    (total) => {
-      expect(() => validarOrden(ordenValida({ total }))).toThrow('Total inválido');
-    }
-  );
+  test.each([0, -1, 50001, NaN, 'abc'])('rechaza total inválido: %p', (total) => {
+    expect(() => validarOrden(ordenValida({ total }))).toThrow('Total inválido');
+  });
 
   test('rechaza total que no coincide con la suma de items', () => {
     expect(() => validarOrden(ordenValida({ total: 999 }))).toThrow('no coincide');
   });
 
   test('acepta pequeña diferencia de redondeo (<= 0.01)', () => {
-    const out = validarOrden(ordenValida({
-      items: [{ nombre: 'Pan', cantidad: 3, precio: 0.1 }],
-      total: 0.30,
-    }));
-    expect(out.total).toBe(0.30);
+    const out = validarOrden(
+      ordenValida({
+        items: [{ nombre: 'Pan', cantidad: 3, precio: 0.1 }],
+        total: 0.3,
+      }),
+    );
+    expect(out.total).toBe(0.3);
   });
 });

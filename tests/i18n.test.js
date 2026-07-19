@@ -71,13 +71,17 @@ describe('initI18n — idioma inicial', () => {
 describe('initI18n — aplicación al DOM', () => {
   test('no modifica elementos con claves inexistentes', () => {
     initI18n();
-    expect(document.querySelector('[data-i18n="clave_inexistente"]').textContent).toBe('no-cambiar');
+    expect(document.querySelector('[data-i18n="clave_inexistente"]').textContent).toBe(
+      'no-cambiar',
+    );
   });
 
   test('actualiza el aria-label del botón según el idioma', () => {
     localStorage.setItem(STORAGE_KEY, 'es');
     initI18n();
-    expect(document.querySelector('[data-lang-toggle]').getAttribute('aria-label')).toBe('Switch to English');
+    expect(document.querySelector('[data-lang-toggle]').getAttribute('aria-label')).toBe(
+      'Switch to English',
+    );
   });
 });
 

@@ -3,11 +3,6 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.js'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  collectCoverageFrom: [
-    'validation.js',
-    'server.js',
-    'db.js',
-    'JS/core/**/*.js',
-  ],
+  collectCoverageFrom: ['validation.js', 'server.js', 'db.js', 'JS/core/**/*.js'],
   coverageReporters: ['text', 'text-summary', 'lcov'],
 };

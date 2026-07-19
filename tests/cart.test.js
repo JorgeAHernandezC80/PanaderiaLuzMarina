@@ -51,7 +51,9 @@ describe('validateProductData', () => {
   });
 
   test('rechaza nombre demasiado largo', () => {
-    expect(() => validateProductData(producto({ nombre: 'a'.repeat(121) }))).toThrow('demasiado largo');
+    expect(() => validateProductData(producto({ nombre: 'a'.repeat(121) }))).toThrow(
+      'demasiado largo',
+    );
   });
 
   test.each([0, -1, NaN, 'abc'])('rechaza precio no positivo/no numérico: %p', (precio) => {
@@ -66,7 +68,7 @@ describe('validateProductData', () => {
 describe('escapeHTML', () => {
   test('escapa caracteres especiales de HTML', () => {
     expect(escapeHTML(`<script>"x"&'y'</script>`)).toBe(
-      '&lt;script&gt;&quot;x&quot;&amp;&#39;y&#39;&lt;/script&gt;'
+      '&lt;script&gt;&quot;x&quot;&amp;&#39;y&#39;&lt;/script&gt;',
     );
   });
 
@@ -107,18 +109,22 @@ describe('getCart', () => {
   });
 
   test('descarta items con cantidad no entera o fuera de rango', () => {
-    localStorage.setItem(CART_KEY, JSON.stringify([
-      { id: 'a', nombre: 'A', precio: 1, cantidad: 1.5 },
-      { id: 'b', nombre: 'B', precio: 1, cantidad: 1000 },
-      { id: 'c', nombre: 'C', precio: 1, cantidad: 2 },
-    ]));
-    expect(getCart().map(i => i.id)).toEqual(['c']);
+    localStorage.setItem(
+      CART_KEY,
+      JSON.stringify([
+        { id: 'a', nombre: 'A', precio: 1, cantidad: 1.5 },
+        { id: 'b', nombre: 'B', precio: 1, cantidad: 1000 },
+        { id: 'c', nombre: 'C', precio: 1, cantidad: 2 },
+      ]),
+    );
+    expect(getCart().map((i) => i.id)).toEqual(['c']);
   });
 
   test('descarta items con imagen de tipo inválido', () => {
-    localStorage.setItem(CART_KEY, JSON.stringify([
-      { id: 'a', nombre: 'A', precio: 1, cantidad: 1, imagen: 123 },
-    ]));
+    localStorage.setItem(
+      CART_KEY,
+      JSON.stringify([{ id: 'a', nombre: 'A', precio: 1, cantidad: 1, imagen: 123 }]),
+    );
     expect(getCart()).toEqual([]);
   });
 });
@@ -128,7 +134,13 @@ describe('addToCart', () => {
     addToCart(producto());
     const cart = getCart();
     expect(cart).toHaveLength(1);
-    expect(cart[0]).toMatchObject({ id: 'p1', nombre: 'Pan francés', precio: 2.5, cantidad: 1, imagen: '' });
+    expect(cart[0]).toMatchObject({
+      id: 'p1',
+      nombre: 'Pan francés',
+      precio: 2.5,
+      cantidad: 1,
+      imagen: '',
+    });
   });
 
   test('normaliza id a string y usa imagen provista', () => {
@@ -207,7 +219,7 @@ describe('removeFromCart', () => {
     addToCart(producto());
     addToCart(producto({ id: 'p2', nombre: 'Croissant' }));
     removeFromCart('p1');
-    expect(getCart().map(i => i.id)).toEqual(['p2']);
+    expect(getCart().map((i) => i.id)).toEqual(['p2']);
   });
 });
 

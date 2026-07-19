@@ -16,7 +16,9 @@ const PORT = process.env.PORT || 3001;
    esto es intencional: no queremos CORS abierto en producción. */
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
 if (!FRONTEND_ORIGIN) {
-  console.warn('[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.');
+  console.warn(
+    '[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.',
+  );
 }
 
 /* ADMIN_TOKEN: contraseña del panel admin, definida como variable de entorno en Render.
@@ -25,7 +27,9 @@ if (!FRONTEND_ORIGIN) {
    Si no está configurada, el panel admin no va a funcionar — intencional. */
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 if (!ADMIN_TOKEN) {
-  console.warn('[server] ADVERTENCIA: ADMIN_TOKEN no está configurado. El panel admin estará inaccesible.');
+  console.warn(
+    '[server] ADVERTENCIA: ADMIN_TOKEN no está configurado. El panel admin estará inaccesible.',
+  );
 }
 
 /** Middleware que protege endpoints del panel admin.
@@ -89,7 +93,7 @@ const wss = new WebSocketServer({ server });
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
-  wss.clients.forEach(client => {
+  wss.clients.forEach((client) => {
     if (client.readyState === client.OPEN) client.send(data);
   });
 }
@@ -111,8 +115,8 @@ app.post('/auth', (req, res) => {
   /* Comparación de tiempo constante para evitar timing attacks */
   const expected = Buffer.from(ADMIN_TOKEN);
   const received = Buffer.from(password.slice(0, 200)); // límite razonable
-  const match = expected.length === received.length &&
-    require('crypto').timingSafeEqual(expected, received);
+  const match =
+    expected.length === received.length && require('crypto').timingSafeEqual(expected, received);
 
   if (!match) {
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
@@ -138,8 +142,14 @@ app.post('/ordenes', rateLimit, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
-      orden.numero, orden.fechaISO, orden.fechaTexto, orden.cliente,
-      orden.telefono, orden.retiro, JSON.stringify(orden.items), orden.total
+      orden.numero,
+      orden.fechaISO,
+      orden.fechaTexto,
+      orden.cliente,
+      orden.telefono,
+      orden.retiro,
+      JSON.stringify(orden.items),
+      orden.total,
     );
     const ordenGuardada = { ...orden, estado: 'pendiente' };
     broadcast({ tipo: 'orden:nueva', orden: ordenGuardada });
@@ -173,7 +183,7 @@ app.get('/ordenes', requireAuth, (req, res) => {
 
   try {
     const rows = db.prepare(sql).all(...params);
-    const ordenes = rows.map(r => ({
+    const ordenes = rows.map((r) => ({
       numero: r.numero,
       fechaISO: r.fecha_iso,
       fechaTexto: r.fecha_texto,
@@ -219,7 +229,7 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
 /* ---- 404 y errores ---- */
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('[unhandled]', err);
   res.status(500).json({ error: 'Error interno del servidor.' });
 });

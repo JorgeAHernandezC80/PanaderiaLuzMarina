@@ -7,15 +7,36 @@
     "start": "node server.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html,json,md}": [
+      "prettier --write"
+    ]
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "panaderia",
+    "ecommerce",
+    "express",
+    "sqlite",
+    "websocket",
+    "whatsapp"
+  ],
+  "author": "Jorge A. Hernández C.",
+  "license": "MIT",
   "type": "commonjs",
   "engines": {
     "node": "20.x"
@@ -32,9 +53,16 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@babel/preset-env": "^7.29.7",
+    "@eslint/js": "^9.39.5",
     "babel-jest": "^29.7.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.2",
+    "globals": "^15.15.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.9.5",
     "supertest": "^6.3.4"
   }
 }

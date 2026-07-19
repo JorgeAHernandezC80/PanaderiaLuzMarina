@@ -9,18 +9,18 @@ import { addToCart } from '../core/cart.js';
 
 /** Maneja los filtros de categoría */
 function initFiltros() {
-  const btns  = document.querySelectorAll('[data-filter]');
+  const btns = document.querySelectorAll('[data-filter]');
   const cards = document.querySelectorAll('[data-categoria]');
   const vacio = document.querySelector('[data-productos-vacio]');
 
   if (!btns.length) return;
 
-  btns.forEach(btn => {
+  btns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const filtro = btn.dataset.filter;
 
       // Estado activo
-      btns.forEach(b => {
+      btns.forEach((b) => {
         b.classList.remove('filtro-btn--active');
         b.setAttribute('aria-pressed', 'false');
       });
@@ -29,7 +29,7 @@ function initFiltros() {
 
       // Visibilidad de cards
       let visibles = 0;
-      cards.forEach(card => {
+      cards.forEach((card) => {
         const match = filtro === 'todos' || card.dataset.categoria === filtro;
         card.hidden = !match;
         if (match) visibles++;
@@ -42,20 +42,20 @@ function initFiltros() {
 
 /** Añadir al carrito desde el catálogo */
 function initAddToCart() {
-  document.querySelector('[data-productos-grid]')?.addEventListener('click', e => {
+  document.querySelector('[data-productos-grid]')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-producto-id]');
     if (!btn) return;
 
     const { productoId, productoNombre, productoPrecio } = btn.dataset;
 
     /* Capturar la imagen del card */
-    const card    = btn.closest('.producto-card');
-    const imgEl   = card?.querySelector('.producto-card__imagen img');
-    const imagen  = imgEl?.getAttribute('src') ?? '';
+    const card = btn.closest('.producto-card');
+    const imgEl = card?.querySelector('.producto-card__imagen img');
+    const imagen = imgEl?.getAttribute('src') ?? '';
 
     try {
       addToCart({
-        id:     productoId,
+        id: productoId,
         nombre: productoNombre,
         precio: Number(productoPrecio),
         imagen: imagen,
@@ -74,7 +74,6 @@ function initAddToCart() {
       }, 1200);
 
       updateCartBadges();
-
     } catch (err) {
       // Feedback visual — error (datos de producto inválidos)
       console.warn('[catalogo] addToCart falló:', err.message);
