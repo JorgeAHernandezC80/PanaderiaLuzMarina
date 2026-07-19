@@ -4,12 +4,12 @@
  */
 
 import { escapeHTML } from '../core/cart.js';
+import { formatPrice, pluralizeEs } from '../core/format.js';
+import { API_BASE, apiFetch } from '../core/api.js';
 
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
-const API_BASE = 'https://panaderialuzmarina.onrender.com';
-
 const CONFIG = Object.freeze({
   SESSION_KEY: 'plm_admin_session',
   TOKEN_KEY:   'plm_admin_token',  // token recibido del backend tras autenticación
@@ -73,12 +73,10 @@ const Auth = {
 const Api = {
   async getTodayOrders() {
     const fecha = new Date().toISOString().slice(0, 10);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
-      const res = await fetch(`${API_BASE}/ordenes?fecha=${fecha}`, {
-        signal: controller.signal,
+      const res = await apiFetch(`/ordenes?fecha=${fecha}`, {
+        timeout: 10_000,
         headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
       });
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
@@ -90,14 +88,12 @@ const Api = {
         console.error('[Api] Error obteniendo órdenes:', err.message);
       }
       return null;
-    } finally {
-      clearTimeout(timeout);
     }
   },
 
   async markAsPrepared(numero) {
     try {
-      const res = await fetch(`${API_BASE}/ordenes/${encodeURIComponent(numero)}`, {
+      const res = await apiFetch(`/ordenes/${encodeURIComponent(numero)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -134,13 +130,7 @@ const Api = {
    4. MÓDULO: FORMATO
    ═══════════════════════════════════════════ */
 const Format = {
-  currency(value) {
-    const num = Number(value) || 0;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num);
-  },
+  currency: formatPrice,
 
   todayDate() {
     return new Date().toLocaleDateString('es-US', {
@@ -229,7 +219,7 @@ const Render = {
 
     node.querySelector('.order-group__time-value').textContent = time;
     node.querySelector('.order-group__count').textContent =
-      `${orders.length} pedido${orders.length !== 1 ? 's' : ''}`;
+      pluralizeEs(orders.length, 'pedido');
     node.querySelector('.order-group__subtotal').textContent = Format.currency(subtotal);
 
     const tbody = node.querySelector('.order-table tbody');

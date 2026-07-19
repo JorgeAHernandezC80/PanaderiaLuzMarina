@@ -7,7 +7,7 @@ const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
-const { validarOrden, ValidationError } = require('./validation');
+const { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
 
@@ -165,7 +165,7 @@ app.get('/ordenes', requireAuth, (req, res) => {
     sql += ' AND fecha_iso LIKE ?';
     params.push(`${fecha}%`);
   }
-  if (estado && ['pendiente', 'preparada'].includes(estado)) {
+  if (estado && ORDER_STATES.includes(estado)) {
     sql += ' AND estado = ?';
     params.push(estado);
   }
@@ -196,10 +196,10 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   const { numero } = req.params;
   const { estado } = req.body ?? {};
 
-  if (!/^LM-\d{8}-\d{4}$/.test(numero)) {
+  if (!NUMERO_ORDEN_RE.test(numero)) {
     return res.status(400).json({ error: 'Número de orden inválido.' });
   }
-  if (!['pendiente', 'preparada'].includes(estado)) {
+  if (!ORDER_STATES.includes(estado)) {
     return res.status(400).json({ error: 'Estado inválido.' });
   }
 
