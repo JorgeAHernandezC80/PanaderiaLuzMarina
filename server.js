@@ -5,6 +5,7 @@
 
 const express = require('express');
 const http = require('http');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
 const { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES } = require('./validation');
@@ -32,8 +33,51 @@ if (!ADMIN_TOKEN) {
   );
 }
 
+/* Secreto para firmar los tokens de sesión del panel admin. Se recomienda uno
+   dedicado (SESSION_SECRET); si no está, se deriva del ADMIN_TOKEN. */
+const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_TOKEN || '';
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000;
+
+/**
+ * Emite un token de sesión firmado (HMAC-SHA256) con expiración.
+ * A diferencia de devolver el ADMIN_TOKEN, este token caduca y puede rotarse
+ * sin exponer la contraseña del panel.
+ * @returns {string} token con forma `<payloadBase64Url>.<firmaBase64Url>`
+ */
+function issueSessionToken() {
+  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString(
+    'base64url',
+  );
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+/**
+ * Verifica un token de sesión: firma válida y no expirado. Usa comparación de
+ * tiempo constante para no filtrar información por timing.
+ * @param {unknown} token
+ * @returns {boolean}
+ */
+function verifySessionToken(token) {
+  if (typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
+  const [body, sig] = parts;
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch {
+    return false;
+  }
+  return Boolean(payload) && typeof payload.exp === 'number' && Date.now() <= payload.exp;
+}
+
 /** Middleware que protege endpoints del panel admin.
- *  Requiere header: Authorization: Bearer <ADMIN_TOKEN>
+ *  Requiere header: Authorization: Bearer <token de sesión firmado>
  */
 function requireAuth(req, res, next) {
   if (!ADMIN_TOKEN) {
@@ -41,36 +85,95 @@ function requireAuth(req, res, next) {
   }
   const auth = req.headers['authorization'] ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token !== ADMIN_TOKEN) {
+  if (!verifySessionToken(token)) {
     return res.status(401).json({ error: 'No autorizado.' });
   }
   next();
 }
 
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
 
-/* Rate limiting: máximo 20 peticiones por IP por 15 minutos en POST /ordenes.
-   Previene spam de órdenes falsas hacia el WhatsApp del negocio. */
-const rateLimitMap = new Map();
-function rateLimit(req, res, next) {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  const ahora = Date.now();
-  const ventana = 15 * 60 * 1000; // 15 minutos
-  const limite = 20;
-
-  const registro = rateLimitMap.get(ip) || { count: 0, desde: ahora };
-  if (ahora - registro.desde > ventana) {
-    registro.count = 0;
-    registro.desde = ahora;
-  }
-  registro.count++;
-  rateLimitMap.set(ip, registro);
-
-  if (registro.count > limite) {
-    return res.status(429).json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' });
-  }
+/* Cabeceras de seguridad en todas las respuestas (defensa en profundidad).
+   La API sólo devuelve JSON, por eso una CSP muy restrictiva es segura aquí. */
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+  );
+  /* HSTS: sólo lo aplican los navegadores sobre HTTPS (Render sirve TLS). */
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   next();
+});
+
+/* Rate limiting por IP. Un limitador independiente por endpoint sensible para
+   que el abuso de uno no afecte al otro. */
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
+const rateLimiters = [];
+function createRateLimiter({ windowMs, max, message }) {
+  const hits = new Map();
+  rateLimiters.push(hits);
+  return function rateLimiter(req, res, next) {
+    const ip = getClientIp(req);
+    const ahora = Date.now();
+    const registro = hits.get(ip) || { count: 0, desde: ahora };
+    if (ahora - registro.desde > windowMs) {
+      registro.count = 0;
+      registro.desde = ahora;
+    }
+    registro.count++;
+    hits.set(ip, registro);
+    if (registro.count > max) {
+      res.setHeader('Retry-After', Math.ceil((registro.desde + windowMs - ahora) / 1000));
+      return res.status(429).json({ error: message });
+    }
+    next();
+  };
+}
+
+/* POST /ordenes: evita spam de órdenes falsas hacia el WhatsApp del negocio. */
+const rateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.ORDERS_MAX_PER_WINDOW) || 20,
+  message: 'Demasiadas solicitudes. Intenta en unos minutos.',
+});
+
+/* POST /auth: frena ataques de fuerza bruta contra la contraseña del panel. */
+const authRateLimit = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.AUTH_MAX_ATTEMPTS) || 10,
+  message: 'Demasiados intentos de acceso. Espera unos minutos e intenta de nuevo.',
+});
+
+/* Limpieza periódica de contadores viejos para evitar crecimiento ilimitado del
+   mapa en memoria. `unref()` evita que el timer mantenga vivo el proceso. */
+const cleanupTimer = setInterval(
+  () => {
+    const ahora = Date.now();
+    for (const hits of rateLimiters) {
+      for (const [ip, registro] of hits) {
+        if (ahora - registro.desde > 60 * 60 * 1000) hits.delete(ip);
+      }
+    }
+  },
+  30 * 60 * 1000,
+);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+
+/** Solo para pruebas: reinicia los contadores de rate limiting. */
+function resetRateLimits() {
+  for (const hits of rateLimiters) hits.clear();
 }
 
 app.use((req, res, next) => {
@@ -104,7 +207,7 @@ app.get('/health', (req, res) => {
 });
 
 /* ---- POST /auth — validar password del panel admin ---- */
-app.post('/auth', (req, res) => {
+app.post('/auth', authRateLimit, (req, res) => {
   if (!ADMIN_TOKEN) {
     return res.status(503).json({ error: 'Panel admin no configurado.' });
   }
@@ -115,13 +218,13 @@ app.post('/auth', (req, res) => {
   /* Comparación de tiempo constante para evitar timing attacks */
   const expected = Buffer.from(ADMIN_TOKEN);
   const received = Buffer.from(password.slice(0, 200)); // límite razonable
-  const match =
-    expected.length === received.length && require('crypto').timingSafeEqual(expected, received);
+  const match = expected.length === received.length && crypto.timingSafeEqual(expected, received);
 
   if (!match) {
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
   }
-  res.json({ token: ADMIN_TOKEN });
+  /* Se emite un token de sesión firmado y con expiración, no el ADMIN_TOKEN. */
+  res.json({ token: issueSessionToken(), expiresIn: SESSION_TTL_MS });
 });
 
 /* ---- POST /ordenes ---- */
@@ -240,4 +343,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server, wss };
+module.exports = { app, server, wss, resetRateLimits, issueSessionToken, verifySessionToken };

@@ -89,6 +89,11 @@ const Api = {
         timeout: 10_000,
         headers: { Authorization: `Bearer ${Auth.getToken()}` },
       });
+      // El token de sesión caducó o es inválido: forzar reinicio de sesión.
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -332,6 +337,14 @@ const App = {
 
   async refresh() {
     const orders = await Api.getTodayOrders();
+
+    // Sesión caducada: volver a la vista de login en lugar de mostrar datos vacíos.
+    if (orders === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
     Render.updateStats(orders);
     Render.renderOrders(orders);
 

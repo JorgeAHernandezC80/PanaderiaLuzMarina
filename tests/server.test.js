@@ -15,15 +15,23 @@ let server;
 let wss;
 let db;
 let dbPath;
+let sessionToken;
 
-beforeAll(() => {
+beforeAll(async () => {
   dbPath = path.join(os.tmpdir(), `plm-test-${process.pid}-${Date.now()}.db`);
   process.env.DB_PATH = dbPath;
   process.env.ADMIN_TOKEN = ADMIN_TOKEN;
   process.env.FRONTEND_ORIGIN = FRONTEND_ORIGIN;
+  // Rate limiting fuera del alcance de esta suite funcional; se prueba aparte.
+  process.env.AUTH_MAX_ATTEMPTS = '100000';
+  process.env.ORDERS_MAX_PER_WINDOW = '100000';
 
   ({ app, server, wss } = require('../server'));
   db = require('../db');
+
+  // Obtiene un token de sesión firmado para las pruebas de endpoints protegidos.
+  const res = await request(app).post('/auth').send({ password: ADMIN_TOKEN });
+  sessionToken = res.body.token;
 });
 
 afterAll(() => {
@@ -58,7 +66,7 @@ function ordenValida(overrides = {}) {
 }
 
 function auth() {
-  return `Bearer ${ADMIN_TOKEN}`;
+  return `Bearer ${sessionToken}`;
 }
 
 describe('GET /health', () => {
@@ -88,10 +96,14 @@ describe('CORS', () => {
 });
 
 describe('POST /auth', () => {
-  test('devuelve el token con la contraseña correcta', async () => {
+  test('devuelve un token de sesión firmado (no el ADMIN_TOKEN) con la contraseña correcta', async () => {
     const res = await request(app).post('/auth').send({ password: ADMIN_TOKEN });
     expect(res.status).toBe(200);
-    expect(res.body.token).toBe(ADMIN_TOKEN);
+    expect(typeof res.body.token).toBe('string');
+    // No debe filtrarse el ADMIN_TOKEN; el token de sesión es firmado y con expiración.
+    expect(res.body.token).not.toBe(ADMIN_TOKEN);
+    expect(res.body.token.split('.')).toHaveLength(2);
+    expect(typeof res.body.expiresIn).toBe('number');
   });
 
   test('rechaza contraseña incorrecta con 401', async () => {
@@ -165,6 +177,11 @@ describe('GET /ordenes (protegido)', () => {
 
   test('rechaza con token incorrecto con 401', async () => {
     const res = await request(app).get('/ordenes').set('Authorization', 'Bearer malo');
+    expect(res.status).toBe(401);
+  });
+
+  test('rechaza el ADMIN_TOKEN crudo como Bearer con 401', async () => {
+    const res = await request(app).get('/ordenes').set('Authorization', `Bearer ${ADMIN_TOKEN}`);
     expect(res.status).toBe(401);
   });
 
