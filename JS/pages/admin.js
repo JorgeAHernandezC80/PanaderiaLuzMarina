@@ -12,23 +12,22 @@ import { API_BASE, apiFetch } from '../core/api.js';
    ═══════════════════════════════════════════ */
 const CONFIG = Object.freeze({
   SESSION_KEY: 'plm_admin_session',
-  TOKEN_KEY: 'plm_admin_token', // token recibido del backend tras autenticación
+  TOKEN_KEY:   'plm_admin_token',  // token recibido del backend tras autenticación
   SELECTORS: {
-    loginView: '#login-view',
+    loginView:     '#login-view',
     dashboardView: '#dashboard-view',
-    loginForm: '#login-form',
-    password: '#password',
-    loginError: '#login-error',
-    loginErrorMsg: '#login-error [data-login-error-msg]',
-    logoutBtn: '#btn-logout',
-    date: '#dashboard-date',
-    statOrdenes: '#stat-ordenes',
-    statIngresos: '#stat-ingresos',
-    statPrep: '#stat-preparadas',
-    statPend: '#stat-pendientes',
-    orders: '#orders-container',
-    tplGroup: '#tpl-order-group',
-    tplRow: '#tpl-order-row',
+    loginForm:     '#login-form',
+    password:      '#password',
+    loginError:    '#login-error',
+    logoutBtn:     '#btn-logout',
+    date:          '#dashboard-date',
+    statOrdenes:   '#stat-ordenes',
+    statIngresos:  '#stat-ingresos',
+    statPrep:      '#stat-preparadas',
+    statPend:      '#stat-pendientes',
+    orders:        '#orders-container',
+    tplGroup:      '#tpl-order-group',
+    tplRow:        '#tpl-order-row',
   },
 });
 
@@ -36,28 +35,24 @@ const CONFIG = Object.freeze({
    2. MÓDULO: AUTENTICACIÓN
    ═══════════════════════════════════════════ */
 const Auth = {
-  /**
-   * Envía la password al backend. Si es correcta, guarda el token en sessionStorage.
-   * No traga los errores de red/servidor: solo una respuesta 401 significa
-   * "contraseña incorrecta". Cualquier otro fallo se propaga para que la UI
-   * pueda distinguir entre credenciales erróneas y el servidor caído.
-   * @param {string} password
-   * @returns {Promise<{ ok: boolean, reason?: 'invalid' }>}
-   * @throws {Error} si hay un fallo de red o el servidor responde de forma inesperada
-   */
+  /** Envía la password al backend. Devuelve { ok, reason } para que el
+   *  llamador distinga contraseña incorrecta, exceso de intentos, o servidor caído. */
   async login(password) {
-    const res = await fetch(`${API_BASE}/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+    } catch {
+      return { ok: false, reason: 'network' };
+    }
     if (res.status === 401) return { ok: false, reason: 'invalid' };
-    if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
-
+    if (res.status === 429) return { ok: false, reason: 'ratelimit' };
+    if (!res.ok) return { ok: false, reason: 'server' };
     const { token } = await res.json();
-    if (!token) throw new Error('El servidor no devolvió un token válido.');
-
+    if (!token) return { ok: false, reason: 'server' };
     sessionStorage.setItem(CONFIG.SESSION_KEY, '1');
     sessionStorage.setItem(CONFIG.TOKEN_KEY, token);
     return { ok: true };
@@ -87,13 +82,8 @@ const Api = {
     try {
       const res = await apiFetch(`/ordenes?fecha=${fecha}`, {
         timeout: 10_000,
-        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+        headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
       });
-      // El token de sesión caducó o es inválido: forzar reinicio de sesión.
-      if (res.status === 401) {
-        Auth.logout();
-        return 'UNAUTHORIZED';
-      }
       if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -112,7 +102,7 @@ const Api = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${Auth.getToken()}`,
+          'Authorization': `Bearer ${Auth.getToken()}`,
         },
         body: JSON.stringify({ estado: 'preparada' }),
       });
@@ -123,37 +113,18 @@ const Api = {
     }
   },
 
-  /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae,
-   *  con backoff exponencial (máx. 30s) para no martillar un servidor caído. */
+  /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae. */
   connectLive(onMessage) {
+    let socket;
     const wsUrl = API_BASE.replace(/^http/, 'ws');
-    let intento = 0;
 
     const connect = () => {
-      const socket = new WebSocket(wsUrl);
-
-      socket.addEventListener('open', () => {
-        intento = 0;
+      socket = new WebSocket(wsUrl);
+      socket.addEventListener('message', e => {
+        try { onMessage(JSON.parse(e.data)); } catch { /* mensaje no válido, ignorar */ }
       });
-
-      socket.addEventListener('message', (e) => {
-        try {
-          onMessage(JSON.parse(e.data));
-        } catch (err) {
-          console.warn('[Api] Mensaje WebSocket ignorado (no es JSON válido):', err.message);
-        }
-      });
-
-      socket.addEventListener('error', () => {
-        console.warn('[Api] Error en la conexión WebSocket; se intentará reconectar.');
-        socket.close();
-      });
-
-      socket.addEventListener('close', () => {
-        const espera = Math.min(30_000, 1_000 * 2 ** intento);
-        intento++;
-        setTimeout(connect, espera);
-      });
+      socket.addEventListener('close', () => setTimeout(connect, 3000));
+      socket.addEventListener('error', () => socket.close());
     };
 
     connect();
@@ -184,7 +155,7 @@ const Render = {
     const lista = orders || [];
     const total = lista.length;
     const ingresos = lista.reduce((s, o) => s + (Number(o.total) || 0), 0);
-    const preparadas = lista.filter((o) => o.estado === 'preparada').length;
+    const preparadas = lista.filter(o => o.estado === 'preparada').length;
     const pendientes = total - preparadas;
 
     this._setStat(CONFIG.SELECTORS.statOrdenes, total);
@@ -205,11 +176,7 @@ const Render = {
     container.innerHTML = '';
 
     if (orders === null) {
-      container.appendChild(
-        this._emptyState(
-          'No se pudo conectar con el servidor de pedidos. Verifica que el backend esté corriendo.',
-        ),
-      );
+      container.appendChild(this._emptyState('No se pudo conectar con el servidor de pedidos. Verifica que el backend esté corriendo.'));
       return;
     }
 
@@ -221,7 +188,7 @@ const Render = {
     const groups = this._groupByPickup(orders);
     const sortedTimes = Object.keys(groups).sort();
 
-    sortedTimes.forEach((time) => {
+    sortedTimes.forEach(time => {
       container.appendChild(this._renderGroup(time, groups[time]));
     });
   },
@@ -256,11 +223,12 @@ const Render = {
     const subtotal = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
 
     node.querySelector('.order-group__time-value').textContent = time;
-    node.querySelector('.order-group__count').textContent = pluralizeEs(orders.length, 'pedido');
+    node.querySelector('.order-group__count').textContent =
+      pluralizeEs(orders.length, 'pedido');
     node.querySelector('.order-group__subtotal').textContent = Format.currency(subtotal);
 
     const tbody = node.querySelector('.order-table tbody');
-    orders.forEach((order) => tbody.appendChild(this._renderRow(order)));
+    orders.forEach(order => tbody.appendChild(this._renderRow(order)));
 
     return article;
   },
@@ -282,7 +250,7 @@ const Render = {
       : '—';
 
     const productos = (order.items || [])
-      .map((p) => `${Number(p.cantidad) || 0}× ${escapeHTML(p.nombre)}`)
+      .map(p => `${Number(p.cantidad) || 0}× ${escapeHTML(p.nombre)}`)
       .join('<br>');
     row.querySelector('.order-table__productos').innerHTML = productos || '—';
 
@@ -337,14 +305,6 @@ const App = {
 
   async refresh() {
     const orders = await Api.getTodayOrders();
-
-    // Sesión caducada: volver a la vista de login en lugar de mostrar datos vacíos.
-    if (orders === 'UNAUTHORIZED') {
-      this._showCorrectView();
-      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
-      return;
-    }
-
     Render.updateStats(orders);
     Render.renderOrders(orders);
 
@@ -356,48 +316,43 @@ const App = {
 
   _bindEvents() {
     // Login
-    document.querySelector(CONFIG.SELECTORS.loginForm).addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
-      const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
-      const submitBtn = e.target.querySelector('button[type="submit"]');
+    document.querySelector(CONFIG.SELECTORS.loginForm)
+      .addEventListener('submit', async e => {
+        e.preventDefault();
+        const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
+        const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
+        const submitBtn = e.target.querySelector('button[type="submit"]');
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Verificando…';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verificando…';
 
-      try {
         const result = await Auth.login(pwd);
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
+
         if (result.ok) {
           errorEl.hidden = true;
           this._showCorrectView();
-          return;
+        } else {
+          const mensajes = {
+            invalid:   'Contraseña incorrecta.',
+            ratelimit: 'Demasiados intentos. Espera unos minutos.',
+            server:    'El servidor no está disponible. Intenta más tarde.',
+            network:   'Sin conexión con el servidor.',
+          };
+          errorEl.textContent = mensajes[result.reason] ?? 'No se pudo iniciar sesión.';
+          errorEl.hidden = false;
+          document.querySelector(CONFIG.SELECTORS.password).focus();
         }
-        this._showLoginError('Contraseña incorrecta. Intenta de nuevo.');
-      } catch (err) {
-        console.error('[Auth] No se pudo iniciar sesión:', err.message);
-        this._showLoginError(
-          'No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.',
-        );
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML =
-          '<i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar';
-      }
-    });
+      });
 
     // Logout
-    document.querySelector(CONFIG.SELECTORS.logoutBtn).addEventListener('click', () => {
-      Auth.logout();
-      this._showCorrectView();
-    });
-  },
-
-  _showLoginError(mensaje) {
-    const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
-    const msgEl = document.querySelector(CONFIG.SELECTORS.loginErrorMsg);
-    if (msgEl) msgEl.textContent = mensaje;
-    if (errorEl) errorEl.hidden = false;
-    document.querySelector(CONFIG.SELECTORS.password).focus();
+    document.querySelector(CONFIG.SELECTORS.logoutBtn)
+      .addEventListener('click', () => {
+        Auth.logout();
+        this._showCorrectView();
+      });
   },
 
   _showCorrectView() {

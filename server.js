@@ -5,7 +5,6 @@
 
 const express = require('express');
 const http = require('http');
-const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
 const { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES } = require('./validation');
@@ -17,9 +16,7 @@ const PORT = process.env.PORT || 3001;
    esto es intencional: no queremos CORS abierto en producción. */
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
 if (!FRONTEND_ORIGIN) {
-  console.warn(
-    '[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.',
-  );
+  console.warn('[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.');
 }
 
 /* ADMIN_TOKEN: contraseña del panel admin, definida como variable de entorno en Render.
@@ -28,56 +25,44 @@ if (!FRONTEND_ORIGIN) {
    Si no está configurada, el panel admin no va a funcionar — intencional. */
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 if (!ADMIN_TOKEN) {
-  console.warn(
-    '[server] ADVERTENCIA: ADMIN_TOKEN no está configurado. El panel admin estará inaccesible.',
-  );
+  console.warn('[server] ADVERTENCIA: ADMIN_TOKEN no está configurado. El panel admin estará inaccesible.');
 }
 
-/* Secreto para firmar los tokens de sesión del panel admin. Se recomienda uno
-   dedicado (SESSION_SECRET); si no está, se deriva del ADMIN_TOKEN. */
-const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_TOKEN || '';
-const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000;
+/* ---- Capa de sesión ----
+   Los tokens de sesión son aleatorios y temporales, desacoplados del ADMIN_TOKEN.
+   Se guardan server-side con expiración. Autenticarse ya NO expone el secreto:
+   el cliente recibe un token de sesión revocable, no la contraseña maestra. */
+const crypto = require('crypto');
+const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 horas
+const sesiones = new Map(); // token -> expiración (epoch ms)
 
-/**
- * Emite un token de sesión firmado (HMAC-SHA256) con expiración.
- * A diferencia de devolver el ADMIN_TOKEN, este token caduca y puede rotarse
- * sin exponer la contraseña del panel.
- * @returns {string} token con forma `<payloadBase64Url>.<firmaBase64Url>`
- */
-function issueSessionToken() {
-  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString(
-    'base64url',
-  );
-  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
-  return `${body}.${sig}`;
+function crearSesion() {
+  const token = crypto.randomBytes(32).toString('hex');
+  sesiones.set(token, Date.now() + SESSION_TTL);
+  return token;
 }
 
-/**
- * Verifica un token de sesión: firma válida y no expirado. Usa comparación de
- * tiempo constante para no filtrar información por timing.
- * @param {unknown} token
- * @returns {boolean}
- */
-function verifySessionToken(token) {
-  if (typeof token !== 'string') return false;
-  const parts = token.split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
-  const [body, sig] = parts;
-  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
-  const sigBuf = Buffer.from(sig);
-  const expBuf = Buffer.from(expected);
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
-  let payload;
-  try {
-    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-  } catch {
+function sesionValida(token) {
+  if (!token) return false;
+  const exp = sesiones.get(token);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    sesiones.delete(token); // expirada: limpiar
     return false;
   }
-  return Boolean(payload) && typeof payload.exp === 'number' && Date.now() <= payload.exp;
+  return true;
 }
 
+/* Limpieza periódica de sesiones expiradas para que el Map no crezca sin límite. */
+setInterval(() => {
+  const ahora = Date.now();
+  for (const [token, exp] of sesiones) {
+    if (ahora > exp) sesiones.delete(token);
+  }
+}, 60 * 60 * 1000).unref();
+
 /** Middleware que protege endpoints del panel admin.
- *  Requiere header: Authorization: Bearer <token de sesión firmado>
+ *  Requiere header: Authorization: Bearer <token de sesión>
  */
 function requireAuth(req, res, next) {
   if (!ADMIN_TOKEN) {
@@ -85,96 +70,54 @@ function requireAuth(req, res, next) {
   }
   const auth = req.headers['authorization'] ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!verifySessionToken(token)) {
+  if (!sesionValida(token)) {
     return res.status(401).json({ error: 'No autorizado.' });
   }
   next();
 }
 
 const app = express();
-app.disable('x-powered-by');
+/* Render corre detrás de un proxy: confiar en él para que req.ip sea la IP real
+   del cliente y no la del proxy. Sin esto, x-forwarded-for es falsificable. */
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '100kb' }));
 
-/* Cabeceras de seguridad en todas las respuestas (defensa en profundidad).
-   La API sólo devuelve JSON, por eso una CSP muy restrictiva es segura aquí. */
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
-  );
-  /* HSTS: sólo lo aplican los navegadores sobre HTTPS (Render sirve TLS). */
-  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  next();
-});
-
-/* Rate limiting por IP. Un limitador independiente por endpoint sensible para
-   que el abuso de uno no afecte al otro. */
-function getClientIp(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
-  return req.socket.remoteAddress || 'unknown';
-}
-
-const rateLimiters = [];
-function createRateLimiter({ windowMs, max, message }) {
-  const hits = new Map();
-  rateLimiters.push(hits);
-  return function rateLimiter(req, res, next) {
-    const ip = getClientIp(req);
+/* Rate limiting reutilizable. Fábrica que produce un middleware con su propia
+   ventana, límite y almacén de contadores por IP.
+   Nota: el almacén es en memoria — se resetea al reiniciar el proceso (Render Free).
+   Aceptable para el volumen actual; documentado como deuda técnica. */
+function crearRateLimit({ ventana, limite, mensaje }) {
+  const registros = new Map();
+  return function rateLimit(req, res, next) {
+    const ip = req.ip || 'unknown';
     const ahora = Date.now();
-    const registro = hits.get(ip) || { count: 0, desde: ahora };
-    if (ahora - registro.desde > windowMs) {
+    const registro = registros.get(ip) || { count: 0, desde: ahora };
+    if (ahora - registro.desde > ventana) {
       registro.count = 0;
       registro.desde = ahora;
     }
     registro.count++;
-    hits.set(ip, registro);
-    if (registro.count > max) {
-      res.setHeader('Retry-After', Math.ceil((registro.desde + windowMs - ahora) / 1000));
-      return res.status(429).json({ error: message });
+    registros.set(ip, registro);
+    if (registro.count > limite) {
+      return res.status(429).json({ error: mensaje });
     }
     next();
   };
 }
 
-/* POST /ordenes: evita spam de órdenes falsas hacia el WhatsApp del negocio. */
-const rateLimit = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.ORDERS_MAX_PER_WINDOW) || 20,
-  message: 'Demasiadas solicitudes. Intenta en unos minutos.',
+/* POST /ordenes: 20 req / 15 min por IP — previene spam de órdenes falsas. */
+const rateLimit = crearRateLimit({
+  ventana: 15 * 60 * 1000,
+  limite: 20,
+  mensaje: 'Demasiadas solicitudes. Intenta en unos minutos.',
 });
 
-/* POST /auth: frena ataques de fuerza bruta contra la contraseña del panel. */
-const authRateLimit = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.AUTH_MAX_ATTEMPTS) || 10,
-  message: 'Demasiados intentos de acceso. Espera unos minutos e intenta de nuevo.',
+/* POST /auth: 5 intentos / 15 min por IP — freno estricto a la fuerza bruta. */
+const authRateLimit = crearRateLimit({
+  ventana: 15 * 60 * 1000,
+  limite: 5,
+  mensaje: 'Demasiados intentos de acceso. Intenta más tarde.',
 });
-
-/* Limpieza periódica de contadores viejos para evitar crecimiento ilimitado del
-   mapa en memoria. `unref()` evita que el timer mantenga vivo el proceso. */
-const cleanupTimer = setInterval(
-  () => {
-    const ahora = Date.now();
-    for (const hits of rateLimiters) {
-      for (const [ip, registro] of hits) {
-        if (ahora - registro.desde > 60 * 60 * 1000) hits.delete(ip);
-      }
-    }
-  },
-  30 * 60 * 1000,
-);
-if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
-
-/** Solo para pruebas: reinicia los contadores de rate limiting. */
-function resetRateLimits() {
-  for (const hits of rateLimiters) hits.clear();
-}
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -196,7 +139,7 @@ const wss = new WebSocketServer({ server });
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
-  wss.clients.forEach((client) => {
+  wss.clients.forEach(client => {
     if (client.readyState === client.OPEN) client.send(data);
   });
 }
@@ -206,7 +149,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
-/* ---- POST /auth — validar password del panel admin ---- */
+/* ---- POST /auth — validar password del panel admin ----
+   Protegido con authRateLimit (fuerza bruta) y emite un token de sesión
+   temporal, no el ADMIN_TOKEN. */
 app.post('/auth', authRateLimit, (req, res) => {
   if (!ADMIN_TOKEN) {
     return res.status(503).json({ error: 'Panel admin no configurado.' });
@@ -218,13 +163,14 @@ app.post('/auth', authRateLimit, (req, res) => {
   /* Comparación de tiempo constante para evitar timing attacks */
   const expected = Buffer.from(ADMIN_TOKEN);
   const received = Buffer.from(password.slice(0, 200)); // límite razonable
-  const match = expected.length === received.length && crypto.timingSafeEqual(expected, received);
+  const match = expected.length === received.length &&
+    crypto.timingSafeEqual(expected, received);
 
   if (!match) {
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
   }
-  /* Se emite un token de sesión firmado y con expiración, no el ADMIN_TOKEN. */
-  res.json({ token: issueSessionToken(), expiresIn: SESSION_TTL_MS });
+  /* Éxito: entregar un token de sesión revocable, NUNCA el secreto. */
+  res.json({ token: crearSesion() });
 });
 
 /* ---- POST /ordenes ---- */
@@ -245,14 +191,8 @@ app.post('/ordenes', rateLimit, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
-      orden.numero,
-      orden.fechaISO,
-      orden.fechaTexto,
-      orden.cliente,
-      orden.telefono,
-      orden.retiro,
-      JSON.stringify(orden.items),
-      orden.total,
+      orden.numero, orden.fechaISO, orden.fechaTexto, orden.cliente,
+      orden.telefono, orden.retiro, JSON.stringify(orden.items), orden.total
     );
     const ordenGuardada = { ...orden, estado: 'pendiente' };
     broadcast({ tipo: 'orden:nueva', orden: ordenGuardada });
@@ -286,7 +226,7 @@ app.get('/ordenes', requireAuth, (req, res) => {
 
   try {
     const rows = db.prepare(sql).all(...params);
-    const ordenes = rows.map((r) => ({
+    const ordenes = rows.map(r => ({
       numero: r.numero,
       fechaISO: r.fecha_iso,
       fechaTexto: r.fecha_texto,
@@ -332,7 +272,7 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
 /* ---- 404 y errores ---- */
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
 
-app.use((err, req, res, _next) => {
+app.use((err, req, res, next) => {
   console.error('[unhandled]', err);
   res.status(500).json({ error: 'Error interno del servidor.' });
 });
@@ -343,4 +283,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server, wss, resetRateLimits, issueSessionToken, verifySessionToken };
+module.exports = { app, server, wss };
