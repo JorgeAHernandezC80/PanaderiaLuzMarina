@@ -92,8 +92,13 @@ export function getCart() {
   const validos = items.filter(isValidStoredItem);
 
   // Si se descartó algo, persistir la versión limpia para no arrastrar basura.
+  // Un fallo de escritura (cuota llena, modo privado) no debe romper la lectura.
   if (validos.length !== items.length) {
-    localStorage.setItem(CART_KEY, JSON.stringify(validos));
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(validos));
+    } catch (err) {
+      console.warn('[cart] No se pudo persistir el carrito saneado:', err.message);
+    }
   }
 
   return validos;
