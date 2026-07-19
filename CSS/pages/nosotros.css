@@ -61,7 +61,9 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.valores__container { max-width: var(--container-max); }
+.valores__container {
+  max-width: var(--container-max);
+}
 
 .valores__title {
   font-family: var(--font-display);
@@ -88,7 +90,10 @@
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  transition: box-shadow var(--transition-normal), transform var(--transition-normal), border-color var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal),
+    border-color var(--transition-normal);
 }
 
 .valor:hover {
@@ -97,7 +102,9 @@
   border-color: var(--color-accent-muted);
 }
 
-.valor__icon { font-size: 2rem; }
+.valor__icon {
+  font-size: 2rem;
+}
 
 .valor__title {
   font-family: var(--font-display);
@@ -118,7 +125,9 @@
   background: var(--color-bg);
 }
 
-.equipo__container { max-width: var(--container-max); }
+.equipo__container {
+  max-width: var(--container-max);
+}
 
 .equipo__title {
   font-family: var(--font-display);
@@ -220,22 +229,45 @@
 
 /* --- Responsive --- */
 @media (max-width: 1024px) {
-  .valores__grid { grid-template-columns: repeat(2, 1fr); }
+  .valores__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .historia { padding: var(--space-12) 0; }
-  .valores { padding: var(--space-12) 0; }
-  .equipo { padding: var(--space-12) 0; }
-  .historia__title { font-size: var(--text-2xl); }
+  .historia {
+    padding: var(--space-12) 0;
+  }
+  .valores {
+    padding: var(--space-12) 0;
+  }
+  .equipo {
+    padding: var(--space-12) 0;
+  }
+  .historia__title {
+    font-size: var(--text-2xl);
+  }
   .valores__title,
   .equipo__title,
-  .cta__title { font-size: var(--text-2xl); }
+  .cta__title {
+    font-size: var(--text-2xl);
+  }
 }
 
 @media (max-width: 640px) {
-  .valores__grid { grid-template-columns: 1fr; gap: var(--space-4); }
-  .equipo__grid { grid-template-columns: 1fr; max-width: 360px; }
-  .cta__acciones { flex-direction: column; align-items: center; }
-  .historia__text { font-size: var(--text-base); }
+  .valores__grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .equipo__grid {
+    grid-template-columns: 1fr;
+    max-width: 360px;
+  }
+  .cta__acciones {
+    flex-direction: column;
+    align-items: center;
+  }
+  .historia__text {
+    font-size: var(--text-base);
+  }
 }

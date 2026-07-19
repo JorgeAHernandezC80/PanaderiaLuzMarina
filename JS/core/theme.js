@@ -7,7 +7,6 @@
  */
 
 const STORAGE_KEY = 'plm_theme';
-const DARK_CLASS  = 'dark';
 
 /** Obtiene el tema guardado o el preferido por el SO */
 function getSavedTheme() {
@@ -19,7 +18,7 @@ function getSavedTheme() {
 /** Aplica el tema al documento y actualiza el botón */
 function applyTheme(theme) {
   const html = document.documentElement;
-  const btn  = document.querySelector('[data-theme-toggle]');
+  const btn = document.querySelector('[data-theme-toggle]');
   const icon = btn?.querySelector('[data-theme-icon]');
 
   if (theme === 'dark') {
@@ -30,14 +29,13 @@ function applyTheme(theme) {
 
   if (icon) {
     /* fa-sun en light, fa-moon en dark */
-    icon.className = theme === 'dark'
-      ? 'fa-solid fa-moon'
-      : 'fa-solid fa-sun';
+    icon.className = theme === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
   }
 
   if (btn) {
-    btn.setAttribute('aria-label',
-      theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'
+    btn.setAttribute(
+      'aria-label',
+      theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
     );
   }
 
@@ -60,7 +58,7 @@ export function initTheme() {
   });
 
   /* Reaccionar a cambios del SO en tiempo real */
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     /* Solo si el usuario no ha elegido manualmente */
     if (!localStorage.getItem(STORAGE_KEY)) {
       applyTheme(e.matches ? 'dark' : 'light');

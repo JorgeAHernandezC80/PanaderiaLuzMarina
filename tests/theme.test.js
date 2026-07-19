@@ -14,11 +14,13 @@ function mockMatchMedia(matches) {
   mqMatches = matches;
   mqListeners = [];
   window.matchMedia = jest.fn().mockImplementation(() => ({
-    get matches() { return mqMatches; },
+    get matches() {
+      return mqMatches;
+    },
     media: '(prefers-color-scheme: dark)',
     addEventListener: (_event, cb) => mqListeners.push(cb),
     removeEventListener: (_event, cb) => {
-      mqListeners = mqListeners.filter(l => l !== cb);
+      mqListeners = mqListeners.filter((l) => l !== cb);
     },
   }));
 }
@@ -26,7 +28,7 @@ function mockMatchMedia(matches) {
 /** Simula un cambio de preferencia del SO. */
 function fireOSChange(matches) {
   mqMatches = matches;
-  mqListeners.forEach(cb => cb({ matches }));
+  mqListeners.forEach((cb) => cb({ matches }));
 }
 
 function setupDOM() {

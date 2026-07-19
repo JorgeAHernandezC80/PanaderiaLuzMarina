@@ -26,6 +26,7 @@ export function apiFetch(path, { timeout, ...options } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
-  return fetch(`${API_BASE}${path}`, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timer));
+  return fetch(`${API_BASE}${path}`, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
 }

@@ -8,29 +8,33 @@
 
 import { initUI } from '../core/ui.js';
 import {
-  getCart, updateQuantity, removeFromCart,
-  clearCart, getCartTotal, escapeHTML
+  getCart,
+  updateQuantity,
+  removeFromCart,
+  clearCart,
+  getCartTotal,
+  escapeHTML,
 } from '../core/cart.js';
 import { formatPrice, pluralizeEs } from '../core/format.js';
 
 /* ---- Elementos del DOM ---- */
 const els = {
   itemsWrapper: () => document.querySelector('[data-carrito-items]'),
-  vacio:        () => document.querySelector('[data-carrito-vacio]'),
-  subtotal:     () => document.querySelector('[data-resumen-subtotal]'),
-  total:        () => document.querySelector('[data-resumen-total]'),
-  proceder:     () => document.querySelector('[data-btn-proceder-pago]'),
-  vaciar:       () => document.querySelector('[data-btn-vaciar-carrito]'),
-  cantidadTexto:() => document.querySelector('[data-carrito-cantidad-texto]'),
+  vacio: () => document.querySelector('[data-carrito-vacio]'),
+  subtotal: () => document.querySelector('[data-resumen-subtotal]'),
+  total: () => document.querySelector('[data-resumen-total]'),
+  proceder: () => document.querySelector('[data-btn-proceder-pago]'),
+  vaciar: () => document.querySelector('[data-btn-vaciar-carrito]'),
+  cantidadTexto: () => document.querySelector('[data-carrito-cantidad-texto]'),
 };
 
 /** Genera el HTML de un item del carrito */
 function renderItem(item) {
-  const subtotal    = item.precio * item.cantidad;
-  const imgSrc      = item.imagen || '';
-  const nombreSafe  = escapeHTML(item.nombre);
-  const idSafe      = escapeHTML(String(item.id));
-  const imgEl       = imgSrc
+  const subtotal = item.precio * item.cantidad;
+  const imgSrc = item.imagen || '';
+  const nombreSafe = escapeHTML(item.nombre);
+  const idSafe = escapeHTML(String(item.id));
+  const imgEl = imgSrc
     ? `<img src="${escapeHTML(imgSrc)}" alt="${nombreSafe}" loading="lazy">`
     : `<span class="producto-card__imagen-fallback" aria-hidden="true">🍞</span>`;
 
@@ -53,44 +57,44 @@ function renderItem(item) {
 
 /** Re-renderiza toda la vista del carrito */
 function renderCarrito() {
-  const items   = getCart();
+  const items = getCart();
   const wrapper = els.itemsWrapper();
-  const vacio   = els.vacio();
-  const hay     = items.length > 0;
+  const vacio = els.vacio();
+  const hay = items.length > 0;
 
   if (!wrapper) return;
 
   wrapper.innerHTML = items.map(renderItem).join('');
-  if (vacio) vacio.hidden = hay;   /* ocultar "vacío" cuando hay items */
+  if (vacio) vacio.hidden = hay; /* ocultar "vacío" cuando hay items */
 
   const total = getCartTotal();
   const count = items.reduce((s, i) => s + i.cantidad, 0);
 
-  if (els.subtotal())      els.subtotal().textContent      = formatPrice(total);
-  if (els.total())         els.total().textContent         = formatPrice(total);
+  if (els.subtotal()) els.subtotal().textContent = formatPrice(total);
+  if (els.total()) els.total().textContent = formatPrice(total);
   if (els.cantidadTexto()) els.cantidadTexto().textContent = pluralizeEs(count, 'producto');
-  if (els.proceder())      els.proceder().disabled          = !hay;
-  if (els.vaciar())        els.vaciar().hidden               = !hay;
+  if (els.proceder()) els.proceder().disabled = !hay;
+  if (els.vaciar()) els.vaciar().hidden = !hay;
 }
 
 /** Delegación de eventos en la lista de items */
 function initItemControls() {
-  document.addEventListener('click', e => {
-    const btn    = e.target.closest('[data-action]');
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
     if (!btn) return;
 
     const article = btn.closest('[data-item-id]');
     if (!article) return;
 
-    const id  = article.dataset.itemId;
+    const id = article.dataset.itemId;
     const act = btn.dataset.action;
     const items = getCart();
-    const item  = items.find(i => i.id === id);
+    const item = items.find((i) => i.id === id);
     if (!item) return;
 
     if (act === 'increment') updateQuantity(id, item.cantidad + 1);
     if (act === 'decrement') updateQuantity(id, item.cantidad - 1);
-    if (act === 'remove')    removeFromCart(id);
+    if (act === 'remove') removeFromCart(id);
 
     renderCarrito();
   });

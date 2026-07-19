@@ -50,8 +50,14 @@ export function validateProductData(producto) {
 function isValidStoredItem(item) {
   if (!item || typeof item !== 'object') return false;
   if (typeof item.id !== 'string' && typeof item.id !== 'number') return false;
-  if (typeof item.nombre !== 'string' || item.nombre.trim() === '' || item.nombre.length > 120) return false;
-  if (!Number.isFinite(Number(item.precio)) || Number(item.precio) <= 0 || Number(item.precio) > 1000) return false;
+  if (typeof item.nombre !== 'string' || item.nombre.trim() === '' || item.nombre.length > 120)
+    return false;
+  if (
+    !Number.isFinite(Number(item.precio)) ||
+    Number(item.precio) <= 0 ||
+    Number(item.precio) > 1000
+  )
+    return false;
   if (!Number.isInteger(item.cantidad) || item.cantidad <= 0 || item.cantidad > 999) return false;
   if (item.imagen !== undefined && typeof item.imagen !== 'string') return false;
   return true;
@@ -65,13 +71,17 @@ function isValidStoredItem(item) {
  * @returns {string}
  */
 export function escapeHTML(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[ch]));
+  return String(str ?? '').replace(
+    /[&<>"']/g,
+    (ch) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[ch],
+  );
 }
 
 /**
@@ -124,7 +134,7 @@ export function addToCart(producto, cantidad = 1) {
   }
 
   const items = getCart();
-  const idx = items.findIndex(i => String(i.id) === String(producto.id));
+  const idx = items.findIndex((i) => String(i.id) === String(producto.id));
 
   if (idx >= 0) {
     const nuevaCantidad = items[idx].cantidad + cantidad;
@@ -132,10 +142,10 @@ export function addToCart(producto, cantidad = 1) {
     items[idx].cantidad = nuevaCantidad;
   } else {
     items.push({
-      id:       String(producto.id),
-      nombre:   producto.nombre.trim(),
-      precio:   Number(producto.precio),
-      imagen:   producto.imagen ?? '',
+      id: String(producto.id),
+      nombre: producto.nombre.trim(),
+      precio: Number(producto.precio),
+      imagen: producto.imagen ?? '',
       cantidad: cantidad,
     });
   }
@@ -153,9 +163,9 @@ export function updateQuantity(id, cantidad) {
 
   let items = getCart();
   if (cantidad <= 0) {
-    items = items.filter(i => String(i.id) !== String(id));
+    items = items.filter((i) => String(i.id) !== String(id));
   } else {
-    const idx = items.findIndex(i => String(i.id) === String(id));
+    const idx = items.findIndex((i) => String(i.id) === String(id));
     if (idx >= 0) items[idx].cantidad = Math.min(cantidad, 999);
   }
   saveCart(items);
@@ -163,7 +173,7 @@ export function updateQuantity(id, cantidad) {
 
 /** Elimina un item del carrito */
 export function removeFromCart(id) {
-  saveCart(getCart().filter(i => String(i.id) !== String(id)));
+  saveCart(getCart().filter((i) => String(i.id) !== String(id)));
 }
 
 /** Vacía el carrito */

@@ -20,22 +20,38 @@ const WA_BUSINESS = '12817703825';
 
 /** Genera número de orden único: LM-YYYYMMDD-XXXX */
 function generarNumeroOrden() {
-  const ahora  = new Date();
-  const fecha  = ahora.toISOString().slice(0, 10).replace(/-/g, '');
+  const ahora = new Date();
+  const fecha = ahora.toISOString().slice(0, 10).replace(/-/g, '');
   const sufijo = String(Math.floor(1000 + Math.random() * 9000));
   return `LM-${fecha}-${sufijo}`;
 }
 
 /** Formatea fecha y hora en español legible */
 function formatearFechaHora(date) {
-  const dias   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const meses  = ['enero','febrero','marzo','abril','mayo','junio',
-                  'julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const dia    = dias[date.getDay()];
+  const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const meses = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  const dia = dias[date.getDay()];
   const numero = date.getDate();
-  const mes    = meses[date.getMonth()];
-  const anio   = date.getFullYear();
-  const hora   = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const mes = meses[date.getMonth()];
+  const anio = date.getFullYear();
+  const hora = date.toLocaleTimeString('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
   return `${dia} ${numero} de ${mes}, ${anio} · ${hora}`;
 }
 
@@ -53,19 +69,21 @@ function guardarOrdenEnHistorial(orden) {
 
 /* ---- Renderizar resumen de items ---- */
 function renderItems() {
-  const items      = getCart();
-  const container  = document.querySelector('[data-checkout-items]');
-  const vacio      = document.querySelector('[data-checkout-vacio]');
+  const items = getCart();
+  const container = document.querySelector('[data-checkout-items]');
+  const vacio = document.querySelector('[data-checkout-vacio]');
   const subtotales = document.querySelectorAll('[data-checkout-subtotal]');
-  const totales    = document.querySelectorAll('[data-checkout-total]');
+  const totales = document.querySelectorAll('[data-checkout-total]');
   const resSubtotales = document.querySelectorAll('[data-resumen-subtotal]');
-  const resTotales    = document.querySelectorAll('[data-resumen-total]');
-  const btnEnviar  = document.querySelector('[data-btn-enviar-whatsapp]');
+  const resTotales = document.querySelectorAll('[data-resumen-total]');
+  const btnEnviar = document.querySelector('[data-btn-enviar-whatsapp]');
 
   const hay = items.length > 0;
 
   if (container) {
-    container.innerHTML = items.map(item => `
+    container.innerHTML = items
+      .map(
+        (item) => `
       <div class="checkout-item" data-item-id="${escapeHTML(item.id)}">
         <div class="checkout-item__info">
           <span class="checkout-item__nombre">${escapeHTML(item.nombre)}</span>
@@ -73,16 +91,18 @@ function renderItems() {
         </div>
         <span class="checkout-item__precio">${formatPrice(item.precio * item.cantidad)}</span>
       </div>
-    `).join('');
+    `,
+      )
+      .join('');
   }
 
   if (vacio) vacio.hidden = hay;
 
   const total = getCartTotal();
-  const fmt   = formatPrice(total);
+  const fmt = formatPrice(total);
 
-  [...subtotales, ...resSubtotales].forEach(el => el.textContent = fmt);
-  [...totales,    ...resTotales   ].forEach(el => el.textContent = fmt);
+  [...subtotales, ...resSubtotales].forEach((el) => (el.textContent = fmt));
+  [...totales, ...resTotales].forEach((el) => (el.textContent = fmt));
 
   if (btnEnviar) btnEnviar.disabled = !hay;
 }
@@ -94,29 +114,36 @@ function showError(field, show) {
 }
 
 function validateForm(form) {
-  const nombre   = form.querySelector('[data-form-nombre]')?.value.trim()  ?? '';
+  const nombre = form.querySelector('[data-form-nombre]')?.value.trim() ?? '';
   const telefono = form.querySelector('[data-form-telefono]')?.value.trim() ?? '';
-  const hora     = form.querySelector('[data-form-hora]')?.value             ?? '';
-  const minuto   = form.querySelector('[data-form-minuto]')?.value           ?? '';
+  const hora = form.querySelector('[data-form-hora]')?.value ?? '';
+  const minuto = form.querySelector('[data-form-minuto]')?.value ?? '';
 
   let valid = true;
 
-  if (!nombre || nombre.length > 80) { showError('nombre', true); valid = false; } else showError('nombre', false);
+  if (!nombre || nombre.length > 80) {
+    showError('nombre', true);
+    valid = false;
+  } else showError('nombre', false);
 
   const telefonoDigitos = telefono.replace(/\D/g, '');
-  if (!telefonoDigitos || telefonoDigitos.length < 7 || telefonoDigitos.length > 15)
-                 { showError('telefono',true);  valid = false; } else showError('telefono',false);
-  if (!hora || !minuto || !/^\d{1,2}$/.test(hora) || !/^\d{1,2}$/.test(minuto))
-                 { showError('horario', true);  valid = false; } else showError('horario', false);
+  if (!telefonoDigitos || telefonoDigitos.length < 7 || telefonoDigitos.length > 15) {
+    showError('telefono', true);
+    valid = false;
+  } else showError('telefono', false);
+  if (!hora || !minuto || !/^\d{1,2}$/.test(hora) || !/^\d{1,2}$/.test(minuto)) {
+    showError('horario', true);
+    valid = false;
+  } else showError('horario', false);
 
   return valid ? { nombre, telefono: telefonoDigitos, hora, minuto } : null;
 }
 
 /* ---- Construir mensaje WhatsApp con trazabilidad ---- */
 function buildPedido(datos, items, total, orden) {
-  const lineas = items.map(i =>
-    `• ${i.nombre} × ${i.cantidad} = ${formatPrice(i.precio * i.cantidad)}`
-  ).join('\n');
+  const lineas = items
+    .map((i) => `• ${i.nombre} × ${i.cantidad} = ${formatPrice(i.precio * i.cantidad)}`)
+    .join('\n');
 
   return [
     `Hola Panadería Luz Marina 👋`,
@@ -144,8 +171,8 @@ function buildPedido(datos, items, total, orden) {
 /* ---- Mostrar pantalla de confirmación ---- */
 function mostrarConfirmacion(orden, datos) {
   const formSection = document.querySelector('.checkout');
-  const stepper     = document.querySelector('.checkout__stepper');
-  const pageTitle   = document.querySelector('.page-title');
+  const stepper = document.querySelector('.checkout__stepper');
+  const pageTitle = document.querySelector('.page-title');
 
   if (pageTitle) {
     pageTitle.querySelector('.page-title__text').textContent = '¡Pedido enviado!';
@@ -209,7 +236,9 @@ async function enviarOrdenAlBackend(orden) {
     }
   } catch (err) {
     if (err.name === 'AbortError') {
-      console.warn('[checkout] Backend tardó demasiado, se omitió el registro (WhatsApp sigue activo).');
+      console.warn(
+        '[checkout] Backend tardó demasiado, se omitió el registro (WhatsApp sigue activo).',
+      );
     } else {
       console.warn('[checkout] No se pudo contactar al backend:', err.message);
     }
@@ -221,26 +250,26 @@ function initForm() {
   const form = document.querySelector('[data-checkout-form]');
   if (!form) return;
 
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const datos = validateForm(form);
     if (!datos) return;
 
-    const items     = getCart();
-    const total     = getCartTotal();
-    const ahora     = new Date();
+    const items = getCart();
+    const total = getCartTotal();
+    const ahora = new Date();
 
     /* Crear objeto de orden con trazabilidad */
     const orden = {
-      numero:    generarNumeroOrden(),
-      fechaISO:  ahora.toISOString(),
-      fechaTexto:formatearFechaHora(ahora),
-      cliente:   datos.nombre,
-      telefono:  datos.telefono,
-      retiro:    `${datos.hora}:${datos.minuto}`,
-      items:     items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
-      total:     total,
+      numero: generarNumeroOrden(),
+      fechaISO: ahora.toISOString(),
+      fechaTexto: formatearFechaHora(ahora),
+      cliente: datos.nombre,
+      telefono: datos.telefono,
+      retiro: `${datos.hora}:${datos.minuto}`,
+      items: items.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+      total: total,
     };
 
     /* Guardar en historial de localStorage (respaldo local) */
@@ -254,7 +283,7 @@ function initForm() {
 
     /* Construir URL de WhatsApp */
     const mensaje = encodeURIComponent(buildPedido(datos, items, total, orden));
-    const url     = `https://api.whatsapp.com/send?phone=${WA_BUSINESS}&text=${mensaje}`;
+    const url = `https://api.whatsapp.com/send?phone=${WA_BUSINESS}&text=${mensaje}`;
 
     /* Mostrar confirmación en la página */
     mostrarConfirmacion(orden, datos);

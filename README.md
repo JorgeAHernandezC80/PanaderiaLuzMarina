@@ -1,95 +1,187 @@
-🍞 Masa Madre - Panadería Artesanal
-Sistema de e-commerce para panadería artesanal con integración de WhatsApp, gestión de inventario en tiempo real y sistema de suscripciones.
+# 🍞 Panadería Luz Marina
 
-📋 Tabla de Contenidos
-Características
+Sistema de e-commerce para una panadería artesanal: catálogo de productos, carrito
+de compras, checkout con envío del pedido por WhatsApp y un panel de administración
+en tiempo real (WebSocket) para gestionar las órdenes entrantes.
 
-Tecnologías Utilizadas
+El proyecto tiene dos partes:
 
-Estructura del Proyecto
+- **Frontend** — páginas HTML estáticas + módulos ES (JavaScript) y CSS modular.
+  Pensado para desplegarse como sitio estático (Netlify).
+- **Backend** — API REST con Express + SQLite (`better-sqlite3`) y notificaciones en
+  tiempo real vía WebSocket. Pensado para desplegarse en un servidor Node (Render).
 
-Instalación
+## 📋 Tabla de contenidos
 
-Configuración
+- [Características](#-características)
+- [Tecnologías](#-tecnologías)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+- [Requisitos](#-requisitos)
+- [Instalación](#-instalación)
+- [Variables de entorno](#-variables-de-entorno)
+- [Ejecución](#-ejecución)
+- [API del backend](#-api-del-backend)
+- [Pruebas](#-pruebas)
+- [Despliegue](#-despliegue)
+- [Contribución](#-contribución)
+- [Licencia](#-licencia)
 
-Funcionalidades
+## ✨ Características
 
-Integración WhatsApp
+- 🛒 **Carrito reactivo** — persiste en `localStorage` y sincroniza los badges entre pestañas.
+- 📱 **Pedido por WhatsApp** — el checkout arma el mensaje y abre WhatsApp con la orden.
+- 🧾 **Panel de administración** — vista en tiempo real de las órdenes, protegida por token.
+- 🔴 **Tiempo real** — el backend emite eventos WebSocket al crear/actualizar órdenes.
+- 🌙 **Modo oscuro** — preferencia recordada por el usuario.
+- 🌍 **Bilingüe (ES/EN)** — internacionalización ligera sin dependencias.
+- 🛡️ **Backend endurecido** — validación de entrada, rate limiting, CORS restringido y
+  comparación de contraseña en tiempo constante.
 
-Flujo de Pedidos
+## 🛠️ Tecnologías
 
-Personalización
+**Frontend**
 
-Contribución
+- HTML5 semántico
+- CSS3 con arquitectura modular (`base/`, `components/`, `pages/`)
+- JavaScript (ES Modules), sin framework
+- Font Awesome 6
 
-Licencia
+**Backend**
 
-✨ Características
-🛒 Carrito de Compras Reactivo - Actualización en tiempo real
+- Node.js 20
+- Express 5
+- better-sqlite3 (SQLite embebido, API síncrona)
+- ws (WebSocket)
 
-📱 Integración WhatsApp - Envío automático de órdenes de compra
+**Tooling**
 
-🌙 Modo Oscuro - Interfaz adaptable
+- Jest + Testing (jsdom / node) + Supertest
+- ESLint + Prettier
+- GitHub Actions (CI)
 
-🌍 Bilingüe - Soporte Español/Inglés
+## 📁 Estructura del proyecto
 
-📊 Dashboard Administrativo - Panel de control para gestión
-
-🔥 Stock en Tiempo Real - Visualización de disponibilidad
-
-📦 Sistema de Suscripciones - Planes de panificación recurrente
-
-🔍 Búsqueda Avanzada - Filtrado de productos
-
-❤️ Lista de Deseos - Guardado de productos favoritos
-
-🛠️ Tecnologías Utilizadas
-Frontend
-HTML5 - Estructura semántica
-
-CSS3 - Estilos con arquitectura modular
-
-JavaScript (ES6+) - Lógica de negocio
-
-Font Awesome 6 - Iconografía
-
-Librerías y Herramientas
-Google Sheets API - Almacenamiento de datos (productos, órdenes)
-
-WhatsApp Web API - Integración de mensajería
-
-LocalStorage - Persistencia de datos del cliente
-
-masa-madre/
+```
+PanaderiaLuzMarina/
 ├── index.html              # Página principal
 ├── catalogo.html           # Catálogo de productos
-├── suscripciones.html      # Planes de suscripción
-├── nosotros.html           # Información de la empresa
-├── contacto.html           # Formulario de contacto
 ├── carrito.html            # Carrito de compras
-├── dashboard.html          # Panel administrativo
+├── checkout.html           # Checkout / envío por WhatsApp
+├── contacto.html           # Contacto
+├── nosotros.html           # Información del negocio
+├── admin.html              # Panel de administración
 │
-├── /css/                   # Estilos CSS
-│   ├── variables.css       # Variables CSS (colores, fuentes)
-│   ├── layout.css          # Estructura y grid
-│   ├── components.css      # Componentes reutilizables
-│   ├── animations.css      # Animaciones y transiciones
-│   ├── responsive.css      # Media queries
-│   ├── darkmode.css        # Modo oscuro
-│   └── ecommerce.css       # Estilos específicos de e-commerce
+├── CSS/
+│   ├── base/               # Reset, variables y utilidades
+│   ├── components/         # Header, footer, botones, cards, formularios, hero
+│   └── pages/              # Estilos por página
 │
-├── /JS/                    # JavaScript
-│   ├── i18n.js            # Internacionalización
-│   ├── cart.js            # Gestión del carrito
-│   ├── realtime.js        # Actualizaciones en tiempo real
-│   ├── search.js          # Sistema de búsqueda
-│   ├── wishlist.js        # Lista de deseos
-│   ├── catalog.js         # Lógica del catálogo
-│   └── app.js             # Orquestador principal
+├── JS/
+│   ├── core/               # Lógica compartida
+│   │   ├── api.js          #   Cliente HTTP contra el backend
+│   │   ├── cart.js         #   Estado del carrito (localStorage)
+│   │   ├── format.js       #   Formateo de precios/valores
+│   │   ├── i18n.js         #   Internacionalización
+│   │   ├── theme.js        #   Modo claro/oscuro
+│   │   └── ui.js           #   Comportamiento común de UI
+│   └── pages/              # Punto de entrada por página
 │
-├── /assets/                # Recursos estáticos
-│   ├── /images/           # Imágenes
-│   └── /fonts/            # Fuentes
+├── IMG/                    # Imágenes de productos
 │
-└── README.md              # Este archivo
+├── server.js               # Servidor Express + WebSocket (backend)
+├── db.js                   # Inicialización de SQLite
+├── validation.js           # Validación/saneamiento de órdenes
+│
+├── tests/                  # Suite de pruebas (Jest)
+├── jest.config.js
+├── babel.config.js
+└── package.json
+```
 
+## ✅ Requisitos
+
+- [Node.js](https://nodejs.org/) **20.x**
+- npm 10+
+
+## 📦 Instalación
+
+```bash
+git clone https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina.git
+cd PanaderiaLuzMarina
+npm install
+```
+
+## 🔐 Variables de entorno
+
+El backend se configura mediante variables de entorno. Copia el ejemplo y ajústalo:
+
+```bash
+cp .env.example .env
+```
+
+| Variable          | Requerida | Descripción                                                                                                      |
+| ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `PORT`            | No        | Puerto del backend. Por defecto `3001`.                                                                          |
+| `FRONTEND_ORIGIN` | Sí (prod) | Origen permitido para CORS (p. ej. `https://tu-sitio.netlify.app`). Sin él, se rechazan las peticiones cruzadas. |
+| `ADMIN_TOKEN`     | Sí (prod) | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                                |
+| `DB_PATH`         | No        | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                           |
+
+> ⚠️ La base de datos (`*.db`) contiene datos de clientes (PII) y **no** se versiona.
+> El archivo `.env` tampoco: nunca subas secretos al repositorio.
+
+## ▶️ Ejecución
+
+**Backend**
+
+```bash
+npm start          # inicia el servidor en http://localhost:3001
+```
+
+**Frontend**
+
+Las páginas son estáticas; sírvelas con cualquier servidor de archivos estáticos, por ejemplo:
+
+```bash
+npx serve .        # o la extensión "Live Server" de VS Code
+```
+
+Ajusta `API_BASE` en `JS/core/api.js` si tu backend no corre en la URL por defecto.
+
+## 🔌 API del backend
+
+| Método  | Ruta               | Auth  | Descripción                                      |
+| ------- | ------------------ | ----- | ------------------------------------------------ |
+| `GET`   | `/health`          | No    | Healthcheck (`{ status: "ok" }`).                |
+| `POST`  | `/auth`            | No    | Valida la contraseña del panel admin.            |
+| `POST`  | `/ordenes`         | No\*  | Crea una orden (con validación y rate limiting). |
+| `GET`   | `/ordenes`         | Admin | Lista órdenes (filtros `fecha`, `estado`).       |
+| `PATCH` | `/ordenes/:numero` | Admin | Actualiza el estado de una orden.                |
+
+\* Protegido por rate limiting (20 peticiones por IP cada 15 min).
+Los endpoints **Admin** requieren la cabecera `Authorization: Bearer <ADMIN_TOKEN>`.
+
+Al crear o actualizar una orden, el servidor emite un evento por WebSocket
+(`orden:nueva` / `orden:actualizada`) para que el panel se actualice en vivo.
+
+## 🧪 Pruebas
+
+```bash
+npm test               # ejecuta la suite completa
+npm run test:watch     # modo watch
+npm run test:coverage  # con reporte de cobertura
+```
+
+## 🚀 Despliegue
+
+- **Frontend** → Netlify (sitio estático). Configura la variable `NODE_VERSION=20`.
+- **Backend** → Render (servicio web Node). Define `FRONTEND_ORIGIN` y `ADMIN_TOKEN`
+  en el panel de variables de entorno de Render.
+
+## 🤝 Contribución
+
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para el flujo de trabajo, estilo de código
+y convenciones de commits.
+
+## 📄 Licencia
+
+Distribuido bajo la licencia MIT. Consulta [LICENSE](LICENSE).

@@ -31,7 +31,7 @@ describe('updateCartBadges', () => {
     `;
     addToCart(producto(), 3);
     updateCartBadges();
-    document.querySelectorAll('[data-cart-count]').forEach(el => {
+    document.querySelectorAll('[data-cart-count]').forEach((el) => {
       expect(el.textContent).toBe('3');
       expect(el.getAttribute('aria-label')).toBe('3 productos en el carrito');
     });
@@ -135,7 +135,10 @@ describe('initUI — actualización reactiva de badges', () => {
 
 describe('initUI — header scroll', () => {
   test('aplica la clase header--scrolled según el scroll', () => {
-    jest.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => { cb(); return 0; });
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      cb();
+      return 0;
+    });
     document.body.innerHTML = `<header data-header></header>`;
     Object.defineProperty(window, 'scrollY', { value: 50, configurable: true });
     initUI();

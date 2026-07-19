@@ -1,219 +1,226 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="robots" content="noindex, nofollow">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="robots" content="noindex, nofollow" />
 
-  <!-- SEO -->
-  <meta name="description" content="Panel de administración interno · Panadería Luz Marina">
-  <meta name="author" content="Panadería Luz Marina">
+    <!-- SEO -->
+    <meta name="description" content="Panel de administración interno · Panadería Luz Marina" />
+    <meta name="author" content="Panadería Luz Marina" />
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="./IMG/favicon.svg">
-  <link rel="apple-touch-icon" href="./IMG/apple-touch-icon.png">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="./IMG/favicon.svg" />
+    <link rel="apple-touch-icon" href="./IMG/apple-touch-icon.png" />
 
-  <!-- Apariencia -->
-  <meta name="theme-color" content="#0f0e0c">
-  <meta name="color-scheme" content="dark light">
+    <!-- Apariencia -->
+    <meta name="theme-color" content="#0f0e0c" />
+    <meta name="color-scheme" content="dark light" />
 
-  <title>Panel Admin · Panadería Luz Marina</title>
+    <title>Panel Admin · Panadería Luz Marina</title>
 
-  <!-- Preconnect -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- Tipografía: Manrope + Montserrat -->
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tipografía: Manrope + Montserrat -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
 
-  <!-- Anti-flash: aplica el tema guardado antes del render -->
-  <script>
-    (function () {
-      var t = localStorage.getItem('plm_theme');
-      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    })();
-  </script>
+    <!-- Anti-flash: aplica el tema guardado antes del render -->
+    <script>
+      (function () {
+        var t = localStorage.getItem('plm_theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      })();
+    </script>
 
-  <!-- Estilos de página -->
-  <link rel="stylesheet" href="./CSS/pages/admin.css">
-</head>
+    <!-- Estilos de página -->
+    <link rel="stylesheet" href="./CSS/pages/admin.css" />
+  </head>
 
-<body class="page page--admin" data-page="admin">
+  <body class="page page--admin" data-page="admin">
+    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
 
-  <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <!-- ═══════════ LOGIN ═══════════ -->
+    <main id="main-content" class="admin" data-view="login" aria-label="Panel de administración">
+      <section
+        id="login-view"
+        class="view view--login"
+        aria-labelledby="login-title"
+        data-component="login"
+      >
+        <article class="login-card">
+          <header class="login-card__header">
+            <span class="login-card__icon" aria-hidden="true">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <h1 id="login-title" class="login-card__title">Acceso Administrador</h1>
+            <p class="login-card__subtitle">Ingresa la clave para ver los pedidos del día</p>
+          </header>
 
-  <!-- ═══════════ LOGIN ═══════════ -->
-  <main id="main-content" class="admin" data-view="login" aria-label="Panel de administración">
+          <form id="login-form" class="login-form" novalidate data-component="login-form">
+            <div class="form-field">
+              <label for="password" class="form-field__label">Contraseña</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="form-field__input"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                aria-describedby="login-error"
+                required
+                autofocus
+              />
+            </div>
 
-    <section
-      id="login-view"
-      class="view view--login"
-      aria-labelledby="login-title"
-      data-component="login"
-    >
-      <article class="login-card">
+            <output id="login-error" class="form-error" role="alert" aria-live="assertive" hidden>
+              <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+              <span data-login-error-msg>Contraseña incorrecta. Intenta de nuevo.</span>
+            </output>
 
-        <header class="login-card__header">
-          <span class="login-card__icon" aria-hidden="true">
-            <i class="fa-solid fa-lock"></i>
-          </span>
-          <h1 id="login-title" class="login-card__title">Acceso Administrador</h1>
-          <p class="login-card__subtitle">Ingresa la clave para ver los pedidos del día</p>
+            <button type="submit" class="btn btn--primary btn--full">
+              <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i>
+              Entrar
+            </button>
+          </form>
+
+          <footer class="login-card__footer">
+            <small>Panadería Luz Marina · Panel interno</small>
+          </footer>
+        </article>
+      </section>
+
+      <!-- ═══════════ DASHBOARD ═══════════ -->
+      <section
+        id="dashboard-view"
+        class="view view--dashboard"
+        hidden
+        aria-labelledby="dashboard-title"
+        data-component="dashboard"
+      >
+        <header class="dashboard-header" data-component="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="dashboard-title">Panel de Pedidos</h1>
+            <p class="dashboard-header__subtitle">
+              Pedidos del día agrupados por horario de retiro ·
+              <time id="dashboard-date" datetime="" aria-label="Fecha actual"></time>
+            </p>
+          </div>
+          <button
+            type="button"
+            id="btn-logout"
+            class="btn btn--ghost"
+            aria-label="Cerrar sesión de administrador"
+          >
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            Cerrar sesión
+          </button>
         </header>
 
-        <form id="login-form" class="login-form" novalidate data-component="login-form">
-          <div class="form-field">
-            <label for="password" class="form-field__label">Contraseña</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              class="form-field__input"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              aria-describedby="login-error"
-              required
-              autofocus
-            >
+        <!-- Resumen estadístico -->
+        <section class="stats" aria-labelledby="stats-title" data-component="stats">
+          <h2 id="stats-title" class="sr-only">Resumen del día</h2>
+
+          <article class="stat-card" aria-labelledby="stat-label-ordenes">
+            <span id="stat-label-ordenes" class="stat-card__label">Total de órdenes</span>
+            <data id="stat-ordenes" class="stat-card__value" value="0">0</data>
+          </article>
+
+          <article class="stat-card stat-card--accent" aria-labelledby="stat-label-ingresos">
+            <span id="stat-label-ingresos" class="stat-card__label">Ingresos del día</span>
+            <data id="stat-ingresos" class="stat-card__value" value="0">$0.00</data>
+          </article>
+
+          <article class="stat-card" aria-labelledby="stat-label-preparadas">
+            <span id="stat-label-preparadas" class="stat-card__label">Preparadas</span>
+            <data id="stat-preparadas" class="stat-card__value" value="0">0</data>
+          </article>
+
+          <article class="stat-card" aria-labelledby="stat-label-pendientes">
+            <span id="stat-label-pendientes" class="stat-card__label">Pendientes</span>
+            <data id="stat-pendientes" class="stat-card__value" value="0">0</data>
+          </article>
+        </section>
+
+        <!-- Grupos de pedidos -->
+        <section
+          id="orders-container"
+          class="orders"
+          aria-label="Pedidos del día"
+          aria-live="polite"
+          aria-atomic="false"
+          data-component="orders"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
+    </main>
+
+    <!-- ═══════════ TEMPLATES ═══════════ -->
+
+    <!-- Plantilla: grupo de pedidos por horario -->
+    <template id="tpl-order-group">
+      <article class="order-group" aria-labelledby="">
+        <header class="order-group__header">
+          <h2 class="order-group__time" id="">
+            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+            Retiro: <time class="order-group__time-value" datetime=""></time>
+          </h2>
+          <div class="order-group__meta" aria-label="Resumen del grupo">
+            <span class="order-group__count"></span>
+            <span class="order-group__subtotal"></span>
           </div>
+        </header>
 
-          <output id="login-error" class="form-error" role="alert" aria-live="assertive" hidden>
-            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-            <span data-login-error-msg>Contraseña incorrecta. Intenta de nuevo.</span>
-          </output>
-
-          <button type="submit" class="btn btn--primary btn--full">
-            <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i>
-            Entrar
-          </button>
-        </form>
-
-        <footer class="login-card__footer">
-          <small>Panadería Luz Marina · Panel interno</small>
-        </footer>
-
+        <div class="order-group__body" role="region" aria-label="Tabla de pedidos">
+          <table class="order-table">
+            <caption class="sr-only">
+              Detalle de pedidos del grupo
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Orden</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Teléfono</th>
+                <th scope="col">Productos</th>
+                <th scope="col">Total</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </article>
-    </section>
+    </template>
 
-    <!-- ═══════════ DASHBOARD ═══════════ -->
-    <section
-      id="dashboard-view"
-      class="view view--dashboard"
-      hidden
-      aria-labelledby="dashboard-title"
-      data-component="dashboard"
-    >
+    <!-- Plantilla: fila individual de pedido -->
+    <template id="tpl-order-row">
+      <tr>
+        <td class="order-table__id" data-label="Orden"></td>
+        <td class="order-table__cliente" data-label="Cliente"></td>
+        <td class="order-table__telefono" data-label="Teléfono"></td>
+        <td class="order-table__productos" data-label="Productos"></td>
+        <td class="order-table__total" data-label="Total"></td>
+        <td class="order-table__estado" data-label="Estado"></td>
+      </tr>
+    </template>
 
-      <header class="dashboard-header" data-component="dashboard-header">
-        <div class="dashboard-header__title">
-          <h1 id="dashboard-title">Panel de Pedidos</h1>
-          <p class="dashboard-header__subtitle">
-            Pedidos del día agrupados por horario de retiro ·
-            <time id="dashboard-date" datetime="" aria-label="Fecha actual"></time>
-          </p>
-        </div>
-        <button type="button" id="btn-logout" class="btn btn--ghost" aria-label="Cerrar sesión de administrador">
-          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-          Cerrar sesión
-        </button>
-      </header>
-
-      <!-- Resumen estadístico -->
-      <section class="stats" aria-labelledby="stats-title" data-component="stats">
-        <h2 id="stats-title" class="sr-only">Resumen del día</h2>
-
-        <article class="stat-card" aria-labelledby="stat-label-ordenes">
-          <span id="stat-label-ordenes" class="stat-card__label">Total de órdenes</span>
-          <data id="stat-ordenes" class="stat-card__value" value="0">0</data>
-        </article>
-
-        <article class="stat-card stat-card--accent" aria-labelledby="stat-label-ingresos">
-          <span id="stat-label-ingresos" class="stat-card__label">Ingresos del día</span>
-          <data id="stat-ingresos" class="stat-card__value" value="0">$0.00</data>
-        </article>
-
-        <article class="stat-card" aria-labelledby="stat-label-preparadas">
-          <span id="stat-label-preparadas" class="stat-card__label">Preparadas</span>
-          <data id="stat-preparadas" class="stat-card__value" value="0">0</data>
-        </article>
-
-        <article class="stat-card" aria-labelledby="stat-label-pendientes">
-          <span id="stat-label-pendientes" class="stat-card__label">Pendientes</span>
-          <data id="stat-pendientes" class="stat-card__value" value="0">0</data>
-        </article>
-
-      </section>
-
-      <!-- Grupos de pedidos -->
-      <section
-        id="orders-container"
-        class="orders"
-        aria-label="Pedidos del día"
-        aria-live="polite"
-        aria-atomic="false"
-        data-component="orders"
-      >
-        <!-- Se inyecta dinámicamente por admin.js -->
-      </section>
-
-    </section>
-
-  </main>
-
-  <!-- ═══════════ TEMPLATES ═══════════ -->
-
-  <!-- Plantilla: grupo de pedidos por horario -->
-  <template id="tpl-order-group">
-    <article class="order-group" aria-labelledby="">
-      <header class="order-group__header">
-        <h2 class="order-group__time" id="">
-          <i class="fa-regular fa-clock" aria-hidden="true"></i>
-          Retiro: <time class="order-group__time-value" datetime=""></time>
-        </h2>
-        <div class="order-group__meta" aria-label="Resumen del grupo">
-          <span class="order-group__count"></span>
-          <span class="order-group__subtotal"></span>
-        </div>
-      </header>
-
-      <div class="order-group__body" role="region" aria-label="Tabla de pedidos">
-        <table class="order-table">
-          <caption class="sr-only">Detalle de pedidos del grupo</caption>
-          <thead>
-            <tr>
-              <th scope="col">Orden</th>
-              <th scope="col">Cliente</th>
-              <th scope="col">Teléfono</th>
-              <th scope="col">Productos</th>
-              <th scope="col">Total</th>
-              <th scope="col">Estado</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </article>
-  </template>
-
-  <!-- Plantilla: fila individual de pedido -->
-  <template id="tpl-order-row">
-    <tr>
-      <td class="order-table__id" data-label="Orden"></td>
-      <td class="order-table__cliente" data-label="Cliente"></td>
-      <td class="order-table__telefono" data-label="Teléfono"></td>
-      <td class="order-table__productos" data-label="Productos"></td>
-      <td class="order-table__total" data-label="Total"></td>
-      <td class="order-table__estado" data-label="Estado"></td>
-    </tr>
-  </template>
-
-  <!-- Script de página (ES module) -->
-  <script type="module" src="./JS/pages/admin.js"></script>
-
-</body>
+    <!-- Script de página (ES module) -->
+    <script type="module" src="./JS/pages/admin.js"></script>
+  </body>
 </html>

@@ -1,300 +1,416 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Catálogo de productos frescos de Panadería Luz Marina. Pan, bollería, repostería y frituras horneadas cada día.">
-    <link rel="canonical" href="https://panaderialuzmarina.netlify.app/catalogo.html">
-    <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#ffffff">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Catálogo de productos frescos de Panadería Luz Marina. Pan, bollería, repostería y frituras horneadas cada día."
+    />
+    <link rel="canonical" href="https://panaderialuzmarina.netlify.app/catalogo.html" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
     <title>Catálogo | Panadería Luz Marina</title>
-    <link rel="stylesheet" href="./CSS/pages/catalogo.css">
+    <link rel="stylesheet" href="./CSS/pages/catalogo.css" />
 
     <!-- Preconnect -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Tipografía -->
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
-</head>
-<body class="page page--catalogo" data-page="catalogo">
-
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body class="page page--catalogo" data-page="catalogo">
     <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-        <nav class="header__nav container" aria-label="Navegación principal">
-            <a href="index.html" class="header__logo" aria-label="Panadería Luz Marina — Inicio" data-nav="logo">
-                <span class="header__logo-text">Panadería Luz Marina</span>
-            </a>
-            <button class="header__toggle" type="button"
-                aria-label="Abrir menú" aria-expanded="false" aria-controls="header-menu"
-                data-header-toggle>
-                <span class="header__toggle-bar" aria-hidden="true"></span>
-                <span class="header__toggle-bar" aria-hidden="true"></span>
-                <span class="header__toggle-bar" aria-hidden="true"></span>
-            </button>
-            <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
-                <li class="header__menu-item" role="none">
-                    <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
-                </li>
-                <li class="header__menu-item" role="none">
-                    <a href="catalogo.html" class="header__menu-link header__menu-link--active" role="menuitem" aria-current="page">Catálogo</a>
-                </li>
-                <li class="header__menu-item" role="none">
-                    <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
-                </li>
-                <li class="header__menu-item" role="none">
-                    <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
-                </li>
-            </ul>
-            <div class="header__actions">
-                <button id="lang-toggle" class="header__icon-btn" aria-label="Cambiar idioma" data-lang-toggle>
-                    <i class="fa-solid fa-globe" aria-hidden="true"></i>
-                    <span class="header__lang-label" data-lang-label aria-hidden="true">ES</span>
-                </button>
-                <button id="theme-toggle" class="header__icon-btn" aria-label="Cambiar tema" data-theme-toggle>
-                    <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
-                </button>
-                <a href="carrito.html" class="header__icon-btn header__cart-btn" aria-label="Ver carrito" data-header-cart>
-                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
-                    <span class="header__badge" id="cart-count" data-cart-count>0</span>
-                </a>
-            </div>
-        </nav>
-        <div class="header__overlay" data-header-overlay aria-hidden="true"></div>
+      <nav class="header__nav container" aria-label="Navegación principal">
+        <a
+          href="index.html"
+          class="header__logo"
+          aria-label="Panadería Luz Marina — Inicio"
+          data-nav="logo"
+        >
+          <span class="header__logo-text">Panadería Luz Marina</span>
+        </a>
+        <button
+          class="header__toggle"
+          type="button"
+          aria-label="Abrir menú"
+          aria-expanded="false"
+          aria-controls="header-menu"
+          data-header-toggle
+        >
+          <span class="header__toggle-bar" aria-hidden="true"></span>
+          <span class="header__toggle-bar" aria-hidden="true"></span>
+          <span class="header__toggle-bar" aria-hidden="true"></span>
+        </button>
+        <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
+          <li class="header__menu-item" role="none">
+            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+          </li>
+          <li class="header__menu-item" role="none">
+            <a
+              href="catalogo.html"
+              class="header__menu-link header__menu-link--active"
+              role="menuitem"
+              aria-current="page"
+              >Catálogo</a
+            >
+          </li>
+          <li class="header__menu-item" role="none">
+            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+          </li>
+          <li class="header__menu-item" role="none">
+            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+          </li>
+        </ul>
+        <div class="header__actions">
+          <button
+            id="lang-toggle"
+            class="header__icon-btn"
+            aria-label="Cambiar idioma"
+            data-lang-toggle
+          >
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="header__lang-label" data-lang-label aria-hidden="true">ES</span>
+          </button>
+          <button
+            id="theme-toggle"
+            class="header__icon-btn"
+            aria-label="Cambiar tema"
+            data-theme-toggle
+          >
+            <i class="fa-solid fa-sun" aria-hidden="true" data-theme-icon></i>
+          </button>
+          <a
+            href="carrito.html"
+            class="header__icon-btn header__cart-btn"
+            aria-label="Ver carrito"
+            data-header-cart
+          >
+            <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+            <span class="header__badge" id="cart-count" data-cart-count>0</span>
+          </a>
+        </div>
+      </nav>
+      <div class="header__overlay" data-header-overlay aria-hidden="true"></div>
     </header>
 
     <!-- MAIN -->
     <main id="main-content">
+      <!-- Hero -->
+      <section class="hero hero--small" aria-labelledby="catalogo-title">
+        <div class="hero__content container">
+          <h1 id="catalogo-title" class="hero__title">Nuestra Hornada Diaria</h1>
+          <p class="hero__subtitle">Productos frescos horneados cada mañana</p>
+        </div>
+      </section>
 
-        <!-- Hero -->
-        <section class="hero hero--small" aria-labelledby="catalogo-title">
-            <div class="hero__content container">
-                <h1 id="catalogo-title" class="hero__title">Nuestra Hornada Diaria</h1>
-                <p class="hero__subtitle">Productos frescos horneados cada mañana</p>
-            </div>
-        </section>
+      <!-- Filtros + Productos -->
+      <section class="catalogo" aria-label="Productos">
+        <div class="container">
+          <h2 class="section__title--hidden sr-only">Filtrar por categoría</h2>
+          <div class="filtros" role="group" aria-label="Filtros de categoría">
+            <button class="filtro-btn filtro-btn--active" data-filter="todos" aria-pressed="true">
+              Todos
+            </button>
+            <button class="filtro-btn" data-filter="panaderia" aria-pressed="false">
+              Panadería
+            </button>
+            <button class="filtro-btn" data-filter="bolleria" aria-pressed="false">Bollería</button>
+            <button class="filtro-btn" data-filter="reposteria" aria-pressed="false">
+              Repostería
+            </button>
+            <button class="filtro-btn" data-filter="frituras" aria-pressed="false">Frituras</button>
+          </div>
 
-        <!-- Filtros + Productos -->
-        <section class="catalogo" aria-label="Productos">
-            <div class="container">
-
-                <h2 class="section__title--hidden sr-only">Filtrar por categoría</h2>
-                <div class="filtros" role="group" aria-label="Filtros de categoría">
-                    <button class="filtro-btn filtro-btn--active" data-filter="todos" aria-pressed="true">Todos</button>
-                    <button class="filtro-btn" data-filter="panaderia" aria-pressed="false">Panadería</button>
-                    <button class="filtro-btn" data-filter="bolleria" aria-pressed="false">Bollería</button>
-                    <button class="filtro-btn" data-filter="reposteria" aria-pressed="false">Repostería</button>
-                    <button class="filtro-btn" data-filter="frituras" aria-pressed="false">Frituras</button>
+          <div class="productos-grid" data-productos-grid>
+            <article class="producto-card" data-categoria="frituras">
+              <div class="producto-card__imagen">
+                <img src="./IMG/donuts.png" alt="Donuts glaseadas" loading="lazy" />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Donuts Glaseadas</h3>
+                <p class="producto-card__descripcion">
+                  Suaves por dentro, crujientes por fuera, con glaseado de vainilla.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$1.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 15</span
+                  >
                 </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="1"
+                  data-producto-nombre="Donuts Glaseadas"
+                  data-producto-precio="1.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
 
-                <div class="productos-grid" data-productos-grid>
-
-                    <article class="producto-card" data-categoria="frituras">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/donuts.png" alt="Donuts glaseadas" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Donuts Glaseadas</h3>
-                            <p class="producto-card__descripcion">Suaves por dentro, crujientes por fuera, con glaseado de vainilla.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$1.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 15</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="1"
-                                data-producto-nombre="Donuts Glaseadas"
-                                data-producto-precio="1.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="frituras">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/bunuelos.png" alt="Buñuelos colombianos" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Buñuelos</h3>
-                            <p class="producto-card__descripcion">Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un clásico colombiano para acompañar el café.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 20</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="2"
-                                data-producto-nombre="Buñuelos"
-                                data-producto-precio="2.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="panaderia">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/almojabana.jpg" alt="Almojábanas colombianas" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Almojábanas</h3>
-                            <p class="producto-card__descripcion">Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera, esponjosos por dentro. Perfectas con café o chocolate.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 12</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="5"
-                                data-producto-nombre="Almojábanas"
-                                data-producto-precio="2.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="panaderia">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/pandebono.jpg" alt="Pandebono colombiano" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Pandebono</h3>
-                            <p class="producto-card__descripcion">Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño. Crujiente por fuera, esponjoso por dentro.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 8</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="6"
-                                data-producto-nombre="Pandebono"
-                                data-producto-precio="2.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="panaderia">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/pan_de_yuca.jpg" alt="Pan de yuca colombiano tradicional" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Pan de Yuca</h3>
-                            <p class="producto-card__descripcion">Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a queso. Perfecto solo o con chocolate.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 6</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="7"
-                                data-producto-nombre="Pan de Yuca"
-                                data-producto-precio="2.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="reposteria">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/Roscon_de_arequipe.jpg" alt="Roscón relleno de arequipe o guayaba" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Roscón de Arequipe o Guayaba</h3>
-                            <p class="producto-card__descripcion">Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o la merienda.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.50</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 18</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="3"
-                                data-producto-nombre="Roscón de Arequipe"
-                                data-producto-precio="2.50">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="reposteria">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/Pan Concha.jpg" alt="Conchas de vainilla y chocolate" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Conchas</h3>
-                            <p class="producto-card__descripcion">Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate. Perfectas para el desayuno o la merienda.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$1.75</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 20</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="8"
-                                data-producto-nombre="Conchas"
-                                data-producto-precio="1.75">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
-                    <article class="producto-card" data-categoria="bolleria">
-                        <div class="producto-card__imagen">
-                            <img src="./IMG/croissant.jpg" alt="Croissants con dulce de leche" loading="lazy">
-                        </div>
-                        <div class="producto-card__info">
-                            <h3 class="producto-card__nombre">Croissant</h3>
-                            <p class="producto-card__descripcion">Hojaldre crujiente con mantequilla, acompañado de dulce de leche.</p>
-                            <div class="producto-card__precio-stock">
-                                <span class="producto-card__precio">$2.00</span>
-                                <span class="producto-card__stock producto-card__stock--disponible">🟢 Quedan 10</span>
-                            </div>
-                            <button class="btn btn--add"
-                                data-producto-id="4"
-                                data-producto-nombre="Croissant"
-                                data-producto-precio="2.00">
-                                Añadir al carrito
-                            </button>
-                        </div>
-                    </article>
-
+            <article class="producto-card" data-categoria="frituras">
+              <div class="producto-card__imagen">
+                <img src="./IMG/bunuelos.png" alt="Buñuelos colombianos" loading="lazy" />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Buñuelos</h3>
+                <p class="producto-card__descripcion">
+                  Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un
+                  clásico colombiano para acompañar el café.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 20</span
+                  >
                 </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="2"
+                  data-producto-nombre="Buñuelos"
+                  data-producto-precio="2.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
 
-                <div class="productos-vacio" data-productos-vacio hidden>
-                    <p>No hay productos en esta categoría.</p>
+            <article class="producto-card" data-categoria="panaderia">
+              <div class="producto-card__imagen">
+                <img src="./IMG/almojabana.jpg" alt="Almojábanas colombianas" loading="lazy" />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Almojábanas</h3>
+                <p class="producto-card__descripcion">
+                  Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera,
+                  esponjosos por dentro. Perfectas con café o chocolate.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 12</span
+                  >
                 </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="5"
+                  data-producto-nombre="Almojábanas"
+                  data-producto-precio="2.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
 
-            </div>
-        </section>
+            <article class="producto-card" data-categoria="panaderia">
+              <div class="producto-card__imagen">
+                <img src="./IMG/pandebono.jpg" alt="Pandebono colombiano" loading="lazy" />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Pandebono</h3>
+                <p class="producto-card__descripcion">
+                  Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño.
+                  Crujiente por fuera, esponjoso por dentro.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 8</span
+                  >
+                </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="6"
+                  data-producto-nombre="Pandebono"
+                  data-producto-precio="2.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
 
+            <article class="producto-card" data-categoria="panaderia">
+              <div class="producto-card__imagen">
+                <img
+                  src="./IMG/pan_de_yuca.jpg"
+                  alt="Pan de yuca colombiano tradicional"
+                  loading="lazy"
+                />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Pan de Yuca</h3>
+                <p class="producto-card__descripcion">
+                  Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a
+                  queso. Perfecto solo o con chocolate.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 6</span
+                  >
+                </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="7"
+                  data-producto-nombre="Pan de Yuca"
+                  data-producto-precio="2.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
+
+            <article class="producto-card" data-categoria="reposteria">
+              <div class="producto-card__imagen">
+                <img
+                  src="./IMG/Roscon_de_arequipe.jpg"
+                  alt="Roscón relleno de arequipe o guayaba"
+                  loading="lazy"
+                />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Roscón de Arequipe o Guayaba</h3>
+                <p class="producto-card__descripcion">
+                  Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o
+                  la merienda.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.50</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 18</span
+                  >
+                </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="3"
+                  data-producto-nombre="Roscón de Arequipe"
+                  data-producto-precio="2.50"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
+
+            <article class="producto-card" data-categoria="reposteria">
+              <div class="producto-card__imagen">
+                <img
+                  src="./IMG/Pan Concha.jpg"
+                  alt="Conchas de vainilla y chocolate"
+                  loading="lazy"
+                />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Conchas</h3>
+                <p class="producto-card__descripcion">
+                  Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate.
+                  Perfectas para el desayuno o la merienda.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$1.75</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 20</span
+                  >
+                </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="8"
+                  data-producto-nombre="Conchas"
+                  data-producto-precio="1.75"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
+
+            <article class="producto-card" data-categoria="bolleria">
+              <div class="producto-card__imagen">
+                <img src="./IMG/croissant.jpg" alt="Croissants con dulce de leche" loading="lazy" />
+              </div>
+              <div class="producto-card__info">
+                <h3 class="producto-card__nombre">Croissant</h3>
+                <p class="producto-card__descripcion">
+                  Hojaldre crujiente con mantequilla, acompañado de dulce de leche.
+                </p>
+                <div class="producto-card__precio-stock">
+                  <span class="producto-card__precio">$2.00</span>
+                  <span class="producto-card__stock producto-card__stock--disponible"
+                    >🟢 Quedan 10</span
+                  >
+                </div>
+                <button
+                  class="btn btn--add"
+                  data-producto-id="4"
+                  data-producto-nombre="Croissant"
+                  data-producto-precio="2.00"
+                >
+                  Añadir al carrito
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <div class="productos-vacio" data-productos-vacio hidden>
+            <p>No hay productos en esta categoría.</p>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- FOOTER -->
     <footer class="footer">
-        <div class="footer__content container">
-            <div class="footer__section">
-                <h3 class="footer__title">Horario de Atención</h3>
-                <ul class="footer__list">
-                    <li>Lunes a Viernes: 7:00 – 20:00</li>
-                    <li>Sábados: 8:00 – 18:00</li>
-                    <li>Domingos: 9:00 – 14:00</li>
-                </ul>
-            </div>
-            <div class="footer__section">
-                <h3 class="footer__title">Contacto</h3>
-                <ul class="footer__list">
-                    <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
-                    <li>📍 <a href="https://maps.google.com/?q=Avenida+Rústica+1042" target="_blank" rel="noopener">Avenida Rústica 1042</a></li>
-                </ul>
-            </div>
-            <div class="footer__section">
-                <h3 class="footer__title">Enlaces</h3>
-                <ul class="footer__list">
-                    <li><a href="index.html">Inicio</a></li>
-                    <li><a href="nosotros.html">Nosotros</a></li>
-                    <li><a href="contacto.html">Contacto</a></li>
-                </ul>
-            </div>
+      <div class="footer__content container">
+        <div class="footer__section">
+          <h3 class="footer__title">Horario de Atención</h3>
+          <ul class="footer__list">
+            <li>Lunes a Viernes: 7:00 – 20:00</li>
+            <li>Sábados: 8:00 – 18:00</li>
+            <li>Domingos: 9:00 – 14:00</li>
+          </ul>
         </div>
-        <div class="footer__bottom container">
-            <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <div class="footer__section">
+          <h3 class="footer__title">Contacto</h3>
+          <ul class="footer__list">
+            <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
+            <li>
+              📍
+              <a
+                href="https://maps.google.com/?q=Avenida+Rústica+1042"
+                target="_blank"
+                rel="noopener"
+                >Avenida Rústica 1042</a
+              >
+            </li>
+          </ul>
         </div>
+        <div class="footer__section">
+          <h3 class="footer__title">Enlaces</h3>
+          <ul class="footer__list">
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="nosotros.html">Nosotros</a></li>
+            <li><a href="contacto.html">Contacto</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__bottom container">
+        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+      </div>
     </footer>
 
     <script type="module" src="./JS/pages/catalogo.js"></script>
-</body>
+  </body>
 </html>

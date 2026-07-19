@@ -60,7 +60,9 @@
   margin: 0 var(--space-4);
 }
 
-.stepper__item--completed::after { background: var(--color-accent-muted); }
+.stepper__item--completed::after {
+  background: var(--color-accent-muted);
+}
 
 .stepper__number {
   display: inline-flex;
@@ -98,8 +100,12 @@
   white-space: nowrap;
 }
 
-.stepper__item--active .stepper__label { color: var(--color-text); }
-.stepper__item--completed .stepper__label { color: var(--color-accent); }
+.stepper__item--active .stepper__label {
+  color: var(--color-text);
+}
+.stepper__item--completed .stepper__label {
+  color: var(--color-accent);
+}
 
 /* --- Layout checkout --- */
 .checkout {
@@ -169,7 +175,9 @@
   border-bottom: 1px solid var(--color-border-light);
 }
 
-.checkout-item:last-child { border-bottom: none; }
+.checkout-item:last-child {
+  border-bottom: none;
+}
 
 .checkout-item__info {
   display: flex;
@@ -317,7 +325,10 @@
   border-radius: var(--radius-md);
 }
 
-.checkout__seguridad-icono { font-size: var(--text-xl); flex-shrink: 0; }
+.checkout__seguridad-icono {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+}
 
 .checkout__seguridad-texto {
   font-size: var(--text-xs);
@@ -338,10 +349,18 @@
 }
 
 @media (max-width: 768px) {
-  .page-title__text { font-size: var(--text-3xl); }
-  .checkout__section { padding: var(--space-6); }
-  .stepper__label { display: none; }
-  .stepper__item::after { margin: 0 var(--space-2); }
+  .page-title__text {
+    font-size: var(--text-3xl);
+  }
+  .checkout__section {
+    padding: var(--space-6);
+  }
+  .stepper__label {
+    display: none;
+  }
+  .stepper__item::after {
+    margin: 0 var(--space-2);
+  }
 }
 
 @media (max-width: 480px) {
@@ -350,8 +369,14 @@
     align-items: stretch;
   }
 
-  .checkout__acciones .btn { width: 100%; justify-content: center; }
-  .checkout__section { padding: var(--space-5); gap: var(--space-5); }
+  .checkout__acciones .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .checkout__section {
+    padding: var(--space-5);
+    gap: var(--space-5);
+  }
 }
 
 /* ---- Pantalla de confirmación con trazabilidad ---- */
@@ -398,7 +423,9 @@
   background: var(--color-bg);
 }
 
-.confirmacion__dato:last-child { border-bottom: none; }
+.confirmacion__dato:last-child {
+  border-bottom: none;
+}
 
 .confirmacion__dato-label {
   font-size: var(--text-xs);
@@ -432,7 +459,15 @@
 }
 
 @media (max-width: 480px) {
-  .confirmacion__card { padding: var(--space-6); }
-  .confirmacion__dato { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
-  .confirmacion__dato-valor { text-align: left; }
+  .confirmacion__card {
+    padding: var(--space-6);
+  }
+  .confirmacion__dato {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+  .confirmacion__dato-valor {
+    text-align: left;
+  }
 }

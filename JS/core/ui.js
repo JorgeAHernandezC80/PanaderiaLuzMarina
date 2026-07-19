@@ -9,13 +9,13 @@
  */
 
 import { getCartCount } from './cart.js';
-import { initTheme }    from './theme.js';
-import { initI18n }     from './i18n.js';
+import { initTheme } from './theme.js';
+import { initI18n } from './i18n.js';
 
 /** Actualiza todos los badges del carrito en el DOM */
 export function updateCartBadges() {
   const count = getCartCount();
-  document.querySelectorAll('[data-cart-count]').forEach(el => {
+  document.querySelectorAll('[data-cart-count]').forEach((el) => {
     el.textContent = count;
     el.setAttribute('aria-label', `${count} productos en el carrito`);
     if (el.classList.contains('header__badge')) {
@@ -30,8 +30,8 @@ export function updateCartBadges() {
 
 /** Inicializa el menú hamburguesa */
 function initMobileMenu() {
-  const toggle  = document.querySelector('[data-header-toggle]');
-  const menu    = document.querySelector('[data-header-menu]');
+  const toggle = document.querySelector('[data-header-toggle]');
+  const menu = document.querySelector('[data-header-menu]');
   const overlay = document.querySelector('[data-header-overlay]');
 
   if (!toggle || !menu) return;
@@ -59,7 +59,7 @@ function initMobileMenu() {
 
   overlay?.addEventListener('click', closeMenu);
 
-  document.addEventListener('keydown', e => {
+  document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeMenu();
   });
 
@@ -96,7 +96,7 @@ export function initUI() {
   initHeaderScroll();
 
   window.addEventListener('cart:updated', updateCartBadges);
-  window.addEventListener('storage', e => {
+  window.addEventListener('storage', (e) => {
     if (e.key === 'plm_cart') updateCartBadges();
   });
 }

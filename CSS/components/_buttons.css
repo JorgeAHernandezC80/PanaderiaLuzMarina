@@ -17,17 +17,23 @@
   border: 1px solid transparent;
   text-decoration: none;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast),
-              border-color var(--transition-fast), box-shadow var(--transition-fast),
-              transform var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
   white-space: nowrap;
   user-select: none;
 }
 
-.btn:active { transform: translateY(1px); }
+.btn:active {
+  transform: translateY(1px);
+}
 
-.btn:disabled, .btn[disabled] {
-  opacity: .40;
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -101,7 +107,9 @@
   border-color: var(--color-danger);
 }
 
-.btn--danger:hover { background: var(--color-danger-bg); }
+.btn--danger:hover {
+  background: var(--color-danger-bg);
+}
 
 /* Link */
 .btn--link {
@@ -115,10 +123,15 @@
 }
 
 /* Block */
-.btn--block { width: 100%; }
+.btn--block {
+  width: 100%;
+}
 
 /* Large */
-.btn--large { padding: var(--space-4) var(--space-8); font-size: var(--text-base); }
+.btn--large {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-base);
+}
 
 /* WhatsApp */
 .btn--whatsapp {
@@ -132,8 +145,12 @@
   border-color: var(--color-whatsapp-dark);
 }
 
-.btn__icono { font-size: var(--text-lg); }
+.btn__icono {
+  font-size: var(--text-lg);
+}
 
 @media (max-width: 480px) {
-  .btn { padding: var(--space-3) var(--space-5); }
+  .btn {
+    padding: var(--space-3) var(--space-5);
+  }
 }

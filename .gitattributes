@@ -1,0 +1,9 @@
+# Normalizar finales de línea a LF y evitar BOM (que rompió despliegues en Netlify).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.db binary
