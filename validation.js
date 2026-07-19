@@ -11,6 +11,7 @@ const MAX_PRECIO = 1000;
 const MAX_TOTAL = 50000;
 const NUMERO_ORDEN_RE = /^LM-\d{8}-\d{4}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+const ORDER_STATES = ['pendiente', 'preparada'];
 
 class ValidationError extends Error {
   constructor(message) {
@@ -101,4 +102,4 @@ function validarOrden(orden) {
   };
 }
 
-module.exports = { validarOrden, ValidationError };
+module.exports = { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES };

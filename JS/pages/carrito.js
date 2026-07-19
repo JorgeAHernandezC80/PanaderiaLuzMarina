@@ -9,8 +9,9 @@
 import { initUI } from '../core/ui.js';
 import {
   getCart, updateQuantity, removeFromCart,
-  clearCart, getCartTotal, formatPrice, escapeHTML
+  clearCart, getCartTotal, escapeHTML
 } from '../core/cart.js';
+import { formatPrice, pluralizeEs } from '../core/format.js';
 
 /* ---- Elementos del DOM ---- */
 const els = {
@@ -67,7 +68,7 @@ function renderCarrito() {
 
   if (els.subtotal())      els.subtotal().textContent      = formatPrice(total);
   if (els.total())         els.total().textContent         = formatPrice(total);
-  if (els.cantidadTexto()) els.cantidadTexto().textContent = `${count} producto${count !== 1 ? 's' : ''}`;
+  if (els.cantidadTexto()) els.cantidadTexto().textContent = pluralizeEs(count, 'producto');
   if (els.proceder())      els.proceder().disabled          = !hay;
   if (els.vaciar())        els.vaciar().hidden               = !hay;
 }
