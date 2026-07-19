@@ -23,6 +23,7 @@ El proyecto tiene dos partes:
 - [API del backend](#-api-del-backend)
 - [Pruebas](#-pruebas)
 - [Despliegue](#-despliegue)
+- [Seguridad](#-seguridad)
 - [Contribución](#-contribución)
 - [Licencia](#-licencia)
 
@@ -119,12 +120,16 @@ El backend se configura mediante variables de entorno. Copia el ejemplo y ajúst
 cp .env.example .env
 ```
 
-| Variable          | Requerida | Descripción                                                                                                      |
-| ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
-| `PORT`            | No        | Puerto del backend. Por defecto `3001`.                                                                          |
-| `FRONTEND_ORIGIN` | Sí (prod) | Origen permitido para CORS (p. ej. `https://tu-sitio.netlify.app`). Sin él, se rechazan las peticiones cruzadas. |
-| `ADMIN_TOKEN`     | Sí (prod) | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                                |
-| `DB_PATH`         | No        | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                           |
+| Variable                | Requerida   | Descripción                                                                                                      |
+| ----------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `PORT`                  | No          | Puerto del backend. Por defecto `3001`.                                                                          |
+| `FRONTEND_ORIGIN`       | Sí (prod)   | Origen permitido para CORS (p. ej. `https://tu-sitio.netlify.app`). Sin él, se rechazan las peticiones cruzadas. |
+| `ADMIN_TOKEN`           | Sí (prod)   | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                                |
+| `SESSION_SECRET`        | Recomendada | Secreto para firmar los tokens de sesión del panel (HMAC). Si se omite, se deriva del `ADMIN_TOKEN`.             |
+| `SESSION_TTL_MS`        | No          | Duración de la sesión admin en ms. Por defecto `28800000` (8 h).                                                 |
+| `AUTH_MAX_ATTEMPTS`     | No          | Intentos de login por IP cada 15 min antes de responder `429`. Por defecto `10`.                                 |
+| `ORDERS_MAX_PER_WINDOW` | No          | Creaciones de orden por IP cada 15 min. Por defecto `20`.                                                        |
+| `DB_PATH`               | No          | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                           |
 
 > ⚠️ La base de datos (`*.db`) contiene datos de clientes (PII) y **no** se versiona.
 > El archivo `.env` tampoco: nunca subas secretos al repositorio.
@@ -158,7 +163,9 @@ Ajusta `API_BASE` en `JS/core/api.js` si tu backend no corre en la URL por defec
 | `PATCH` | `/ordenes/:numero` | Admin | Actualiza el estado de una orden.                |
 
 \* Protegido por rate limiting (20 peticiones por IP cada 15 min).
-Los endpoints **Admin** requieren la cabecera `Authorization: Bearer <ADMIN_TOKEN>`.
+Los endpoints **Admin** requieren la cabecera `Authorization: Bearer <token>`, donde
+`<token>` es el **token de sesión firmado** que devuelve `POST /auth` (no el `ADMIN_TOKEN`).
+El token caduca (`SESSION_TTL_MS`) y `/auth` está protegido contra fuerza bruta.
 
 Al crear o actualizar una orden, el servidor emite un evento por WebSocket
 (`orden:nueva` / `orden:actualizada`) para que el panel se actualice en vivo.
@@ -174,8 +181,19 @@ npm run test:coverage  # con reporte de cobertura
 ## 🚀 Despliegue
 
 - **Frontend** → Netlify (sitio estático). Configura la variable `NODE_VERSION=20`.
-- **Backend** → Render (servicio web Node). Define `FRONTEND_ORIGIN` y `ADMIN_TOKEN`
-  en el panel de variables de entorno de Render.
+- **Backend** → Render (servicio web Node). Define `FRONTEND_ORIGIN`, `ADMIN_TOKEN` y
+  `SESSION_SECRET` en el panel de variables de entorno de Render.
+- **Cabeceras del frontend**: el archivo [`_headers`](_headers) aplica CSP, HSTS y
+  demás cabeceras de seguridad en Netlify automáticamente.
+
+## 🔒 Seguridad
+
+El proyecto aplica endurecimiento de seguridad: tokens de sesión firmados con
+expiración, rate limiting anti fuerza bruta, cabeceras de seguridad (CSP, HSTS,
+etc.) en backend y frontend, validación estricta de entrada y SQL parametrizado.
+
+- Política de reporte de vulnerabilidades: [SECURITY.md](SECURITY.md).
+- Informe de auditoría: [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md).
 
 ## 🤝 Contribución
 
