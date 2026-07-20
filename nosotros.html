@@ -13,6 +13,14 @@
     <title>Nosotros | Panadería Luz Marina</title>
     <!-- Anti-flash: aplica el tema guardado antes del render -->
     <script src="./JS/theme-init.js"></script>
+    <!-- Estilos (cargados en paralelo; el orden define la cascada) -->
+    <link rel="stylesheet" href="./CSS/base/_variables.css" />
+    <link rel="stylesheet" href="./CSS/base/_reset.css" />
+    <link rel="stylesheet" href="./CSS/base/_utilities.css" />
+    <link rel="stylesheet" href="./CSS/components/_header.css" />
+    <link rel="stylesheet" href="./CSS/components/_footer.css" />
+    <link rel="stylesheet" href="./CSS/components/_buttons.css" />
+    <link rel="stylesheet" href="./CSS/components/_hero.css" />
     <link rel="stylesheet" href="./CSS/pages/nosotros.css" />
 
     <!-- Preconnect -->
@@ -132,10 +140,11 @@
             <div class="historia__imagen-wrapper">
               <img
                 src="./IMG/luz-marina.jpg"
+                decoding="async"
                 alt="Luz Marina, fundadora de la panadería"
                 class="historia__imagen"
                 loading="lazy"
-                onerror="this.style.display = 'none'"
+                data-img-hide
               />
             </div>
             <p class="historia__text">
@@ -195,12 +204,11 @@
               <div class="miembro__foto-wrapper">
                 <img
                   src="./IMG/luz-marina-foto.jpg"
+                  decoding="async"
                   alt="Foto de Luz Marina"
                   class="miembro__foto"
                   loading="lazy"
-                  onerror="
-                    this.parentElement.innerHTML = '<span style=\'font-size:4rem\'>👩‍🍳</span>'
-                  "
+                  data-img-fallback="👩‍🍳"
                 />
               </div>
               <h3 class="miembro__nombre">Luz Marina</h3>
@@ -211,6 +219,9 @@
               <div class="miembro__foto-wrapper">
                 <img
                   src="./IMG/panadero.jpg"
+                  decoding="async"
+                  width="720"
+                  height="960"
                   alt="Foto del equipo"
                   class="miembro__foto"
                   loading="lazy"
@@ -276,6 +287,6 @@
       </div>
     </footer>
 
-    <script type="module" src="./JS/pages/inicio.js"></script>
+    <script type="module" src="./JS/pages/nosotros.js"></script>
   </body>
 </html>

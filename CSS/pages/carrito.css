@@ -2,13 +2,9 @@
    PANADERÍA LUZ MARINA — Página: Carrito
    ============================================================ */
 
-@import '../base/_variables.css';
-@import '../base/_reset.css';
-@import '../base/_utilities.css';
-@import '../components/_header.css';
-@import '../components/_footer.css';
-@import '../components/_buttons.css';
-@import '../components/_cards.css';
+/* Las hojas base y de componentes se cargan en paralelo desde el <head> del HTML
+   (variables, reset, utilities, header, footer, buttons, cards) para evitar la
+   cascada de descargas secuenciales que provoca @import. */
 
 /* --- Page title --- */
 .page-title {

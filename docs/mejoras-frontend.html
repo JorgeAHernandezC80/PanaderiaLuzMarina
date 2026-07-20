@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mejoras de Frontend · Panadería Luz Marina</title>
+    <style>
+      :root {
+        --bg: #faf8f5;
+        --card: #ffffff;
+        --ink: #1a1612;
+        --muted: #6b5f55;
+        --accent: #8b5e3c;
+        --accent-soft: rgba(139, 94, 60, 0.08);
+        --ok: #3a7d5a;
+        --ok-soft: rgba(58, 125, 90, 0.1);
+        --line: #e8e0d6;
+        --radius: 14px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          'Manrope',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 56px 24px 80px;
+      }
+      header.doc {
+        border-bottom: 2px solid var(--accent);
+        padding-bottom: 28px;
+        margin-bottom: 40px;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: clamp(2rem, 5vw, 3rem);
+        line-height: 1.1;
+        margin: 0 0 12px;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 1.1rem;
+        margin: 0;
+      }
+      .meta {
+        margin-top: 20px;
+        font-size: 13px;
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 24px;
+      }
+      h2 {
+        font-family: Georgia, serif;
+        font-size: 1.6rem;
+        margin: 48px 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      h2 .num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-family: system-ui, sans-serif;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .lead {
+        color: var(--muted);
+        margin: 0 0 20px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        margin: 16px 0;
+        box-shadow: 0 1px 3px rgba(26, 22, 18, 0.05);
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 1.05rem;
+      }
+      .card p {
+        margin: 0 0 10px;
+        color: var(--muted);
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        margin-bottom: 10px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .ba {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 13px;
+        background: #fbfaf8;
+      }
+      .ba b {
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 10px;
+        margin-bottom: 6px;
+      }
+      .ba.before b {
+        color: #a94434;
+      }
+      .ba.after b {
+        color: var(--ok);
+      }
+      code {
+        font-family: 'SF Mono', Consolas, monospace;
+        font-size: 12.5px;
+        background: #f1ece4;
+        padding: 1px 6px;
+        border-radius: 4px;
+        color: #553322;
+      }
+      ul.check {
+        list-style: none;
+        padding: 0;
+        margin: 8px 0 0;
+      }
+      ul.check li {
+        padding-left: 26px;
+        position: relative;
+        margin-bottom: 8px;
+        color: var(--muted);
+      }
+      ul.check li::before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: var(--ok);
+        font-weight: 800;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        background: var(--accent);
+        color: #fff;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      tbody tr:nth-child(even) {
+        background: #fbfaf8;
+      }
+      .files {
+        columns: 2;
+        gap: 32px;
+        font-size: 13.5px;
+        margin-top: 10px;
+      }
+      .files code {
+        display: inline-block;
+        margin-bottom: 6px;
+      }
+      footer.doc {
+        margin-top: 56px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (max-width: 640px) {
+        .grid2,
+        .files {
+          grid-template-columns: 1fr;
+          columns: 1;
+        }
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .wrap {
+          padding: 0;
+          max-width: none;
+        }
+        .card,
+        h2 {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="doc">
+        <p class="eyebrow">Reporte de cambios · Frontend</p>
+        <h1>Optimización, responsividad y limpieza del frontend</h1>
+        <p class="subtitle">
+          Panadería Luz Marina — mejoras de rendimiento, escalabilidad, usabilidad y consistencia en
+          todas las páginas públicas.
+        </p>
+        <div class="meta">
+          <span><strong>Fecha:</strong> Julio 2026</span>
+          <span><strong>Alcance:</strong> HTML, CSS, JavaScript, tooling</span>
+          <span><strong>Compatibilidad:</strong> móvil · tablet · laptop · escritorio · TV/4K</span>
+        </div>
+      </header>
+
+      <p class="lead">
+        El objetivo fue lograr un frontend limpio, dinámico, funcional y adaptable a todas las
+        pantallas, revisando el HTML semántico, las hojas de estilo, el JavaScript y la
+        automatización de tareas, sin romper la suite de pruebas ni la línea de diseño existente.
+        <strong>174 pruebas siguen pasando</strong> y el linter, el formateo y la CI quedan en
+        verde.
+      </p>
+
+      <h2><span class="num">1</span> Rendimiento de carga</h2>
+      <p class="lead">
+        Se eliminó el cuello de botella del CSS y se estabilizó el renderizado de imágenes.
+      </p>
+
+      <div class="card">
+        <span class="tag">Rendimiento</span>
+        <h3>Fin de las cadenas de <code>@import</code> en CSS</h3>
+        <p>
+          Cada página encadenaba 7–8 <code>@import</code> dentro de un único CSS, forzando descargas
+          <em>secuenciales</em> (una hoja no empieza a bajar hasta que termina la anterior). Ahora
+          las hojas base y de componentes se declaran como <code>&lt;link&gt;</code> en el
+          <code>&lt;head&gt;</code>, por lo que el navegador las descarga <em>en paralelo</em>.
+        </p>
+        <div class="grid2">
+          <div class="ba before">
+            <b>Antes</b>
+            <code>inicio.css → @import variables → @import reset → @import header → …</code>
+            <div>Descarga en cascada, render bloqueado más tiempo.</div>
+          </div>
+          <div class="ba after">
+            <b>Después</b>
+            <code>&lt;link&gt; variables · reset · header · … · inicio</code>
+            <div>Descarga paralela, primer render más rápido.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="tag">Rendimiento · CLS</span>
+        <h3>Imágenes con dimensiones intrínsecas y decodificación asíncrona</h3>
+        <p>
+          Todas las <code>&lt;img&gt;</code> del catálogo y de «Nosotros» llevan ahora
+          <code>width</code>, <code>height</code> y <code>decoding="async"</code>, además del
+          <code>loading="lazy"</code> ya existente. Esto refuerza la reserva de espacio (menos
+          saltos de maquetado / CLS) y libera el hilo principal durante la decodificación.
+        </p>
+      </div>
+
+      <h2><span class="num">2</span> Consistencia y corrección de errores</h2>
+
+      <div class="card">
+        <span class="tag">Bug</span>
+        <h3>Tipografías coherentes en el catálogo</h3>
+        <p>
+          <code>catalogo.html</code> cargaba <code>Cormorant Garamond + Inter</code>, fuentes que el
+          CSS del sitio ni siquiera usa (el sistema emplea Manrope/Montserrat). Se corrigió para
+          cargar la misma familia que el resto del sitio: se elimina una descarga inútil y se
+          unifica la apariencia.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="tag">Bug · UX</span>
+        <h3>Anti-parpadeo de tema en el catálogo</h3>
+        <p>
+          El catálogo era la única página sin <code>theme-init.js</code>, por lo que en modo oscuro
+          aparecía un destello claro antes de aplicar el tema. Se añadió el script anti-FOUC como en
+          el resto de páginas.
+        </p>
+      </div>
+
+      <h2><span class="num">3</span> Seguridad y funcionalidad</h2>
+
+      <div class="card">
+        <span class="tag">CSP · Funcional</span>
+        <h3>Fallback de imágenes compatible con la CSP</h3>
+        <p>
+          «Nosotros» usaba manejadores <code>onerror="…"</code> en línea que la política de
+          seguridad del sitio (<code>script-src 'self'</code>)
+          <strong>bloquea en producción</strong>: el reemplazo de imágenes rotas por su emoji nunca
+          se ejecutaba. Se trasladó la lógica a un módulo (<code>JS/pages/nosotros.js</code>)
+          mediante <code>data-img-hide</code> y <code>data-img-fallback</code>, cubriendo incluso el
+          caso de imágenes que fallan antes de que el módulo cargue.
+        </p>
+      </div>
+
+      <h2><span class="num">4</span> Escalabilidad y responsividad</h2>
+
+      <div class="card">
+        <span class="tag">Responsive · TV/4K</span>
+        <h3>Nuevo nivel para pantallas muy grandes</h3>
+        <p>
+          Se añadió un breakpoint <code>@media (min-width: 2560px)</code> que amplía el contenedor
+          (<code>--container-max: 1680px</code>), escala la tipografía y el espaciado, y muestra una
+          quinta columna de productos en el catálogo. Así el sitio aprovecha el ancho y se lee bien
+          a distancia en televisores y monitores 2K/4K.
+        </p>
+        <ul class="check">
+          <li>Móvil (≤480px): 1 columna, acciones a ancho completo.</li>
+          <li>Tablet (≤900px): 2 columnas.</li>
+          <li>Laptop/escritorio: 3–4 columnas.</li>
+          <li>TV/4K (≥2560px): 5 columnas, tipografía y contenedor ampliados.</li>
+        </ul>
+      </div>
+
+      <h2><span class="num">5</span> Automatización y tooling</h2>
+
+      <div class="card">
+        <span class="tag">CI</span>
+        <h3>Integración continua de nuevo en verde</h3>
+        <p>
+          El reporte <code>analisis_estructurado_PLM.html</code> rompía el paso
+          <code>format:check</code> de la CI. Al ser un documento generado con su propio formato, se
+          excluyó de Prettier vía <code>.prettierignore</code> (igual que <code>IMG/</code>),
+          dejando <code>lint</code>, <code>format:check</code> y <code>test</code> en verde.
+        </p>
+      </div>
+
+      <h2><span class="num">6</span> Resumen de impacto</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Área</th>
+            <th>Antes</th>
+            <th>Después</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Carga de CSS</td>
+            <td>Cascada secuencial (@import)</td>
+            <td>Descarga en paralelo (&lt;link&gt;)</td>
+          </tr>
+          <tr>
+            <td>Imágenes</td>
+            <td>Sin dimensiones ni decoding</td>
+            <td>width/height + decoding async</td>
+          </tr>
+          <tr>
+            <td>Tipografía catálogo</td>
+            <td>Fuentes ajenas al diseño</td>
+            <td>Unificada con el sitio</td>
+          </tr>
+          <tr>
+            <td>Tema en catálogo</td>
+            <td>Parpadeo (FOUC)</td>
+            <td>Anti-flash aplicado</td>
+          </tr>
+          <tr>
+            <td>Fallback de imágenes</td>
+            <td>Bloqueado por CSP</td>
+            <td>Módulo JS compatible</td>
+          </tr>
+          <tr>
+            <td>Pantallas grandes</td>
+            <td>Tope en 1920px</td>
+            <td>Nivel TV/4K (2560px+)</td>
+          </tr>
+          <tr>
+            <td>CI</td>
+            <td>format:check en rojo</td>
+            <td>lint · format · test en verde</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2><span class="num">7</span> Archivos modificados</h2>
+      <div class="files">
+        <code>index.html</code> <code>catalogo.html</code> <code>carrito.html</code>
+        <code>checkout.html</code> <code>nosotros.html</code> <code>contacto.html</code>
+        <code>CSS/base/_variables.css</code> <code>CSS/pages/inicio.css</code>
+        <code>CSS/pages/catalogo.css</code> <code>CSS/pages/carrito.css</code>
+        <code>CSS/pages/checkout.css</code> <code>CSS/pages/nosotros.css</code>
+        <code>CSS/pages/contacto.css</code> <code>JS/pages/nosotros.js</code> (nuevo)
+        <code>.prettierignore</code>
+      </div>
+
+      <footer class="doc">
+        Documento generado como formato de salida descargable del trabajo de optimización del
+        frontend. Para guardarlo como PDF: abrir en el navegador y usar «Imprimir → Guardar como
+        PDF». · Panadería Luz Marina
+      </footer>
+    </div>
+  </body>
+</html>
