@@ -7,10 +7,24 @@
    cascada de descargas secuenciales que provoca @import. */
 
 /* --- Page title --- */
+/* El padding horizontal replica el del header (.header__nav) para que el
+   título arranque en el mismo borde izquierdo que el logo «Panadería». */
 .page-title {
-  padding: var(--space-10) 0 var(--space-6);
+  padding: var(--space-10) var(--space-8) var(--space-6);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-10);
+}
+
+@media (min-width: 1440px) {
+  .page-title {
+    padding-inline: var(--space-10);
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-title {
+    padding-inline: var(--space-6);
+  }
 }
 
 .page-title__text {
@@ -345,6 +359,9 @@
 }
 
 @media (max-width: 768px) {
+  .page-title {
+    padding-inline: var(--space-4);
+  }
   .page-title__text {
     font-size: var(--text-3xl);
   }
@@ -360,6 +377,9 @@
 }
 
 @media (max-width: 480px) {
+  .page-title {
+    padding-inline: var(--space-3);
+  }
   .checkout__acciones {
     flex-direction: column-reverse;
     align-items: stretch;
