@@ -11,14 +11,16 @@
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ffffff" />
     <title>Catálogo | Panadería Luz Marina</title>
-    <link rel="stylesheet" href="./CSS/pages/catalogo.css" />
+
+    <!-- Anti-flash: aplica el tema guardado antes del render -->
+    <script src="./JS/theme-init.js"></script>
 
     <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Tipografía -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <!-- Font Awesome -->
@@ -29,6 +31,17 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
+
+    <!-- Estilos (cargados en paralelo; el orden define la cascada) -->
+    <link rel="stylesheet" href="./CSS/base/_variables.css" />
+    <link rel="stylesheet" href="./CSS/base/_reset.css" />
+    <link rel="stylesheet" href="./CSS/base/_utilities.css" />
+    <link rel="stylesheet" href="./CSS/components/_header.css" />
+    <link rel="stylesheet" href="./CSS/components/_footer.css" />
+    <link rel="stylesheet" href="./CSS/components/_buttons.css" />
+    <link rel="stylesheet" href="./CSS/components/_hero.css" />
+    <link rel="stylesheet" href="./CSS/components/_cards.css" />
+    <link rel="stylesheet" href="./CSS/pages/catalogo.css" />
   </head>
   <body class="page page--catalogo" data-page="catalogo">
     <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
@@ -139,7 +152,14 @@
           <div class="productos-grid" data-productos-grid>
             <article class="producto-card" data-categoria="frituras">
               <div class="producto-card__imagen">
-                <img src="./IMG/donuts.png" alt="Donuts glaseadas" loading="lazy" />
+                <img
+                  src="./IMG/donuts.png"
+                  decoding="async"
+                  width="1024"
+                  height="683"
+                  alt="Donuts glaseadas"
+                  loading="lazy"
+                />
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Donuts Glaseadas</h3>
@@ -165,7 +185,14 @@
 
             <article class="producto-card" data-categoria="frituras">
               <div class="producto-card__imagen">
-                <img src="./IMG/bunuelos.png" alt="Buñuelos colombianos" loading="lazy" />
+                <img
+                  src="./IMG/bunuelos.png"
+                  decoding="async"
+                  width="1024"
+                  height="678"
+                  alt="Buñuelos colombianos"
+                  loading="lazy"
+                />
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Buñuelos</h3>
@@ -192,7 +219,14 @@
 
             <article class="producto-card" data-categoria="panaderia">
               <div class="producto-card__imagen">
-                <img src="./IMG/almojabana.jpg" alt="Almojábanas colombianas" loading="lazy" />
+                <img
+                  src="./IMG/almojabana.jpg"
+                  decoding="async"
+                  width="819"
+                  height="1024"
+                  alt="Almojábanas colombianas"
+                  loading="lazy"
+                />
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Almojábanas</h3>
@@ -219,7 +253,14 @@
 
             <article class="producto-card" data-categoria="panaderia">
               <div class="producto-card__imagen">
-                <img src="./IMG/pandebono.jpg" alt="Pandebono colombiano" loading="lazy" />
+                <img
+                  src="./IMG/pandebono.jpg"
+                  decoding="async"
+                  width="683"
+                  height="1024"
+                  alt="Pandebono colombiano"
+                  loading="lazy"
+                />
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Pandebono</h3>
@@ -248,6 +289,9 @@
               <div class="producto-card__imagen">
                 <img
                   src="./IMG/pan_de_yuca.jpg"
+                  decoding="async"
+                  width="820"
+                  height="1024"
                   alt="Pan de yuca colombiano tradicional"
                   loading="lazy"
                 />
@@ -279,6 +323,9 @@
               <div class="producto-card__imagen">
                 <img
                   src="./IMG/Roscon_de_arequipe.jpg"
+                  decoding="async"
+                  width="1024"
+                  height="576"
                   alt="Roscón relleno de arequipe o guayaba"
                   loading="lazy"
                 />
@@ -310,6 +357,9 @@
               <div class="producto-card__imagen">
                 <img
                   src="./IMG/Pan Concha.jpg"
+                  decoding="async"
+                  width="1024"
+                  height="1024"
                   alt="Conchas de vainilla y chocolate"
                   loading="lazy"
                 />
@@ -339,7 +389,14 @@
 
             <article class="producto-card" data-categoria="bolleria">
               <div class="producto-card__imagen">
-                <img src="./IMG/croissant.jpg" alt="Croissants con dulce de leche" loading="lazy" />
+                <img
+                  src="./IMG/croissant.jpg"
+                  decoding="async"
+                  width="1024"
+                  height="1024"
+                  alt="Croissants con dulce de leche"
+                  loading="lazy"
+                />
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Croissant</h3>

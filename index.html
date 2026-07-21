@@ -70,7 +70,14 @@
     <!-- Anti-flash: aplica el tema guardado antes del render -->
     <script src="./JS/theme-init.js"></script>
 
-    <!-- Estilos de página -->
+    <!-- Estilos (cargados en paralelo; el orden define la cascada) -->
+    <link rel="stylesheet" href="./CSS/base/_variables.css" />
+    <link rel="stylesheet" href="./CSS/base/_reset.css" />
+    <link rel="stylesheet" href="./CSS/base/_utilities.css" />
+    <link rel="stylesheet" href="./CSS/components/_header.css" />
+    <link rel="stylesheet" href="./CSS/components/_footer.css" />
+    <link rel="stylesheet" href="./CSS/components/_buttons.css" />
+    <link rel="stylesheet" href="./CSS/components/_hero.css" />
     <link rel="stylesheet" href="./CSS/pages/inicio.css" />
 
     <!-- Schema.org -->

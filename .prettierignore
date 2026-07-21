@@ -3,3 +3,5 @@ coverage/
 package-lock.json
 IMG/
 *.db
+# Reporte de diagnóstico generado — formato propio, fuera del alcance de Prettier
+analisis_estructurado_PLM.html

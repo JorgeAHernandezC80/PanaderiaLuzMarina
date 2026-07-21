@@ -2,14 +2,9 @@
    PANADERÍA LUZ MARINA — Página: Catálogo
    ============================================================ */
 
-@import '../base/_variables.css';
-@import '../base/_reset.css';
-@import '../base/_utilities.css';
-@import '../components/_header.css';
-@import '../components/_footer.css';
-@import '../components/_buttons.css';
-@import '../components/_hero.css';
-@import '../components/_cards.css';
+/* Las hojas base y de componentes se cargan en paralelo desde el <head> del HTML
+   (variables, reset, utilities, header, footer, buttons, hero, cards) para evitar
+   la cascada de descargas secuenciales que provoca @import. */
 
 /* --- Sección catálogo --- */
 .catalogo {
@@ -115,5 +110,13 @@
   .productos-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-8);
+  }
+}
+
+/* TV / 4K: una columna más para aprovechar el ancho */
+@media (min-width: 2560px) {
+  .productos-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-10);
   }
 }

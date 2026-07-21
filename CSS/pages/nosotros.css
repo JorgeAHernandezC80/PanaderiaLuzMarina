@@ -2,13 +2,9 @@
    PANADERÍA LUZ MARINA — Página: Nosotros
    ============================================================ */
 
-@import '../base/_variables.css';
-@import '../base/_reset.css';
-@import '../base/_utilities.css';
-@import '../components/_header.css';
-@import '../components/_footer.css';
-@import '../components/_buttons.css';
-@import '../components/_hero.css';
+/* Las hojas base y de componentes se cargan en paralelo desde el <head> del HTML
+   (variables, reset, utilities, header, footer, buttons, hero) para evitar la
+   cascada de descargas secuenciales que provoca @import. */
 
 /* --- Historia --- */
 .historia {
@@ -173,6 +169,16 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.miembro__foto-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 2.75rem;
+  line-height: 1;
 }
 
 .miembro__nombre {
