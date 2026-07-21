@@ -359,7 +359,42 @@
         </ul>
       </div>
 
-      <h2><span class="num">5</span> Automatización y tooling</h2>
+      <h2><span class="num">5</span> Internacionalización (i18n)</h2>
+
+      <div class="card">
+        <span class="tag">Usabilidad · Accesibilidad</span>
+        <h3>El cambio de idioma ES/EN ahora traduce el contenido visible</h3>
+        <p>
+          El botón de idioma solo cambiaba la etiqueta y <code>&lt;html lang&gt;</code>, pero el
+          texto de las páginas seguía en español porque el marcado no tenía atributos
+          <code>data-i18n</code>. Se completó el sistema existente en <code>JS/core/i18n.js</code>
+          (sin dependencias externas) y se anotó todo el contenido visible de las seis páginas.
+        </p>
+        <ul class="check">
+          <li>
+            Diccionario ES/EN ampliado (132 claves) cubriendo navegación, hero, valores, catálogo,
+            carrito, «Nosotros», contacto, checkout y footer.
+          </li>
+          <li>
+            Traducción de atributos con <code>data-i18n-placeholder</code> y
+            <code>data-i18n-aria-label</code> (placeholders de formularios y etiquetas ARIA).
+          </li>
+          <li>
+            Contenido generado por JavaScript localizado con <code>t()</code>: feedback «Añadido /
+            Error» del catálogo, aria-labels y pluralización del carrito, y pantalla de confirmación
+            del checkout.
+          </li>
+          <li>
+            Evento <code>lang:changed</code> al cambiar de idioma; las vistas dinámicas (carrito) se
+            re-renderizan para reflejar el nuevo idioma al instante.
+          </li>
+          <li>
+            Tests ampliados: atributos, <code>t()</code>, <code>getCurrentLang()</code> y evento.
+          </li>
+        </ul>
+      </div>
+
+      <h2><span class="num">6</span> Automatización y tooling</h2>
 
       <div class="card">
         <span class="tag">CI</span>
@@ -372,7 +407,7 @@
         </p>
       </div>
 
-      <h2><span class="num">6</span> Resumen de impacto</h2>
+      <h2><span class="num">7</span> Resumen de impacto</h2>
       <table>
         <thead>
           <tr>
@@ -417,10 +452,15 @@
             <td>format:check en rojo</td>
             <td>lint · format · test en verde</td>
           </tr>
+          <tr>
+            <td>Cambio de idioma</td>
+            <td>Solo botón y &lt;html lang&gt;</td>
+            <td>Traduce el contenido visible ES/EN</td>
+          </tr>
         </tbody>
       </table>
 
-      <h2><span class="num">7</span> Archivos modificados</h2>
+      <h2><span class="num">8</span> Archivos modificados</h2>
       <div class="files">
         <code>index.html</code> <code>catalogo.html</code> <code>carrito.html</code>
         <code>checkout.html</code> <code>nosotros.html</code> <code>contacto.html</code>
@@ -428,7 +468,9 @@
         <code>CSS/pages/catalogo.css</code> <code>CSS/pages/carrito.css</code>
         <code>CSS/pages/checkout.css</code> <code>CSS/pages/nosotros.css</code>
         <code>CSS/pages/contacto.css</code> <code>JS/pages/nosotros.js</code> (nuevo)
-        <code>.prettierignore</code>
+        <code>JS/core/i18n.js</code> <code>JS/pages/catalogo.js</code>
+        <code>JS/pages/carrito.js</code> <code>JS/pages/checkout.js</code>
+        <code>tests/i18n.test.js</code> <code>.prettierignore</code>
       </div>
 
       <footer class="doc">

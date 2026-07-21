@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { initI18n } from '../JS/core/i18n.js';
+import { initI18n, t, getCurrentLang } from '../JS/core/i18n.js';
 
 const STORAGE_KEY = 'plm_lang';
 
@@ -14,6 +14,8 @@ function setupDOM() {
     <a data-i18n="nav_home">x</a>
     <a data-i18n="nav_catalog">x</a>
     <span data-i18n="clave_inexistente">no-cambiar</span>
+    <input data-i18n-placeholder="checkout_name_ph" placeholder="x" />
+    <nav data-i18n-aria-label="nav_aria" aria-label="x"></nav>
   `;
 }
 
@@ -110,5 +112,56 @@ describe('initI18n — sin botón de toggle', () => {
     localStorage.setItem(STORAGE_KEY, 'es');
     expect(() => initI18n()).not.toThrow();
     expect(document.querySelector('[data-i18n="nav_home"]').textContent).toBe('Inicio');
+  });
+});
+
+describe('initI18n — traducción de atributos', () => {
+  test('traduce placeholder con data-i18n-placeholder', () => {
+    localStorage.setItem(STORAGE_KEY, 'es');
+    initI18n();
+    expect(document.querySelector('[data-i18n-placeholder]').getAttribute('placeholder')).toBe(
+      'Tu nombre completo',
+    );
+    document.querySelector('[data-lang-toggle]').click();
+    expect(document.querySelector('[data-i18n-placeholder]').getAttribute('placeholder')).toBe(
+      'Your full name',
+    );
+  });
+
+  test('traduce aria-label con data-i18n-aria-label', () => {
+    localStorage.setItem(STORAGE_KEY, 'en');
+    initI18n();
+    expect(document.querySelector('[data-i18n-aria-label]').getAttribute('aria-label')).toBe(
+      'Main navigation',
+    );
+  });
+});
+
+describe('t() y getCurrentLang()', () => {
+  test('t() devuelve la traducción del idioma activo', () => {
+    localStorage.setItem(STORAGE_KEY, 'es');
+    initI18n();
+    expect(t('nav_home')).toBe('Inicio');
+    expect(getCurrentLang()).toBe('es');
+    document.querySelector('[data-lang-toggle]').click();
+    expect(t('nav_home')).toBe('Home');
+    expect(getCurrentLang()).toBe('en');
+  });
+
+  test('t() devuelve la clave si no existe traducción', () => {
+    initI18n();
+    expect(t('clave_inexistente_total')).toBe('clave_inexistente_total');
+  });
+});
+
+describe('evento lang:changed', () => {
+  test('emite lang:changed con el idioma al aplicar', () => {
+    const handler = jest.fn();
+    window.addEventListener('lang:changed', handler);
+    localStorage.setItem(STORAGE_KEY, 'es');
+    initI18n();
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0].detail.lang).toBe('es');
+    window.removeEventListener('lang:changed', handler);
   });
 });

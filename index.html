@@ -120,11 +120,17 @@
     </script>
   </head>
   <body class="page page--home" data-page="inicio">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -152,17 +158,32 @@
               class="header__menu-link header__menu-link--active"
               role="menuitem"
               aria-current="page"
+              data-i18n="nav_home"
               >Inicio</a
             >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+            <a
+              href="catalogo.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_catalog"
+              >Catálogo</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+            <a href="nosotros.html" class="header__menu-link" role="menuitem" data-i18n="nav_us"
+              >Nosotros</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+            <a
+              href="contacto.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_contact"
+              >Contacto</a
+            >
           </li>
         </ul>
         <div class="header__actions">
@@ -204,22 +225,31 @@
         <div class="hero__content container">
           <span class="hero__badge" role="status" aria-live="polite" aria-label="Horno abierto hoy">
             <span class="hero__badge-icon" aria-hidden="true">🔥</span>
-            Horno Abierto
+            <span data-i18n="hero_badge">Horno Abierto</span>
             <span class="hero__badge-sep" aria-hidden="true"></span>
             <span class="hero__badge-dot" aria-hidden="true"></span>
             <span class="hero__badge-stock">
-              <span class="hero__badge-label">Hornada de hoy disponible</span>
+              <span class="hero__badge-label" data-i18n="hero_stock_available"
+                >Hornada de hoy disponible</span
+              >
             </span>
           </span>
-          <h1 id="hero-title" class="hero__title">El pan de siempre, hecho con cariño.</h1>
-          <p class="hero__subtitle">Horneamos hoy lo que comerás mañana.</p>
+          <h1 id="hero-title" class="hero__title" data-i18n="hero_title">
+            El pan de siempre, hecho con cariño.
+          </h1>
+          <p class="hero__subtitle" data-i18n="hero_subtitle">
+            Horneamos hoy lo que comerás mañana.
+          </p>
           <div class="hero__actions">
-            <a href="catalogo.html" class="btn btn--primary">Ver Stock en Vivo</a>
+            <a href="catalogo.html" class="btn btn--primary" data-i18n="hero_cta_stock"
+              >Ver Stock en Vivo</a
+            >
             <a
               href="https://wa.me/12817703825?text=Hola,%20quiero%20reservar%20pan"
               class="btn btn--secondary"
               target="_blank"
               rel="noopener"
+              data-i18n="hero_cta_wa"
             >
               Reservar por WhatsApp
             </a>
@@ -230,24 +260,30 @@
       <!-- VALORES -->
       <section class="valores" aria-labelledby="valores-title" data-component="valores">
         <div class="container">
-          <h2 id="valores-title" class="section__title">¿Por qué elegirnos?</h2>
+          <h2 id="valores-title" class="section__title" data-i18n="valores_title">
+            ¿Por qué elegirnos?
+          </h2>
           <div class="valores__grid">
             <article class="valor" data-valor="frescura">
               <span class="valor__icon" aria-hidden="true">🥖</span>
-              <h3 class="valor__title">Pan fresco cada día</h3>
-              <p class="valor__text">Horneamos desde temprano para que tengas pan recién hecho.</p>
+              <h3 class="valor__title" data-i18n="valor_fresh">Pan fresco cada día</h3>
+              <p class="valor__text" data-i18n="valor_fresh_desc">
+                Horneamos desde temprano para que tengas pan recién hecho.
+              </p>
             </article>
             <article class="valor" data-valor="recetas">
               <span class="valor__icon" aria-hidden="true">👨‍🍳</span>
-              <h3 class="valor__title">Recetas de familia</h3>
-              <p class="valor__text">
+              <h3 class="valor__title" data-i18n="valor_recipes">Recetas de familia</h3>
+              <p class="valor__text" data-i18n="valor_recipes_desc">
                 Las recetas de siempre, sin ingredientes raros ni complicaciones.
               </p>
             </article>
             <article class="valor" data-valor="atencion">
               <span class="valor__icon" aria-hidden="true">💛</span>
-              <h3 class="valor__title">Atención cercana</h3>
-              <p class="valor__text">Te conocemos por nombre. Aquí no eres un número.</p>
+              <h3 class="valor__title" data-i18n="valor_service">Atención cercana</h3>
+              <p class="valor__text" data-i18n="valor_service_desc">
+                Te conocemos por nombre. Aquí no eres un número.
+              </p>
             </article>
           </div>
         </div>
@@ -256,9 +292,11 @@
       <!-- CTA FINAL -->
       <section class="cta" aria-labelledby="cta-title" data-component="cta">
         <div class="container">
-          <h2 id="cta-title" class="cta__title">¿Listo para probar nuestro pan?</h2>
-          <p class="cta__text">Visítanos o haz tu pedido por WhatsApp</p>
-          <a href="catalogo.html" class="btn btn--light">Ver Catálogo</a>
+          <h2 id="cta-title" class="cta__title" data-i18n="cta_title">
+            ¿Listo para probar nuestro pan?
+          </h2>
+          <p class="cta__text" data-i18n="cta_text">Visítanos o haz tu pedido por WhatsApp</p>
+          <a href="catalogo.html" class="btn btn--light" data-i18n="cta_btn">Ver Catálogo</a>
         </div>
       </section>
     </main>
@@ -267,15 +305,15 @@
     <footer class="footer" data-component="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>
@@ -290,16 +328,16 @@
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="catalogo.html">Catálogo</a></li>
-            <li><a href="nosotros.html">Nosotros</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="catalogo.html" data-i18n="nav_catalog">Catálogo</a></li>
+            <li><a href="nosotros.html" data-i18n="nav_us">Nosotros</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

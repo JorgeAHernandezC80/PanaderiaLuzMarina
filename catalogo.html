@@ -44,11 +44,17 @@
     <link rel="stylesheet" href="./CSS/pages/catalogo.css" />
   </head>
   <body class="page page--catalogo" data-page="catalogo">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -71,7 +77,9 @@
         </button>
         <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
           <li class="header__menu-item" role="none">
-            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+            <a href="index.html" class="header__menu-link" role="menuitem" data-i18n="nav_home"
+              >Inicio</a
+            >
           </li>
           <li class="header__menu-item" role="none">
             <a
@@ -79,14 +87,23 @@
               class="header__menu-link header__menu-link--active"
               role="menuitem"
               aria-current="page"
+              data-i18n="nav_catalog"
               >Catálogo</a
             >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+            <a href="nosotros.html" class="header__menu-link" role="menuitem" data-i18n="nav_us"
+              >Nosotros</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+            <a
+              href="contacto.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_contact"
+              >Contacto</a
+            >
           </li>
         </ul>
         <div class="header__actions">
@@ -126,27 +143,62 @@
       <!-- Hero -->
       <section class="hero hero--small" aria-labelledby="catalogo-title">
         <div class="hero__content container">
-          <h1 id="catalogo-title" class="hero__title">Nuestra Hornada Diaria</h1>
-          <p class="hero__subtitle">Productos frescos horneados cada mañana</p>
+          <h1 id="catalogo-title" class="hero__title" data-i18n="catalog_title">
+            Nuestra Hornada Diaria
+          </h1>
+          <p class="hero__subtitle" data-i18n="catalog_subtitle">
+            Productos frescos horneados cada mañana
+          </p>
         </div>
       </section>
 
       <!-- Filtros + Productos -->
       <section class="catalogo" aria-label="Productos">
         <div class="container">
-          <h2 class="section__title--hidden sr-only">Filtrar por categoría</h2>
+          <h2 class="section__title--hidden sr-only" data-i18n="catalog_filter_heading">
+            Filtrar por categoría
+          </h2>
           <div class="filtros" role="group" aria-label="Filtros de categoría">
-            <button class="filtro-btn filtro-btn--active" data-filter="todos" aria-pressed="true">
+            <button
+              class="filtro-btn filtro-btn--active"
+              data-filter="todos"
+              aria-pressed="true"
+              data-i18n="filter_all"
+            >
               Todos
             </button>
-            <button class="filtro-btn" data-filter="panaderia" aria-pressed="false">
+            <button
+              class="filtro-btn"
+              data-filter="panaderia"
+              aria-pressed="false"
+              data-i18n="filter_bread"
+            >
               Panadería
             </button>
-            <button class="filtro-btn" data-filter="bolleria" aria-pressed="false">Bollería</button>
-            <button class="filtro-btn" data-filter="reposteria" aria-pressed="false">
+            <button
+              class="filtro-btn"
+              data-filter="bolleria"
+              aria-pressed="false"
+              data-i18n="filter_pastry"
+            >
+              Bollería
+            </button>
+            <button
+              class="filtro-btn"
+              data-filter="reposteria"
+              aria-pressed="false"
+              data-i18n="filter_sweets"
+            >
               Repostería
             </button>
-            <button class="filtro-btn" data-filter="frituras" aria-pressed="false">Frituras</button>
+            <button
+              class="filtro-btn"
+              data-filter="frituras"
+              aria-pressed="false"
+              data-i18n="filter_fried"
+            >
+              Frituras
+            </button>
           </div>
 
           <div class="productos-grid" data-productos-grid>
@@ -163,7 +215,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Donuts Glaseadas</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_donuts_desc">
                   Suaves por dentro, crujientes por fuera, con glaseado de vainilla.
                 </p>
                 <div class="producto-card__precio-stock">
@@ -174,6 +226,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="1"
                   data-producto-nombre="Donuts Glaseadas"
                   data-producto-precio="1.50"
@@ -196,7 +249,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Buñuelos</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_bunuelos_desc">
                   Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un
                   clásico colombiano para acompañar el café.
                 </p>
@@ -208,6 +261,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="2"
                   data-producto-nombre="Buñuelos"
                   data-producto-precio="2.50"
@@ -230,7 +284,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Almojábanas</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_almojabanas_desc">
                   Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera,
                   esponjosos por dentro. Perfectas con café o chocolate.
                 </p>
@@ -242,6 +296,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="5"
                   data-producto-nombre="Almojábanas"
                   data-producto-precio="2.50"
@@ -264,7 +319,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Pandebono</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_pandebono_desc">
                   Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño.
                   Crujiente por fuera, esponjoso por dentro.
                 </p>
@@ -276,6 +331,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="6"
                   data-producto-nombre="Pandebono"
                   data-producto-precio="2.50"
@@ -298,7 +354,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Pan de Yuca</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_panyuca_desc">
                   Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a
                   queso. Perfecto solo o con chocolate.
                 </p>
@@ -310,6 +366,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="7"
                   data-producto-nombre="Pan de Yuca"
                   data-producto-precio="2.50"
@@ -332,7 +389,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Roscón de Arequipe o Guayaba</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_roscon_desc">
                   Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o
                   la merienda.
                 </p>
@@ -344,6 +401,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="3"
                   data-producto-nombre="Roscón de Arequipe"
                   data-producto-precio="2.50"
@@ -366,7 +424,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Conchas</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_conchas_desc">
                   Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate.
                   Perfectas para el desayuno o la merienda.
                 </p>
@@ -378,6 +436,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="8"
                   data-producto-nombre="Conchas"
                   data-producto-precio="1.75"
@@ -400,7 +459,7 @@
               </div>
               <div class="producto-card__info">
                 <h3 class="producto-card__nombre">Croissant</h3>
-                <p class="producto-card__descripcion">
+                <p class="producto-card__descripcion" data-i18n="prod_croissant_desc">
                   Hojaldre crujiente con mantequilla, acompañado de dulce de leche.
                 </p>
                 <div class="producto-card__precio-stock">
@@ -411,6 +470,7 @@
                 </div>
                 <button
                   class="btn btn--add"
+                  data-i18n="add_cart"
                   data-producto-id="4"
                   data-producto-nombre="Croissant"
                   data-producto-precio="2.00"
@@ -422,7 +482,7 @@
           </div>
 
           <div class="productos-vacio" data-productos-vacio hidden>
-            <p>No hay productos en esta categoría.</p>
+            <p data-i18n="catalog_empty">No hay productos en esta categoría.</p>
           </div>
         </div>
       </section>
@@ -432,15 +492,15 @@
     <footer class="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>
@@ -455,16 +515,16 @@
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="index.html">Inicio</a></li>
-            <li><a href="nosotros.html">Nosotros</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="index.html" data-i18n="nav_home">Inicio</a></li>
+            <li><a href="nosotros.html" data-i18n="nav_us">Nosotros</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

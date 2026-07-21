@@ -15,7 +15,13 @@ import {
   getCartTotal,
   escapeHTML,
 } from '../core/cart.js';
-import { formatPrice, pluralizeEs } from '../core/format.js';
+import { formatPrice } from '../core/format.js';
+import { t } from '../core/i18n.js';
+
+/** Devuelve '<count> <palabra>' pluralizando según el idioma activo */
+function pluralizeItems(count) {
+  return `${count} ${count === 1 ? t('product_singular') : t('product_plural')}`;
+}
 
 /* ---- Elementos del DOM ---- */
 const els = {
@@ -46,11 +52,11 @@ function renderItem(item) {
         <p class="carrito-item__precio">${formatPrice(item.precio)} × ${item.cantidad} = ${formatPrice(subtotal)}</p>
       </div>
       <div class="carrito-item__cantidad-control">
-        <button type="button" class="carrito-item__btn" data-action="decrement" aria-label="Disminuir cantidad de ${nombreSafe}">−</button>
+        <button type="button" class="carrito-item__btn" data-action="decrement" aria-label="${t('aria_decrease')} ${nombreSafe}">−</button>
         <span class="carrito-item__cantidad" data-item-cantidad>${Number(item.cantidad)}</span>
-        <button type="button" class="carrito-item__btn" data-action="increment" aria-label="Aumentar cantidad de ${nombreSafe}">+</button>
+        <button type="button" class="carrito-item__btn" data-action="increment" aria-label="${t('aria_increase')} ${nombreSafe}">+</button>
       </div>
-      <button type="button" class="carrito-item__eliminar" data-action="remove" aria-label="Eliminar ${nombreSafe}">🗑️</button>
+      <button type="button" class="carrito-item__eliminar" data-action="remove" aria-label="${t('aria_remove')} ${nombreSafe}">🗑️</button>
     </article>
   `;
 }
@@ -72,7 +78,7 @@ function renderCarrito() {
 
   if (els.subtotal()) els.subtotal().textContent = formatPrice(total);
   if (els.total()) els.total().textContent = formatPrice(total);
-  if (els.cantidadTexto()) els.cantidadTexto().textContent = pluralizeEs(count, 'producto');
+  if (els.cantidadTexto()) els.cantidadTexto().textContent = pluralizeItems(count);
   if (els.proceder()) els.proceder().disabled = !hay;
   if (els.vaciar()) els.vaciar().hidden = !hay;
 }
@@ -103,7 +109,7 @@ function initItemControls() {
 /** Vaciar canasta */
 function initVaciar() {
   els.vaciar()?.addEventListener('click', () => {
-    if (confirm('¿Vaciar toda la canasta?')) {
+    if (confirm(t('confirm_clear'))) {
       clearCart();
       renderCarrito();
     }
@@ -124,4 +130,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initVaciar();
   initProceder();
   window.addEventListener('cart:updated', renderCarrito);
+  window.addEventListener('lang:changed', renderCarrito);
 });
