@@ -6,6 +6,7 @@
 
 import { initUI, updateCartBadges } from '../core/ui.js';
 import { addToCart } from '../core/cart.js';
+import { t } from '../core/i18n.js';
 
 /** Maneja los filtros de categoría */
 function initFiltros() {
@@ -63,7 +64,7 @@ function initAddToCart() {
 
       // Feedback visual — éxito
       const originalText = btn.textContent;
-      btn.textContent = '✓ Añadido';
+      btn.textContent = t('toast_added');
       btn.classList.add('is-added');
       btn.disabled = true;
 
@@ -78,7 +79,7 @@ function initAddToCart() {
       // Feedback visual — error (datos de producto inválidos)
       console.warn('[catalogo] addToCart falló:', err.message);
       const originalText = btn.textContent;
-      btn.textContent = '✗ Error';
+      btn.textContent = t('toast_error');
       btn.classList.add('is-error');
       setTimeout(() => {
         btn.textContent = originalText;

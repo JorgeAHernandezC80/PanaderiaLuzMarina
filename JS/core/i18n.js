@@ -2,8 +2,11 @@
  * PANADERÍA LUZ MARINA — Core: i18n
  * Toggle de idioma ES / EN.
  * - Persiste en localStorage ('plm_lang')
- * - Actualiza todos los elementos con data-i18n="clave"
- * - Actualiza el label del botón de idioma
+ * - Traduce el texto de los elementos con data-i18n="clave"
+ * - Traduce atributos con data-i18n-placeholder / data-i18n-aria-label
+ * - Actualiza el label del botón de idioma y <html lang>
+ * - Expone t() / getCurrentLang() para el contenido generado por JS
+ * - Emite el evento 'lang:changed' para que las vistas dinámicas se re-rendericen
  */
 
 const STORAGE_KEY = 'plm_lang';
@@ -11,21 +14,26 @@ const STORAGE_KEY = 'plm_lang';
 /** Diccionario de traducciones */
 const translations = {
   es: {
+    /* Accesibilidad / genérico */
+    skip_link: 'Saltar al contenido principal',
+    nav_aria: 'Navegación principal',
+
     /* Nav */
     nav_home: 'Inicio',
     nav_catalog: 'Catálogo',
     nav_us: 'Nosotros',
     nav_contact: 'Contacto',
 
-    /* Hero */
+    /* Hero (inicio) */
     hero_badge: 'Horno Abierto',
+    hero_stock_available: 'Hornada de hoy disponible',
     hero_units: 'unidades disponibles',
     hero_title: 'El pan de siempre, hecho con cariño.',
     hero_subtitle: 'Horneamos hoy lo que comerás mañana.',
     hero_cta_stock: 'Ver Stock en Vivo',
     hero_cta_wa: 'Reservar por WhatsApp',
 
-    /* Valores */
+    /* Valores (inicio) */
     valores_title: '¿Por qué elegirnos?',
     valor_fresh: 'Pan fresco cada día',
     valor_fresh_desc: 'Horneamos desde temprano para que tengas pan recién hecho.',
@@ -34,7 +42,7 @@ const translations = {
     valor_service: 'Atención cercana',
     valor_service_desc: 'Te conocemos por nombre. Aquí no eres un número.',
 
-    /* CTA */
+    /* CTA (inicio) */
     cta_title: '¿Listo para probar nuestro pan?',
     cta_text: 'Visítanos o haz tu pedido por WhatsApp',
     cta_btn: 'Ver Catálogo',
@@ -42,17 +50,33 @@ const translations = {
     /* Catálogo */
     catalog_title: 'Nuestra Hornada Diaria',
     catalog_subtitle: 'Productos frescos horneados cada mañana',
+    catalog_filter_heading: 'Filtrar por categoría',
     filter_all: 'Todos',
     filter_bread: 'Panadería',
     filter_pastry: 'Bollería',
     filter_sweets: 'Repostería',
     filter_fried: 'Frituras',
     add_cart: 'Añadir al carrito',
+    catalog_empty: 'No hay productos en esta categoría.',
+    prod_donuts_desc: 'Suaves por dentro, crujientes por fuera, con glaseado de vainilla.',
+    prod_bunuelos_desc:
+      'Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un clásico colombiano para acompañar el café.',
+    prod_almojabanas_desc:
+      'Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera, esponjosos por dentro. Perfectas con café o chocolate.',
+    prod_pandebono_desc:
+      'Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño. Crujiente por fuera, esponjoso por dentro.',
+    prod_panyuca_desc:
+      'Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a queso. Perfecto solo o con chocolate.',
+    prod_roscon_desc:
+      'Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o la merienda.',
+    prod_conchas_desc:
+      'Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate. Perfectas para el desayuno o la merienda.',
+    prod_croissant_desc: 'Hojaldre crujiente con mantequilla, acompañado de dulce de leche.',
 
     /* Carrito */
     cart_title: 'Tu Canasta',
     cart_empty: 'Tu canasta está vacía',
-    cart_empty_sub: 'Aún no has añadido nada. ¡Explora el catálogo!',
+    cart_empty_sub: 'Aún no has añadido nada. ¡Explora el catálogo y elige tu pan favorito!',
     cart_go: 'Ir al catálogo',
     cart_summary: 'Resumen del pedido',
     cart_subtotal: 'Subtotal',
@@ -63,6 +87,97 @@ const translations = {
     cart_continue: '← Seguir comprando',
     cart_clear: 'Vaciar canasta',
     cart_note: '🔒 Pago en efectivo contra entrega',
+    product_singular: 'producto',
+    product_plural: 'productos',
+    confirm_clear: '¿Vaciar toda la canasta?',
+    aria_decrease: 'Disminuir cantidad de',
+    aria_increase: 'Aumentar cantidad de',
+    aria_remove: 'Eliminar',
+    toast_added: '✓ Añadido',
+    toast_error: '✗ Error',
+
+    /* Nosotros */
+    about_hero_title: 'Nuestra Historia',
+    about_hero_subtitle: 'Pan horneado cada mañana, con la receta de siempre',
+    about_story_1:
+      'Nuestra panadería lleva con orgullo el nombre de nuestra fundadora, Luz Marina. Lo que comenzó como una forma de llevar pan fresco y casero a nuestra propia familia, pronto se convirtió en el sustento y la alegría de nuestros vecinos.',
+    about_story_2:
+      'Hoy continuamos con esa misma pasión. No usamos procesos industriales ni ingredientes complicados. Solo harina, agua, queso, huevos y el tiempo necesario para que cada producto salga perfecto.',
+    about_values_title: 'Lo que nos define',
+    about_v_fresh_desc:
+      'Horneamos desde temprano para que tengas pan recién hecho cuando nos visites.',
+    about_v_recipes_desc:
+      'Usamos las recetas que han funcionado por años, sin ingredientes raros ni atajos.',
+    about_v_service_desc:
+      'Conocemos a nuestros clientes por nombre. Aquí no eres un número, eres parte de la familia.',
+    about_v_fair: 'Precios justos',
+    about_v_fair_desc:
+      'Pan de calidad al precio que corresponde. Sin inflar costos ni sorpresas en la cuenta.',
+    about_team_title: 'Las personas detrás del pan',
+    role_founder: 'Fundadora',
+    role_baker: 'Panadero',
+    about_quote_1: '"El pan se hace con paciencia y cariño."',
+    about_quote_2: '"Cuido que cada cliente se vaya contento con su pan."',
+    about_cta_text: 'Visítanos en el local o haz tu pedido por WhatsApp',
+    about_cta_wa: 'Pedir por WhatsApp',
+
+    /* Contacto */
+    contact_hero_title: 'Contáctanos',
+    contact_hero_subtitle: 'Estamos aquí para atenderte con el mismo cariño de siempre',
+    contact_info_heading: 'Información de contacto',
+    contact_address_title: 'Nuestra Dirección',
+    contact_map_link: 'Ver en Google Maps',
+    contact_map_link_arrow: 'Ver en Google Maps →',
+    contact_phone_title: 'Teléfono',
+    contact_phone_sub: 'Llámanos o escríbenos por WhatsApp',
+    contact_wa_title: '¿Quieres hacer un pedido?',
+    contact_wa_text:
+      'La forma más rápida de reservar tu pan es escribiéndonos directamente. Te confirmamos el stock y te lo dejamos listo para retirar.',
+    contact_wa_btn: 'Escríbenos por WhatsApp',
+
+    /* Horarios compartidos (footer + tarjetas) */
+    days_weekday: 'Lunes a Viernes:',
+    days_saturday: 'Sábados:',
+    days_sunday: 'Domingos:',
+
+    /* Checkout */
+    checkout_title: 'Finalizar Pedido',
+    checkout_subtitle: 'Ingresa los datos del cliente para confirmarle el pedido por WhatsApp',
+    checkout_step1: 'Tu pedido',
+    checkout_step2: 'Datos de entrega',
+    checkout_step3: 'Método de pago',
+    checkout_modify: '← Añadir o modificar productos',
+    checkout_empty: 'Tu carrito está vacío.',
+    checkout_empty_link: 'Volver al catálogo',
+    checkout_name_label: 'Nombre de contacto',
+    checkout_name_ph: 'Tu nombre completo',
+    checkout_name_err: 'Por favor ingresa tu nombre.',
+    checkout_phone_label: 'Teléfono (WhatsApp)',
+    checkout_phone_err: 'Ingresa un teléfono válido.',
+    checkout_pickup_time_label: 'Horario de retiro',
+    checkout_hour: 'Hora',
+    checkout_minutes: 'Minutos',
+    checkout_hour_err: 'Selecciona una hora.',
+    checkout_minute_err: 'Selecciona los minutos.',
+    checkout_time_err: 'Selecciona un horario completo.',
+    checkout_pickup_note: 'Retiro en local:',
+    pay_card_desc: 'Tarjeta de crédito / débito',
+    pay_unavailable: 'No disponible',
+    pay_cash: 'Efectivo contra entrega',
+    pay_cash_desc: 'Paga al retirar tu pedido en el local',
+    checkout_pay_note: 'ℹ️ Por ahora solo aceptamos efectivo al momento de la entrega.',
+    checkout_back: '← Atrás',
+    checkout_confirm: 'Confirmar pedido',
+    checkout_security:
+      'Tu pedido se enviará directamente por WhatsApp. Pago en efectivo al retirar.',
+    checkout_sent_title: '¡Pedido enviado!',
+    checkout_sent_subtitle: 'Tu pedido fue enviado por WhatsApp a la panadería.',
+    conf_order_label: 'Número de orden',
+    conf_date_label: 'Fecha y hora',
+    conf_client_label: 'Cliente',
+    conf_pickup_label: 'Retiro',
+    conf_note: 'Guarda tu número de orden. La panadería te confirmará el pedido pronto.',
+    conf_continue: 'Seguir comprando',
 
     /* Footer */
     footer_schedule: 'Horario de Atención',
@@ -72,21 +187,26 @@ const translations = {
   },
 
   en: {
+    /* Accesibilidad / genérico */
+    skip_link: 'Skip to main content',
+    nav_aria: 'Main navigation',
+
     /* Nav */
     nav_home: 'Home',
     nav_catalog: 'Catalog',
     nav_us: 'About Us',
     nav_contact: 'Contact',
 
-    /* Hero */
+    /* Hero (inicio) */
     hero_badge: 'Oven Open',
+    hero_stock_available: "Today's bake available",
     hero_units: 'units available',
     hero_title: 'Traditional bread, made with love.',
     hero_subtitle: "We bake today what you'll enjoy tomorrow.",
     hero_cta_stock: 'View Live Stock',
     hero_cta_wa: 'Reserve via WhatsApp',
 
-    /* Valores */
+    /* Valores (inicio) */
     valores_title: 'Why choose us?',
     valor_fresh: 'Fresh bread every day',
     valor_fresh_desc: 'We bake early every morning so you always get fresh bread.',
@@ -95,7 +215,7 @@ const translations = {
     valor_service: 'Personal service',
     valor_service_desc: "We know our customers by name. You're not just a number here.",
 
-    /* CTA */
+    /* CTA (inicio) */
     cta_title: 'Ready to try our bread?',
     cta_text: 'Visit us or place your order on WhatsApp',
     cta_btn: 'View Catalog',
@@ -103,17 +223,33 @@ const translations = {
     /* Catálogo */
     catalog_title: "Today's Bake",
     catalog_subtitle: 'Fresh products baked every morning',
+    catalog_filter_heading: 'Filter by category',
     filter_all: 'All',
     filter_bread: 'Bread',
     filter_pastry: 'Pastry',
     filter_sweets: 'Sweets',
     filter_fried: 'Fried',
     add_cart: 'Add to cart',
+    catalog_empty: 'No products in this category.',
+    prod_donuts_desc: 'Soft inside, crispy outside, with vanilla glaze.',
+    prod_bunuelos_desc:
+      'Golden cheese-dough fritters, crispy outside and soft inside. A Colombian classic to go with coffee.',
+    prod_almojabanas_desc:
+      'Traditional corn-flour and cheese rolls. Crispy outside, fluffy inside. Perfect with coffee or hot chocolate.',
+    prod_pandebono_desc:
+      'A roll from the Valle del Cauca, made with cassava starch and costeño cheese. Crispy outside, fluffy inside.',
+    prod_panyuca_desc:
+      'Made with cassava starch, cheese and egg. Soft, fluffy and full of cheese flavor. Great on its own or with hot chocolate.',
+    prod_roscon_desc:
+      'Soft and fluffy, filled with dulce de leche or guava. Perfect with coffee or as an afternoon snack.',
+    prod_conchas_desc:
+      'Traditional sweet bread with its classic crunchy vanilla or chocolate topping. Perfect for breakfast or a snack.',
+    prod_croissant_desc: 'Crispy buttery puff pastry, served with dulce de leche.',
 
     /* Carrito */
     cart_title: 'Your Basket',
     cart_empty: 'Your basket is empty',
-    cart_empty_sub: "You haven't added anything yet. Explore the catalog!",
+    cart_empty_sub: "You haven't added anything yet. Explore the catalog and pick your favorite!",
     cart_go: 'Go to catalog',
     cart_summary: 'Order summary',
     cart_subtotal: 'Subtotal',
@@ -124,6 +260,95 @@ const translations = {
     cart_continue: '← Continue shopping',
     cart_clear: 'Clear basket',
     cart_note: '🔒 Cash on pickup',
+    product_singular: 'item',
+    product_plural: 'items',
+    confirm_clear: 'Clear the whole basket?',
+    aria_decrease: 'Decrease quantity of',
+    aria_increase: 'Increase quantity of',
+    aria_remove: 'Remove',
+    toast_added: '✓ Added',
+    toast_error: '✗ Error',
+
+    /* Nosotros */
+    about_hero_title: 'Our Story',
+    about_hero_subtitle: 'Bread baked every morning, with the recipe of always',
+    about_story_1:
+      'Our bakery proudly bears the name of our founder, Luz Marina. What began as a way to bring fresh, homemade bread to our own family soon became the livelihood and joy of our neighbors.',
+    about_story_2:
+      'Today we carry on with that same passion. We use no industrial processes or complicated ingredients. Just flour, water, cheese, eggs and the time each product needs to turn out perfect.',
+    about_values_title: 'What defines us',
+    about_v_fresh_desc: 'We bake early so you get fresh bread whenever you visit us.',
+    about_v_recipes_desc:
+      'We use the recipes that have worked for years, with no strange ingredients or shortcuts.',
+    about_v_service_desc:
+      "We know our customers by name. Here you're not a number, you're part of the family.",
+    about_v_fair: 'Fair prices',
+    about_v_fair_desc:
+      'Quality bread at the right price. No inflated costs or surprises on the bill.',
+    about_team_title: 'The people behind the bread',
+    role_founder: 'Founder',
+    role_baker: 'Baker',
+    about_quote_1: '"Bread is made with patience and love."',
+    about_quote_2: '"I make sure every customer leaves happy with their bread."',
+    about_cta_text: 'Visit our store or place your order on WhatsApp',
+    about_cta_wa: 'Order on WhatsApp',
+
+    /* Contacto */
+    contact_hero_title: 'Contact Us',
+    contact_hero_subtitle: "We're here to help you with the same care as always",
+    contact_info_heading: 'Contact information',
+    contact_address_title: 'Our Address',
+    contact_map_link: 'View on Google Maps',
+    contact_map_link_arrow: 'View on Google Maps →',
+    contact_phone_title: 'Phone',
+    contact_phone_sub: 'Call us or message us on WhatsApp',
+    contact_wa_title: 'Want to place an order?',
+    contact_wa_text:
+      'The fastest way to reserve your bread is to message us directly. We confirm stock and leave it ready for pickup.',
+    contact_wa_btn: 'Message us on WhatsApp',
+
+    /* Horarios compartidos (footer + tarjetas) */
+    days_weekday: 'Monday to Friday:',
+    days_saturday: 'Saturdays:',
+    days_sunday: 'Sundays:',
+
+    /* Checkout */
+    checkout_title: 'Complete Order',
+    checkout_subtitle: "Enter the customer's details to confirm the order via WhatsApp",
+    checkout_step1: 'Your order',
+    checkout_step2: 'Delivery details',
+    checkout_step3: 'Payment method',
+    checkout_modify: '← Add or edit products',
+    checkout_empty: 'Your cart is empty.',
+    checkout_empty_link: 'Back to catalog',
+    checkout_name_label: 'Contact name',
+    checkout_name_ph: 'Your full name',
+    checkout_name_err: 'Please enter your name.',
+    checkout_phone_label: 'Phone (WhatsApp)',
+    checkout_phone_err: 'Enter a valid phone number.',
+    checkout_pickup_time_label: 'Pickup time',
+    checkout_hour: 'Hour',
+    checkout_minutes: 'Minutes',
+    checkout_hour_err: 'Select an hour.',
+    checkout_minute_err: 'Select the minutes.',
+    checkout_time_err: 'Select a complete time.',
+    checkout_pickup_note: 'Pick up in store:',
+    pay_card_desc: 'Credit / debit card',
+    pay_unavailable: 'Unavailable',
+    pay_cash: 'Cash on pickup',
+    pay_cash_desc: 'Pay when you pick up your order in store',
+    checkout_pay_note: 'ℹ️ For now we only accept cash at pickup.',
+    checkout_back: '← Back',
+    checkout_confirm: 'Confirm order',
+    checkout_security: 'Your order will be sent directly via WhatsApp. Cash payment at pickup.',
+    checkout_sent_title: 'Order sent!',
+    checkout_sent_subtitle: 'Your order was sent to the bakery via WhatsApp.',
+    conf_order_label: 'Order number',
+    conf_date_label: 'Date and time',
+    conf_client_label: 'Customer',
+    conf_pickup_label: 'Pickup',
+    conf_note: 'Save your order number. The bakery will confirm your order soon.',
+    conf_continue: 'Continue shopping',
 
     /* Footer */
     footer_schedule: 'Business Hours',
@@ -132,6 +357,25 @@ const translations = {
     footer_copy: '© 2026 Panadería Luz Marina. Made with love.',
   },
 };
+
+/** Atributos traducibles: data-i18n-<suffix> -> nombre real del atributo */
+const ATTR_MAP = {
+  'data-i18n-placeholder': 'placeholder',
+  'data-i18n-aria-label': 'aria-label',
+};
+
+/** Idioma actualmente aplicado */
+let currentLang = 'es';
+
+/** Idioma activo ('es' | 'en') */
+export function getCurrentLang() {
+  return currentLang;
+}
+
+/** Traduce una clave al idioma activo; si no existe, devuelve la clave */
+export function t(key) {
+  return translations[currentLang]?.[key] ?? key;
+}
 
 /** Obtiene el idioma guardado o el del navegador */
 function getSavedLang() {
@@ -146,13 +390,23 @@ function applyLang(lang) {
   const dict = translations[lang];
   if (!dict) return;
 
-  /* Actualizar elementos con data-i18n */
+  currentLang = lang;
+
+  /* Texto de elementos con data-i18n */
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const key = el.getAttribute('data-i18n');
     if (dict[key] !== undefined) el.textContent = dict[key];
   });
 
-  /* Actualizar label del botón de idioma */
+  /* Atributos traducibles (placeholder, aria-label) */
+  Object.entries(ATTR_MAP).forEach(([dataAttr, realAttr]) => {
+    document.querySelectorAll(`[${dataAttr}]`).forEach((el) => {
+      const key = el.getAttribute(dataAttr);
+      if (dict[key] !== undefined) el.setAttribute(realAttr, dict[key]);
+    });
+  });
+
+  /* Label del botón de idioma */
   const label = document.querySelector('[data-lang-label]');
   if (label) label.textContent = lang.toUpperCase();
 
@@ -161,10 +415,13 @@ function applyLang(lang) {
     btn.setAttribute('aria-label', lang === 'es' ? 'Switch to English' : 'Cambiar a Español');
   }
 
-  /* Actualizar atributo lang del documento */
+  /* Atributo lang del documento */
   document.documentElement.lang = lang === 'es' ? 'es' : 'en';
 
   localStorage.setItem(STORAGE_KEY, lang);
+
+  /* Notificar a las vistas dinámicas (carrito, catálogo, checkout) */
+  window.dispatchEvent(new CustomEvent('lang:changed', { detail: { lang } }));
 }
 
 /** Inicializa el toggle de idioma */

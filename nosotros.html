@@ -41,11 +41,17 @@
     />
   </head>
   <body class="page page--nosotros" data-page="nosotros">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -68,10 +74,18 @@
         </button>
         <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
           <li class="header__menu-item" role="none">
-            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+            <a href="index.html" class="header__menu-link" role="menuitem" data-i18n="nav_home"
+              >Inicio</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+            <a
+              href="catalogo.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_catalog"
+              >Catálogo</a
+            >
           </li>
           <li class="header__menu-item" role="none">
             <a
@@ -79,11 +93,18 @@
               class="header__menu-link header__menu-link--active"
               role="menuitem"
               aria-current="page"
+              data-i18n="nav_us"
               >Nosotros</a
             >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+            <a
+              href="contacto.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_contact"
+              >Contacto</a
+            >
           </li>
         </ul>
         <div class="header__actions">
@@ -122,8 +143,12 @@
     <main id="main-content">
       <section class="hero hero--small" aria-labelledby="nosotros-title">
         <div class="hero__content container">
-          <h1 id="nosotros-title" class="hero__title">Nuestra Historia</h1>
-          <p class="hero__subtitle">Pan horneado cada mañana, con la receta de siempre</p>
+          <h1 id="nosotros-title" class="hero__title" data-i18n="about_hero_title">
+            Nuestra Historia
+          </h1>
+          <p class="hero__subtitle" data-i18n="about_hero_subtitle">
+            Pan horneado cada mañana, con la receta de siempre
+          </p>
         </div>
       </section>
 
@@ -132,7 +157,7 @@
         <div class="container historia__container">
           <div class="historia__content">
             <h2 id="historia-title" class="historia__title">Panadería Luz Marina</h2>
-            <p class="historia__text">
+            <p class="historia__text" data-i18n="about_story_1">
               Nuestra panadería lleva con orgullo el nombre de nuestra fundadora, Luz Marina. Lo que
               comenzó como una forma de llevar pan fresco y casero a nuestra propia familia, pronto
               se convirtió en el sustento y la alegría de nuestros vecinos.
@@ -147,7 +172,7 @@
                 data-img-hide
               />
             </div>
-            <p class="historia__text">
+            <p class="historia__text" data-i18n="about_story_2">
               Hoy continuamos con esa misma pasión. No usamos procesos industriales ni ingredientes
               complicados. Solo harina, agua, queso, huevos y el tiempo necesario para que cada
               producto salga perfecto.
@@ -159,34 +184,36 @@
       <!-- Valores -->
       <section class="valores" data-section="valores" aria-labelledby="valores-title">
         <div class="container valores__container">
-          <h2 id="valores-title" class="valores__title">Lo que nos define</h2>
+          <h2 id="valores-title" class="valores__title" data-i18n="about_values_title">
+            Lo que nos define
+          </h2>
           <div class="valores__grid">
             <article class="valor">
               <span class="valor__icon" aria-hidden="true">🥖</span>
-              <h3 class="valor__title">Pan fresco cada día</h3>
-              <p class="valor__text">
+              <h3 class="valor__title" data-i18n="valor_fresh">Pan fresco cada día</h3>
+              <p class="valor__text" data-i18n="about_v_fresh_desc">
                 Horneamos desde temprano para que tengas pan recién hecho cuando nos visites.
               </p>
             </article>
             <article class="valor">
               <span class="valor__icon" aria-hidden="true">👩‍🍳</span>
-              <h3 class="valor__title">Recetas de familia</h3>
-              <p class="valor__text">
+              <h3 class="valor__title" data-i18n="valor_recipes">Recetas de familia</h3>
+              <p class="valor__text" data-i18n="about_v_recipes_desc">
                 Usamos las recetas que han funcionado por años, sin ingredientes raros ni atajos.
               </p>
             </article>
             <article class="valor">
               <span class="valor__icon" aria-hidden="true">💛</span>
-              <h3 class="valor__title">Atención cercana</h3>
-              <p class="valor__text">
+              <h3 class="valor__title" data-i18n="valor_service">Atención cercana</h3>
+              <p class="valor__text" data-i18n="about_v_service_desc">
                 Conocemos a nuestros clientes por nombre. Aquí no eres un número, eres parte de la
                 familia.
               </p>
             </article>
             <article class="valor">
               <span class="valor__icon" aria-hidden="true">💰</span>
-              <h3 class="valor__title">Precios justos</h3>
-              <p class="valor__text">
+              <h3 class="valor__title" data-i18n="about_v_fair">Precios justos</h3>
+              <p class="valor__text" data-i18n="about_v_fair_desc">
                 Pan de calidad al precio que corresponde. Sin inflar costos ni sorpresas en la
                 cuenta.
               </p>
@@ -198,7 +225,9 @@
       <!-- Equipo -->
       <section class="equipo" data-section="equipo" aria-labelledby="equipo-title">
         <div class="container equipo__container">
-          <h2 id="equipo-title" class="equipo__title">Las personas detrás del pan</h2>
+          <h2 id="equipo-title" class="equipo__title" data-i18n="about_team_title">
+            Las personas detrás del pan
+          </h2>
           <div class="equipo__grid">
             <article class="miembro">
               <div class="miembro__foto-wrapper">
@@ -212,8 +241,10 @@
                 />
               </div>
               <h3 class="miembro__nombre">Luz Marina</h3>
-              <p class="miembro__rol">Fundadora</p>
-              <p class="miembro__frase">"El pan se hace con paciencia y cariño."</p>
+              <p class="miembro__rol" data-i18n="role_founder">Fundadora</p>
+              <p class="miembro__frase" data-i18n="about_quote_1">
+                "El pan se hace con paciencia y cariño."
+              </p>
             </article>
             <article class="miembro">
               <div class="miembro__foto-wrapper">
@@ -228,8 +259,10 @@
                 />
               </div>
               <h3 class="miembro__nombre">Jorge</h3>
-              <p class="miembro__rol">Panadero</p>
-              <p class="miembro__frase">"Cuido que cada cliente se vaya contento con su pan."</p>
+              <p class="miembro__rol" data-i18n="role_baker">Panadero</p>
+              <p class="miembro__frase" data-i18n="about_quote_2">
+                "Cuido que cada cliente se vaya contento con su pan."
+              </p>
             </article>
           </div>
         </div>
@@ -238,15 +271,20 @@
       <!-- CTA -->
       <section class="cta" data-section="cta" aria-labelledby="cta-title">
         <div class="container">
-          <h2 id="cta-title" class="cta__title">¿Listo para probar nuestro pan?</h2>
-          <p class="cta__text">Visítanos en el local o haz tu pedido por WhatsApp</p>
+          <h2 id="cta-title" class="cta__title" data-i18n="cta_title">
+            ¿Listo para probar nuestro pan?
+          </h2>
+          <p class="cta__text" data-i18n="about_cta_text">
+            Visítanos en el local o haz tu pedido por WhatsApp
+          </p>
           <div class="cta__acciones">
-            <a href="catalogo.html" class="btn btn--light">Ver Catálogo</a>
+            <a href="catalogo.html" class="btn btn--light" data-i18n="cta_btn">Ver Catálogo</a>
             <a
               href="https://wa.me/12817703825?text=Hola,%20quiero%20hacer%20un%20pedido"
               class="btn btn--whatsapp"
               target="_blank"
               rel="noopener"
+              data-i18n="about_cta_wa"
             >
               Pedir por WhatsApp
             </a>
@@ -259,31 +297,31 @@
     <footer class="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>📍 Avenida Rústica 1042</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="index.html">Inicio</a></li>
-            <li><a href="catalogo.html">Catálogo</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="index.html" data-i18n="nav_home">Inicio</a></li>
+            <li><a href="catalogo.html" data-i18n="nav_catalog">Catálogo</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

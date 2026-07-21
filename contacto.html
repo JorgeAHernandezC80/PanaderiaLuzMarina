@@ -41,11 +41,17 @@
     />
   </head>
   <body class="page page--contacto" data-page="contacto">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -68,13 +74,23 @@
         </button>
         <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
           <li class="header__menu-item" role="none">
-            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+            <a href="index.html" class="header__menu-link" role="menuitem" data-i18n="nav_home"
+              >Inicio</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+            <a
+              href="catalogo.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_catalog"
+              >Catálogo</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+            <a href="nosotros.html" class="header__menu-link" role="menuitem" data-i18n="nav_us"
+              >Nosotros</a
+            >
           </li>
           <li class="header__menu-item" role="none">
             <a
@@ -82,6 +98,7 @@
               class="header__menu-link header__menu-link--active"
               role="menuitem"
               aria-current="page"
+              data-i18n="nav_contact"
               >Contacto</a
             >
           </li>
@@ -122,25 +139,34 @@
     <main id="main-content">
       <section class="hero hero--small" aria-labelledby="contacto-title">
         <div class="hero__content container">
-          <h1 id="contacto-title" class="hero__title">Contáctanos</h1>
-          <p class="hero__subtitle">Estamos aquí para atenderte con el mismo cariño de siempre</p>
+          <h1 id="contacto-title" class="hero__title" data-i18n="contact_hero_title">
+            Contáctanos
+          </h1>
+          <p class="hero__subtitle" data-i18n="contact_hero_subtitle">
+            Estamos aquí para atenderte con el mismo cariño de siempre
+          </p>
         </div>
       </section>
 
       <!-- Tarjetas de contacto -->
       <section class="contacto" aria-labelledby="info-title">
         <div class="container contacto__container">
-          <h2 id="info-title" class="sr-only">Información de contacto</h2>
+          <h2 id="info-title" class="sr-only" data-i18n="contact_info_heading">
+            Información de contacto
+          </h2>
           <div class="contacto__grid">
             <article class="contacto__card">
               <span class="contacto__card-icon" aria-hidden="true">📍</span>
-              <h3 class="contacto__card-title">Nuestra Dirección</h3>
+              <h3 class="contacto__card-title" data-i18n="contact_address_title">
+                Nuestra Dirección
+              </h3>
               <address class="contacto__card-text">Avenida Rústica 1042</address>
               <a
                 href="https://maps.google.com/?q=Avenida+Rústica+1042"
                 class="contacto__card-link"
                 target="_blank"
                 rel="noopener"
+                data-i18n="contact_map_link"
               >
                 Ver en Google Maps
               </a>
@@ -148,20 +174,24 @@
 
             <article class="contacto__card">
               <span class="contacto__card-icon" aria-hidden="true">📞</span>
-              <h3 class="contacto__card-title">Teléfono</h3>
+              <h3 class="contacto__card-title" data-i18n="contact_phone_title">Teléfono</h3>
               <p class="contacto__card-text">
                 <a href="tel:+12817703825" class="contacto__card-link">+1 281-770-3825</a>
               </p>
-              <p class="contacto__card-subtext">Llámanos o escríbenos por WhatsApp</p>
+              <p class="contacto__card-subtext" data-i18n="contact_phone_sub">
+                Llámanos o escríbenos por WhatsApp
+              </p>
             </article>
 
             <article class="contacto__card">
               <span class="contacto__card-icon" aria-hidden="true">🕒</span>
-              <h3 class="contacto__card-title">Horario de Atención</h3>
+              <h3 class="contacto__card-title" data-i18n="footer_schedule">Horario de Atención</h3>
               <ul class="contacto__card-list">
-                <li><strong>Lunes a Viernes:</strong> 7:00 AM – 8:00 PM</li>
-                <li><strong>Sábados:</strong> 8:00 AM – 6:00 PM</li>
-                <li><strong>Domingos:</strong> 9:00 AM – 2:00 PM</li>
+                <li>
+                  <strong data-i18n="days_weekday">Lunes a Viernes:</strong> 7:00 AM – 8:00 PM
+                </li>
+                <li><strong data-i18n="days_saturday">Sábados:</strong> 8:00 AM – 6:00 PM</li>
+                <li><strong data-i18n="days_sunday">Domingos:</strong> 9:00 AM – 2:00 PM</li>
               </ul>
             </article>
           </div>
@@ -172,8 +202,10 @@
       <section class="whatsapp-cta" aria-labelledby="whatsapp-title">
         <div class="container whatsapp-cta__container">
           <span class="whatsapp-cta__icon" aria-hidden="true">💬</span>
-          <h2 id="whatsapp-title" class="whatsapp-cta__title">¿Quieres hacer un pedido?</h2>
-          <p class="whatsapp-cta__text">
+          <h2 id="whatsapp-title" class="whatsapp-cta__title" data-i18n="contact_wa_title">
+            ¿Quieres hacer un pedido?
+          </h2>
+          <p class="whatsapp-cta__text" data-i18n="contact_wa_text">
             La forma más rápida de reservar tu pan es escribiéndonos directamente. Te confirmamos el
             stock y te lo dejamos listo para retirar.
           </p>
@@ -184,7 +216,7 @@
             rel="noopener"
           >
             <span class="btn__icono" aria-hidden="true">💬</span>
-            Escríbenos por WhatsApp
+            <span data-i18n="contact_wa_btn">Escríbenos por WhatsApp</span>
           </a>
         </div>
       </section>
@@ -216,6 +248,7 @@
                   target="_blank"
                   rel="noopener"
                   style="color: #27ae60; font-size: 0.9rem"
+                  data-i18n="contact_map_link_arrow"
                 >
                   Ver en Google Maps →
                 </a>
@@ -230,32 +263,32 @@
     <footer class="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>📍 Avenida Rústica 1042</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="index.html">Inicio</a></li>
-            <li><a href="catalogo.html">Catálogo</a></li>
-            <li><a href="nosotros.html">Nosotros</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="index.html" data-i18n="nav_home">Inicio</a></li>
+            <li><a href="catalogo.html" data-i18n="nav_catalog">Catálogo</a></li>
+            <li><a href="nosotros.html" data-i18n="nav_us">Nosotros</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

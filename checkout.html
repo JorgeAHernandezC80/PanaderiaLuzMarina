@@ -41,11 +41,17 @@
     />
   </head>
   <body class="page page--checkout" data-page="checkout">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -68,16 +74,32 @@
         </button>
         <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
           <li class="header__menu-item" role="none">
-            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+            <a href="index.html" class="header__menu-link" role="menuitem" data-i18n="nav_home"
+              >Inicio</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+            <a
+              href="catalogo.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_catalog"
+              >Catálogo</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+            <a href="nosotros.html" class="header__menu-link" role="menuitem" data-i18n="nav_us"
+              >Nosotros</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+            <a
+              href="contacto.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_contact"
+              >Contacto</a
+            >
           </li>
         </ul>
         <div class="header__actions">
@@ -115,8 +137,10 @@
     <!-- MAIN -->
     <main id="main-content">
       <section class="page-title container" aria-labelledby="checkout-title">
-        <h1 id="checkout-title" class="page-title__text">Finalizar Pedido</h1>
-        <p class="page-title__subtitle">
+        <h1 id="checkout-title" class="page-title__text" data-i18n="checkout_title">
+          Finalizar Pedido
+        </h1>
+        <p class="page-title__subtitle" data-i18n="checkout_subtitle">
           Ingresa los datos del cliente para confirmarle el pedido por WhatsApp
         </p>
       </section>
@@ -126,15 +150,15 @@
         <ol class="stepper__list">
           <li class="stepper__item stepper__item--completed">
             <span class="stepper__number" aria-hidden="true">1</span>
-            <span class="stepper__label">Tu pedido</span>
+            <span class="stepper__label" data-i18n="checkout_step1">Tu pedido</span>
           </li>
           <li class="stepper__item stepper__item--active" aria-current="step">
             <span class="stepper__number" aria-hidden="true">2</span>
-            <span class="stepper__label">Datos de entrega</span>
+            <span class="stepper__label" data-i18n="checkout_step2">Datos de entrega</span>
           </li>
           <li class="stepper__item">
             <span class="stepper__number" aria-hidden="true">3</span>
-            <span class="stepper__label">Método de pago</span>
+            <span class="stepper__label" data-i18n="checkout_step3">Método de pago</span>
           </li>
         </ol>
       </nav>
@@ -148,39 +172,45 @@
             <fieldset class="checkout__section" data-checkout-section="pedido">
               <legend class="checkout__section-title">
                 <span class="checkout__section-number">1</span>
-                Tu pedido
+                <span data-i18n="checkout_step1">Tu pedido</span>
               </legend>
               <div class="checkout__items" data-checkout-items></div>
               <div class="checkout__vacio" data-checkout-vacio hidden>
-                <p>Tu carrito está vacío. <a href="catalogo.html">Volver al catálogo</a></p>
+                <p>
+                  <span data-i18n="checkout_empty">Tu carrito está vacío.</span>
+                  <a href="catalogo.html" data-i18n="checkout_empty_link">Volver al catálogo</a>
+                </p>
               </div>
               <div class="checkout__totales">
                 <div class="checkout__total-linea">
-                  <span>Subtotal</span>
+                  <span data-i18n="cart_subtotal">Subtotal</span>
                   <span data-checkout-subtotal>$0</span>
                 </div>
                 <div class="checkout__total-linea">
-                  <span>Retiro en local</span>
-                  <span class="checkout__total-linea--gratis">Gratis</span>
+                  <span data-i18n="cart_pickup">Retiro en local</span>
+                  <span class="checkout__total-linea--gratis" data-i18n="cart_free">Gratis</span>
                 </div>
                 <div class="checkout__total-linea checkout__total-linea--total">
-                  <span>Total a pagar</span>
+                  <span data-i18n="cart_total">Total a pagar</span>
                   <span data-checkout-total>$0</span>
                 </div>
               </div>
-              <a href="carrito.html" class="checkout__modificar">← Añadir o modificar productos</a>
+              <a href="carrito.html" class="checkout__modificar" data-i18n="checkout_modify"
+                >← Añadir o modificar productos</a
+              >
             </fieldset>
 
             <!-- Sección 2: Datos de entrega -->
             <fieldset class="checkout__section" data-checkout-section="entrega">
               <legend class="checkout__section-title">
                 <span class="checkout__section-number">2</span>
-                Datos de entrega
+                <span data-i18n="checkout_step2">Datos de entrega</span>
               </legend>
 
               <div class="form-group">
                 <label class="form-group__label" for="checkout-nombre">
-                  Nombre de contacto <span class="form-group__required" aria-hidden="true">*</span>
+                  <span data-i18n="checkout_name_label">Nombre de contacto</span>
+                  <span class="form-group__required" aria-hidden="true">*</span>
                 </label>
                 <input
                   type="text"
@@ -189,17 +219,23 @@
                   name="nombre"
                   data-form-nombre
                   placeholder="Tu nombre completo"
+                  data-i18n-placeholder="checkout_name_ph"
                   required
                   autocomplete="name"
                 />
-                <span class="form-group__error" data-error-nombre hidden
+                <span
+                  class="form-group__error"
+                  data-error-nombre
+                  hidden
+                  data-i18n="checkout_name_err"
                   >Por favor ingresa tu nombre.</span
                 >
               </div>
 
               <div class="form-group">
                 <label class="form-group__label" for="checkout-telefono">
-                  Teléfono (WhatsApp) <span class="form-group__required" aria-hidden="true">*</span>
+                  <span data-i18n="checkout_phone_label">Teléfono (WhatsApp)</span>
+                  <span class="form-group__required" aria-hidden="true">*</span>
                 </label>
                 <input
                   type="tel"
@@ -212,18 +248,28 @@
                   autocomplete="tel"
                   pattern="[\d\s\+\-]{7,}"
                 />
-                <span class="form-group__error" data-error-telefono hidden
+                <span
+                  class="form-group__error"
+                  data-error-telefono
+                  hidden
+                  data-i18n="checkout_phone_err"
                   >Ingresa un teléfono válido.</span
                 >
               </div>
 
               <div class="form-group">
                 <label class="form-group__label">
-                  Horario de retiro <span class="form-group__required" aria-hidden="true">*</span>
+                  <span data-i18n="checkout_pickup_time_label">Horario de retiro</span>
+                  <span class="form-group__required" aria-hidden="true">*</span>
                 </label>
                 <div class="form-group__horario">
                   <div class="form-group__horario-campo">
-                    <label class="form-group__horario-label" for="checkout-hora">Hora</label>
+                    <label
+                      class="form-group__horario-label"
+                      for="checkout-hora"
+                      data-i18n="checkout_hour"
+                      >Hora</label
+                    >
                     <select
                       id="checkout-hora"
                       class="form-group__input form-group__select"
@@ -246,12 +292,21 @@
                       <option value="18">06 p.m.</option>
                       <option value="19">07 p.m.</option>
                     </select>
-                    <span class="form-group__error" data-error-hora hidden
+                    <span
+                      class="form-group__error"
+                      data-error-hora
+                      hidden
+                      data-i18n="checkout_hour_err"
                       >Selecciona una hora.</span
                     >
                   </div>
                   <div class="form-group__horario-campo">
-                    <label class="form-group__horario-label" for="checkout-minuto">Minutos</label>
+                    <label
+                      class="form-group__horario-label"
+                      for="checkout-minuto"
+                      data-i18n="checkout_minutes"
+                      >Minutos</label
+                    >
                     <select
                       id="checkout-minuto"
                       class="form-group__input form-group__select"
@@ -265,24 +320,35 @@
                       <option value="30">30</option>
                       <option value="45">45</option>
                     </select>
-                    <span class="form-group__error" data-error-minuto hidden
+                    <span
+                      class="form-group__error"
+                      data-error-minuto
+                      hidden
+                      data-i18n="checkout_minute_err"
                       >Selecciona los minutos.</span
                     >
                   </div>
                 </div>
-                <span class="form-group__error" data-error-horario hidden
+                <span
+                  class="form-group__error"
+                  data-error-horario
+                  hidden
+                  data-i18n="checkout_time_err"
                   >Selecciona un horario completo.</span
                 >
               </div>
 
-              <p class="checkout__nota-entrega">📍 Retiro en local: Avenida Rústica 1042</p>
+              <p class="checkout__nota-entrega">
+                📍 <span data-i18n="checkout_pickup_note">Retiro en local:</span> Avenida Rústica
+                1042
+              </p>
             </fieldset>
 
             <!-- Sección 3: Método de pago -->
             <fieldset class="checkout__section" data-checkout-section="pago">
               <legend class="checkout__section-title">
                 <span class="checkout__section-number">3</span>
-                Método de pago
+                <span data-i18n="checkout_step3">Método de pago</span>
               </legend>
 
               <div class="pago-opciones">
@@ -297,9 +363,13 @@
                   <span class="pago-opcion__icono" aria-hidden="true">💳</span>
                   <div class="pago-opcion__info">
                     <span class="pago-opcion__nombre">Mercado Pago</span>
-                    <span class="pago-opcion__descripcion">Tarjeta de crédito / débito</span>
+                    <span class="pago-opcion__descripcion" data-i18n="pay_card_desc"
+                      >Tarjeta de crédito / débito</span
+                    >
                   </div>
-                  <span class="pago-opcion__badge pago-opcion__badge--no-disponible"
+                  <span
+                    class="pago-opcion__badge pago-opcion__badge--no-disponible"
+                    data-i18n="pay_unavailable"
                     >No disponible</span
                   >
                 </label>
@@ -315,8 +385,10 @@
                   />
                   <span class="pago-opcion__icono" aria-hidden="true">💵</span>
                   <div class="pago-opcion__info">
-                    <span class="pago-opcion__nombre">Efectivo contra entrega</span>
-                    <span class="pago-opcion__descripcion"
+                    <span class="pago-opcion__nombre" data-i18n="pay_cash"
+                      >Efectivo contra entrega</span
+                    >
+                    <span class="pago-opcion__descripcion" data-i18n="pay_cash_desc"
                       >Paga al retirar tu pedido en el local</span
                     >
                   </div>
@@ -324,41 +396,43 @@
                 </label>
               </div>
 
-              <p class="checkout__nota-pago">
+              <p class="checkout__nota-pago" data-i18n="checkout_pay_note">
                 ℹ️ Por ahora solo aceptamos efectivo al momento de la entrega.
               </p>
             </fieldset>
 
             <!-- Acciones -->
             <div class="checkout__acciones">
-              <a href="carrito.html" class="btn btn--outline">← Atrás</a>
+              <a href="carrito.html" class="btn btn--outline" data-i18n="checkout_back">← Atrás</a>
               <button type="submit" class="btn btn--whatsapp" data-btn-enviar-whatsapp disabled>
                 <span class="btn__icono" aria-hidden="true">💬</span>
-                Confirmar pedido
+                <span data-i18n="checkout_confirm">Confirmar pedido</span>
               </button>
             </div>
           </form>
 
           <!-- Resumen lateral -->
           <aside class="checkout__resumen" data-checkout-resumen aria-label="Resumen del pedido">
-            <h2 class="checkout__resumen-title">Resumen del pedido</h2>
+            <h2 class="checkout__resumen-title" data-i18n="cart_summary">Resumen del pedido</h2>
             <div class="resumen__lineas">
               <div class="resumen__linea">
-                <span class="resumen__label">Subtotal</span>
+                <span class="resumen__label" data-i18n="cart_subtotal">Subtotal</span>
                 <span class="resumen__valor" data-resumen-subtotal>$0</span>
               </div>
               <div class="resumen__linea">
-                <span class="resumen__label">Retiro en local</span>
-                <span class="resumen__valor resumen__valor--gratis">Gratis</span>
+                <span class="resumen__label" data-i18n="cart_pickup">Retiro en local</span>
+                <span class="resumen__valor resumen__valor--gratis" data-i18n="cart_free"
+                  >Gratis</span
+                >
               </div>
               <div class="resumen__linea resumen__linea--total">
-                <span class="resumen__label">Total a pagar</span>
+                <span class="resumen__label" data-i18n="cart_total">Total a pagar</span>
                 <span class="resumen__valor" data-resumen-total>$0</span>
               </div>
             </div>
             <div class="checkout__seguridad">
               <span class="checkout__seguridad-icono" aria-hidden="true">🔒</span>
-              <p class="checkout__seguridad-texto">
+              <p class="checkout__seguridad-texto" data-i18n="checkout_security">
                 Tu pedido se enviará directamente por WhatsApp. Pago en efectivo al retirar.
               </p>
             </div>
@@ -371,32 +445,32 @@
     <footer class="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>📍 Avenida Rústica 1042</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="index.html">Inicio</a></li>
-            <li><a href="catalogo.html">Catálogo</a></li>
-            <li><a href="nosotros.html">Nosotros</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="index.html" data-i18n="nav_home">Inicio</a></li>
+            <li><a href="catalogo.html" data-i18n="nav_catalog">Catálogo</a></li>
+            <li><a href="nosotros.html" data-i18n="nav_us">Nosotros</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

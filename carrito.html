@@ -40,11 +40,17 @@
     <link rel="stylesheet" href="./CSS/pages/carrito.css" />
   </head>
   <body class="page page--carrito" data-page="carrito">
-    <a href="#main-content" class="sr-only skip-link">Saltar al contenido principal</a>
+    <a href="#main-content" class="sr-only skip-link" data-i18n="skip_link"
+      >Saltar al contenido principal</a
+    >
 
     <!-- HEADER -->
     <header class="header" data-header data-component="header">
-      <nav class="header__nav container" aria-label="Navegación principal">
+      <nav
+        class="header__nav container"
+        aria-label="Navegación principal"
+        data-i18n-aria-label="nav_aria"
+      >
         <a
           href="index.html"
           class="header__logo"
@@ -67,16 +73,32 @@
         </button>
         <ul class="header__menu" id="header-menu" role="menubar" data-header-menu>
           <li class="header__menu-item" role="none">
-            <a href="index.html" class="header__menu-link" role="menuitem">Inicio</a>
+            <a href="index.html" class="header__menu-link" role="menuitem" data-i18n="nav_home"
+              >Inicio</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="catalogo.html" class="header__menu-link" role="menuitem">Catálogo</a>
+            <a
+              href="catalogo.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_catalog"
+              >Catálogo</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="nosotros.html" class="header__menu-link" role="menuitem">Nosotros</a>
+            <a href="nosotros.html" class="header__menu-link" role="menuitem" data-i18n="nav_us"
+              >Nosotros</a
+            >
           </li>
           <li class="header__menu-item" role="none">
-            <a href="contacto.html" class="header__menu-link" role="menuitem">Contacto</a>
+            <a
+              href="contacto.html"
+              class="header__menu-link"
+              role="menuitem"
+              data-i18n="nav_contact"
+              >Contacto</a
+            >
           </li>
         </ul>
         <div class="header__actions">
@@ -114,9 +136,14 @@
     <!-- MAIN -->
     <main id="main-content">
       <section class="page-title container" aria-labelledby="carrito-title">
-        <h1 id="carrito-title" class="page-title__text">Tu Canasta</h1>
+        <h1 id="carrito-title" class="page-title__text" data-i18n="cart_title">Tu Canasta</h1>
         <p class="page-title__subtitle" data-carrito-cantidad-texto>0 productos</p>
-        <button class="btn btn--link btn--danger" data-btn-vaciar-carrito hidden>
+        <button
+          class="btn btn--link btn--danger"
+          data-btn-vaciar-carrito
+          hidden
+          data-i18n="cart_clear"
+        >
           Vaciar canasta
         </button>
       </section>
@@ -129,36 +156,49 @@
 
             <div class="carrito__vacio" data-carrito-vacio hidden>
               <span class="carrito__vacio-icon" aria-hidden="true">🧺</span>
-              <h2 class="carrito__vacio-title">Tu canasta está vacía</h2>
-              <p class="carrito__vacio-text">
+              <h2 class="carrito__vacio-title" data-i18n="cart_empty">Tu canasta está vacía</h2>
+              <p class="carrito__vacio-text" data-i18n="cart_empty_sub">
                 Aún no has añadido nada. ¡Explora el catálogo y elige tu pan favorito!
               </p>
-              <a href="catalogo.html" class="btn btn--primary">Ir al catálogo</a>
+              <a href="catalogo.html" class="btn btn--primary" data-i18n="cart_go"
+                >Ir al catálogo</a
+              >
             </div>
           </div>
 
           <!-- Resumen -->
           <aside class="carrito__resumen" data-carrito-resumen aria-label="Resumen del pedido">
-            <h2 class="carrito__resumen-title">Resumen del pedido</h2>
+            <h2 class="carrito__resumen-title" data-i18n="cart_summary">Resumen del pedido</h2>
             <div class="resumen__lineas">
               <div class="resumen__linea">
-                <span class="resumen__label">Subtotal</span>
+                <span class="resumen__label" data-i18n="cart_subtotal">Subtotal</span>
                 <span class="resumen__valor" data-resumen-subtotal>$0</span>
               </div>
               <div class="resumen__linea">
-                <span class="resumen__label">Retiro en local</span>
-                <span class="resumen__valor resumen__valor--gratis">Gratis</span>
+                <span class="resumen__label" data-i18n="cart_pickup">Retiro en local</span>
+                <span class="resumen__valor resumen__valor--gratis" data-i18n="cart_free"
+                  >Gratis</span
+                >
               </div>
               <div class="resumen__linea resumen__linea--total">
-                <span class="resumen__label">Total a pagar</span>
+                <span class="resumen__label" data-i18n="cart_total">Total a pagar</span>
                 <span class="resumen__valor" data-resumen-total>$0</span>
               </div>
             </div>
-            <button class="btn btn--primary btn--block" data-btn-proceder-pago disabled>
+            <button
+              class="btn btn--primary btn--block"
+              data-btn-proceder-pago
+              disabled
+              data-i18n="cart_proceed"
+            >
               Proceder al Pago
             </button>
-            <a href="catalogo.html" class="carrito__seguir-comprando">← Seguir comprando</a>
-            <p class="carrito__nota-seguridad">🔒 Pago en efectivo contra entrega</p>
+            <a href="catalogo.html" class="carrito__seguir-comprando" data-i18n="cart_continue"
+              >← Seguir comprando</a
+            >
+            <p class="carrito__nota-seguridad" data-i18n="cart_note">
+              🔒 Pago en efectivo contra entrega
+            </p>
           </aside>
         </div>
       </section>
@@ -168,32 +208,32 @@
     <footer class="footer">
       <div class="footer__content container">
         <div class="footer__section">
-          <h3 class="footer__title">Horario de Atención</h3>
+          <h3 class="footer__title" data-i18n="footer_schedule">Horario de Atención</h3>
           <ul class="footer__list">
-            <li>Lunes a Viernes: 7:00 – 20:00</li>
-            <li>Sábados: 8:00 – 18:00</li>
-            <li>Domingos: 9:00 – 14:00</li>
+            <li><span data-i18n="days_weekday">Lunes a Viernes:</span> 7:00 – 20:00</li>
+            <li><span data-i18n="days_saturday">Sábados:</span> 8:00 – 18:00</li>
+            <li><span data-i18n="days_sunday">Domingos:</span> 9:00 – 14:00</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Contacto</h3>
+          <h3 class="footer__title" data-i18n="footer_contact">Contacto</h3>
           <ul class="footer__list">
             <li>📞 <a href="tel:+12817703825">+1 281-770-3825</a></li>
             <li>📍 Avenida Rústica 1042</li>
           </ul>
         </div>
         <div class="footer__section">
-          <h3 class="footer__title">Enlaces</h3>
+          <h3 class="footer__title" data-i18n="footer_links">Enlaces</h3>
           <ul class="footer__list">
-            <li><a href="index.html">Inicio</a></li>
-            <li><a href="catalogo.html">Catálogo</a></li>
-            <li><a href="nosotros.html">Nosotros</a></li>
-            <li><a href="contacto.html">Contacto</a></li>
+            <li><a href="index.html" data-i18n="nav_home">Inicio</a></li>
+            <li><a href="catalogo.html" data-i18n="nav_catalog">Catálogo</a></li>
+            <li><a href="nosotros.html" data-i18n="nav_us">Nosotros</a></li>
+            <li><a href="contacto.html" data-i18n="nav_contact">Contacto</a></li>
           </ul>
         </div>
       </div>
       <div class="footer__bottom container">
-        <p>© 2026 Panadería Luz Marina. Hecho con cariño.</p>
+        <p data-i18n="footer_copy">© 2026 Panadería Luz Marina. Hecho con cariño.</p>
       </div>
     </footer>
 

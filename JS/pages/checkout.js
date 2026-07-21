@@ -12,6 +12,7 @@ import { initUI } from '../core/ui.js';
 import { getCart, getCartTotal, clearCart, escapeHTML } from '../core/cart.js';
 import { formatPrice } from '../core/format.js';
 import { apiFetch } from '../core/api.js';
+import { t } from '../core/i18n.js';
 
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
 const WA_BUSINESS = '12817703825';
@@ -175,9 +176,8 @@ function mostrarConfirmacion(orden, datos) {
   const pageTitle = document.querySelector('.page-title');
 
   if (pageTitle) {
-    pageTitle.querySelector('.page-title__text').textContent = '¡Pedido enviado!';
-    pageTitle.querySelector('.page-title__subtitle').textContent =
-      'Tu pedido fue enviado por WhatsApp a la panadería.';
+    pageTitle.querySelector('.page-title__text').textContent = t('checkout_sent_title');
+    pageTitle.querySelector('.page-title__subtitle').textContent = t('checkout_sent_subtitle');
   }
 
   if (stepper) stepper.hidden = true;
@@ -190,28 +190,28 @@ function mostrarConfirmacion(orden, datos) {
 
           <div class="confirmacion__trazabilidad">
             <div class="confirmacion__dato">
-              <span class="confirmacion__dato-label">Número de orden</span>
+              <span class="confirmacion__dato-label">${t('conf_order_label')}</span>
               <span class="confirmacion__dato-valor confirmacion__dato-valor--orden">${orden.numero}</span>
             </div>
             <div class="confirmacion__dato">
-              <span class="confirmacion__dato-label">Fecha y hora</span>
+              <span class="confirmacion__dato-label">${t('conf_date_label')}</span>
               <span class="confirmacion__dato-valor">${orden.fechaTexto}</span>
             </div>
             <div class="confirmacion__dato">
-              <span class="confirmacion__dato-label">Cliente</span>
+              <span class="confirmacion__dato-label">${t('conf_client_label')}</span>
               <span class="confirmacion__dato-valor">${escapeHTML(datos.nombre)}</span>
             </div>
             <div class="confirmacion__dato">
-              <span class="confirmacion__dato-label">Retiro</span>
+              <span class="confirmacion__dato-label">${t('conf_pickup_label')}</span>
               <span class="confirmacion__dato-valor">${escapeHTML(datos.hora)}:${escapeHTML(datos.minuto)} — Avenida Rústica 1042</span>
             </div>
           </div>
 
           <p class="confirmacion__nota">
-            Guarda tu número de orden. La panadería te confirmará el pedido pronto.
+            ${t('conf_note')}
           </p>
 
-          <a href="catalogo.html" class="btn btn--primary">Seguir comprando</a>
+          <a href="catalogo.html" class="btn btn--primary">${t('conf_continue')}</a>
         </div>
       </div>
     `;
