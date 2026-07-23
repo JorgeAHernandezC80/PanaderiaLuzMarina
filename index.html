@@ -78,6 +78,7 @@
     <link rel="stylesheet" href="./CSS/components/_footer.css" />
     <link rel="stylesheet" href="./CSS/components/_buttons.css" />
     <link rel="stylesheet" href="./CSS/components/_hero.css" />
+    <link rel="stylesheet" href="./CSS/components/_features.css" />
     <link rel="stylesheet" href="./CSS/pages/inicio.css" />
 
     <!-- Schema.org -->
@@ -240,50 +241,120 @@
           <p class="hero__subtitle" data-i18n="hero_subtitle">
             Horneamos hoy lo que comerás mañana.
           </p>
-          <div class="hero__actions">
-            <a href="catalogo.html" class="btn btn--primary" data-i18n="hero_cta_stock"
-              >Ver Stock en Vivo</a
-            >
+          <!-- MÓDULO DE ACCIÓN DUAL -->
+          <div
+            class="hero__actions hero-actions"
+            role="group"
+            aria-label="Formas de comprar"
+            data-i18n-aria-label="hero_actions_aria"
+            data-component="hero-actions"
+          >
             <a
-              href="https://wa.me/12817703825?text=Hola,%20quiero%20reservar%20pan"
+              href="catalogo.html"
+              class="btn btn--primary"
+              aria-label="Encargar en línea desde el catálogo"
+              data-i18n="hero_cta_order"
+              data-i18n-aria-label="hero_cta_order_aria"
+              data-action="encargo"
+            >
+              Encargar en línea
+            </a>
+            <a
+              href="https://wa.me/12817703825?text=Hola,%20quiero%20preguntar%20por%20la%20hornada%20de%20hoy"
               class="btn btn--secondary"
               target="_blank"
               rel="noopener"
-              data-i18n="hero_cta_wa"
+              aria-label="Escribir al mostrador por WhatsApp"
+              data-i18n="hero_cta_counter"
+              data-i18n-aria-label="hero_cta_counter_aria"
+              data-action="mostrador"
             >
-              Reservar por WhatsApp
+              Escribir al mostrador
             </a>
           </div>
+          <p class="hero__note" data-i18n="hero_actions_note">
+            Encargas aquí y pagas al recoger. No cobramos nada en la web.
+          </p>
         </div>
       </section>
 
-      <!-- VALORES -->
-      <section class="valores" aria-labelledby="valores-title" data-component="valores">
+      <!-- MÓDULO DE GANCHOS -->
+      <section class="features" aria-labelledby="features-title" data-component="features">
         <div class="container">
-          <h2 id="valores-title" class="section__title" data-i18n="valores_title">
-            ¿Por qué elegirnos?
-          </h2>
-          <div class="valores__grid">
-            <article class="valor" data-valor="frescura">
-              <span class="valor__icon" aria-hidden="true">🥖</span>
-              <h3 class="valor__title" data-i18n="valor_fresh">Pan fresco cada día</h3>
-              <p class="valor__text" data-i18n="valor_fresh_desc">
-                Horneamos desde temprano para que tengas pan recién hecho.
+          <div class="features__intro">
+            <h2 id="features-title" class="section__title" data-i18n="features_title">
+              Así funciona la panadería
+            </h2>
+            <p class="features__subtitle" data-i18n="features_subtitle">
+              Tres cosas que conviene saber antes de pedir.
+            </p>
+          </div>
+
+          <div class="features-grid">
+            <article
+              class="feature"
+              aria-label="Horneado cada mañana"
+              data-i18n-aria-label="feature_fresh_title"
+              data-feature="frescura"
+            >
+              <span class="feature__icon" aria-hidden="true">🥖</span>
+              <h3 class="feature__title" data-i18n="feature_fresh_title">Horneado cada mañana</h3>
+              <p class="feature__text" data-i18n="feature_fresh_text">
+                La primera hornada sale a las 7:00. En el catálogo verás lo que hay hoy, no una
+                lista genérica.
               </p>
+              <a
+                href="catalogo.html"
+                class="feature__link"
+                aria-label="Ver la hornada de hoy en el catálogo"
+                data-i18n="feature_fresh_link"
+                data-i18n-aria-label="feature_fresh_link_aria"
+                >Ver la hornada de hoy →</a
+              >
             </article>
-            <article class="valor" data-valor="recetas">
-              <span class="valor__icon" aria-hidden="true">👨‍🍳</span>
-              <h3 class="valor__title" data-i18n="valor_recipes">Recetas de familia</h3>
-              <p class="valor__text" data-i18n="valor_recipes_desc">
-                Las recetas de siempre, sin ingredientes raros ni complicaciones.
+
+            <article
+              class="feature"
+              aria-label="Encargas y recoges"
+              data-i18n-aria-label="feature_order_title"
+              data-feature="encargo"
+            >
+              <span class="feature__icon" aria-hidden="true">🧺</span>
+              <h3 class="feature__title" data-i18n="feature_order_title">Encargas y recoges</h3>
+              <p class="feature__text" data-i18n="feature_order_text">
+                Armas tu canasta en la web, confirmas por WhatsApp y te decimos a qué hora está
+                listo.
               </p>
+              <a
+                href="carrito.html"
+                class="feature__link"
+                aria-label="Abrir mi canasta"
+                data-i18n="feature_order_link"
+                data-i18n-aria-label="feature_order_link_aria"
+                >Abrir mi canasta →</a
+              >
             </article>
-            <article class="valor" data-valor="atencion">
-              <span class="valor__icon" aria-hidden="true">💛</span>
-              <h3 class="valor__title" data-i18n="valor_service">Atención cercana</h3>
-              <p class="valor__text" data-i18n="valor_service_desc">
-                Te conocemos por nombre. Aquí no eres un número.
+
+            <article
+              class="feature"
+              aria-label="Pagas en el mostrador"
+              data-i18n-aria-label="feature_pay_title"
+              data-feature="pago"
+            >
+              <span class="feature__icon" aria-hidden="true">💛</span>
+              <h3 class="feature__title" data-i18n="feature_pay_title">Pagas en el mostrador</h3>
+              <p class="feature__text" data-i18n="feature_pay_text">
+                Sin tarjetas ni pasarelas en la web. Pagas cuando recoges y así confirmamos tu
+                pedido de viva voz.
               </p>
+              <a
+                href="contacto.html"
+                class="feature__link"
+                aria-label="Ver horarios y cómo llegar"
+                data-i18n="feature_pay_link"
+                data-i18n-aria-label="feature_pay_link_aria"
+                >Horarios y cómo llegar →</a
+              >
             </article>
           </div>
         </div>

@@ -32,6 +32,32 @@ const translations = {
     hero_subtitle: 'Horneamos hoy lo que comerás mañana.',
     hero_cta_stock: 'Ver Stock en Vivo',
     hero_cta_wa: 'Reservar por WhatsApp',
+    /* Acción dual (hero) */
+    hero_actions_aria: 'Formas de comprar',
+    hero_cta_order: 'Encargar en línea',
+    hero_cta_order_aria: 'Encargar en línea desde el catálogo',
+    hero_cta_counter: 'Escribir al mostrador',
+    hero_cta_counter_aria: 'Escribir al mostrador por WhatsApp',
+    hero_actions_note: 'Encargas aquí y pagas al recoger. No cobramos nada en la web.',
+
+    /* Ganchos (inicio) */
+    features_title: 'Así funciona la panadería',
+    features_subtitle: 'Tres cosas que conviene saber antes de pedir.',
+    feature_fresh_title: 'Horneado cada mañana',
+    feature_fresh_text:
+      'La primera hornada sale a las 7:00. En el catálogo verás lo que hay hoy, no una lista genérica.',
+    feature_fresh_link: 'Ver la hornada de hoy →',
+    feature_fresh_link_aria: 'Ver la hornada de hoy en el catálogo',
+    feature_order_title: 'Encargas y recoges',
+    feature_order_text:
+      'Armas tu canasta en la web, confirmas por WhatsApp y te decimos a qué hora está listo.',
+    feature_order_link: 'Abrir mi canasta →',
+    feature_order_link_aria: 'Abrir mi canasta',
+    feature_pay_title: 'Pagas en el mostrador',
+    feature_pay_text:
+      'Sin tarjetas ni pasarelas en la web. Pagas cuando recoges y así confirmamos tu pedido de viva voz.',
+    feature_pay_link: 'Horarios y cómo llegar →',
+    feature_pay_link_aria: 'Ver horarios y cómo llegar',
 
     /* Valores (inicio) */
     valores_title: '¿Por qué elegirnos?',
@@ -51,6 +77,21 @@ const translations = {
     catalog_title: 'Nuestra Hornada Diaria',
     catalog_subtitle: 'Productos frescos horneados cada mañana',
     catalog_filter_heading: 'Filtrar por categoría',
+
+    /* Instructivo (catálogo) */
+    steps_eyebrow: 'Cómo pedir',
+    steps_title: 'De la canasta al mostrador en tres pasos',
+    steps_subtitle: 'El pedido se confirma por WhatsApp. Aquí no se cobra nada.',
+    step_pick_title: 'Elige tus panes',
+    step_pick_text:
+      'Toca «Añadir al carrito» en cada producto. El contador del menú lleva la cuenta mientras sigues navegando.',
+    step_review_title: 'Revisa tu canasta',
+    step_review_text:
+      'Ajusta cantidades y comprueba el total. Puedes cambiar lo que quieras antes de enviar nada.',
+    step_send_title: 'Confirma por WhatsApp',
+    step_send_text:
+      'Al finalizar se abre un chat con tu pedido ya escrito. Te respondemos con la hora de recogida.',
+    steps_note: 'Pagas al recoger, en efectivo o transferencia.',
     filter_all: 'Todos',
     filter_bread: 'Panadería',
     filter_pastry: 'Bollería',
@@ -205,6 +246,32 @@ const translations = {
     hero_subtitle: "We bake today what you'll enjoy tomorrow.",
     hero_cta_stock: 'View Live Stock',
     hero_cta_wa: 'Reserve via WhatsApp',
+    /* Dual action (hero) */
+    hero_actions_aria: 'Ways to buy',
+    hero_cta_order: 'Order online',
+    hero_cta_order_aria: 'Order online from the catalog',
+    hero_cta_counter: 'Message the counter',
+    hero_cta_counter_aria: 'Message the counter on WhatsApp',
+    hero_actions_note: 'Order here, pay when you pick up. Nothing is charged on the site.',
+
+    /* Hooks (home) */
+    features_title: 'How the bakery works',
+    features_subtitle: 'Three things worth knowing before you order.',
+    feature_fresh_title: 'Baked every morning',
+    feature_fresh_text:
+      'The first batch comes out at 7:00. The catalog shows what we have today, not a generic list.',
+    feature_fresh_link: "See today's batch →",
+    feature_fresh_link_aria: "See today's batch in the catalog",
+    feature_order_title: 'Order and pick up',
+    feature_order_text:
+      'Fill your basket on the site, confirm on WhatsApp, and we tell you when it will be ready.',
+    feature_order_link: 'Open my basket →',
+    feature_order_link_aria: 'Open my basket',
+    feature_pay_title: 'Pay at the counter',
+    feature_pay_text:
+      'No cards or payment gateways here. You pay at pickup, so we confirm your order in person.',
+    feature_pay_link: 'Hours and directions →',
+    feature_pay_link_aria: 'See hours and directions',
 
     /* Valores (inicio) */
     valores_title: 'Why choose us?',
@@ -224,6 +291,21 @@ const translations = {
     catalog_title: "Today's Bake",
     catalog_subtitle: 'Fresh products baked every morning',
     catalog_filter_heading: 'Filter by category',
+
+    /* Instructional (catalog) */
+    steps_eyebrow: 'How to order',
+    steps_title: 'From basket to counter in three steps',
+    steps_subtitle: 'Orders are confirmed on WhatsApp. Nothing is charged here.',
+    step_pick_title: 'Pick your bread',
+    step_pick_text:
+      'Tap "Add to cart" on each product. The menu counter keeps track while you keep browsing.',
+    step_review_title: 'Review your basket',
+    step_review_text:
+      'Adjust quantities and check the total. You can change anything before sending it.',
+    step_send_title: 'Confirm on WhatsApp',
+    step_send_text:
+      'At checkout a chat opens with your order already written out. We reply with your pickup time.',
+    steps_note: 'Pay at pickup, in cash or by transfer.',
     filter_all: 'All',
     filter_bread: 'Bread',
     filter_pastry: 'Pastry',

@@ -1,0 +1,136 @@
+/* ============================================================
+   PANADERÍA LUZ MARINA — Componente: Ganchos (.features-grid)
+   Bloque de tres beneficios inmediatos bajo el hero.
+   Objetivo: responder "¿qué venden y cómo compro?" sin scroll extra.
+   ============================================================ */
+
+.features {
+  padding: var(--space-20) 0;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.features__intro {
+  max-width: 620px;
+  margin: 0 auto var(--space-12);
+  text-align: center;
+}
+
+.features__subtitle {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  line-height: var(--lh-normal);
+  margin-top: calc(var(--space-6) * -1);
+}
+
+/* --- Cuadrícula --- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  border-top: 3px solid var(--color-accent-muted);
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal),
+    border-top-color var(--transition-normal);
+}
+
+.feature:hover,
+.feature:focus-within {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-top-color: var(--color-accent);
+}
+
+.feature__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.feature__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-light);
+  color: var(--color-text);
+  letter-spacing: var(--ls-tight);
+}
+
+.feature__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--lh-normal);
+}
+
+/* Enlace de apoyo dentro de la tarjeta */
+.feature__link {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semi);
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.feature__link:hover {
+  color: var(--color-accent-light);
+  border-bottom-color: currentColor;
+}
+
+.feature__link:focus-visible {
+  outline: none;
+  box-shadow: var(--color-focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .features {
+    padding: var(--space-16) 0;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .feature {
+    padding: var(--space-6);
+  }
+}
+
+@media (min-width: 1440px) {
+  .features-grid {
+    gap: var(--space-8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature,
+  .feature:hover,
+  .feature:focus-within {
+    transform: none;
+    transition: none;
+  }
+}

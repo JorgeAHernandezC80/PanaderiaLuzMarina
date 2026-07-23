@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="./CSS/components/_buttons.css" />
     <link rel="stylesheet" href="./CSS/components/_hero.css" />
     <link rel="stylesheet" href="./CSS/components/_cards.css" />
+    <link rel="stylesheet" href="./CSS/components/_steps.css" />
     <link rel="stylesheet" href="./CSS/pages/catalogo.css" />
   </head>
   <body class="page page--catalogo" data-page="catalogo">
@@ -149,6 +150,68 @@
           <p class="hero__subtitle" data-i18n="catalog_subtitle">
             Productos frescos horneados cada mañana
           </p>
+        </div>
+      </section>
+
+      <!-- MÓDULO INSTRUCTIVO -->
+      <section
+        class="steps-section"
+        aria-labelledby="steps-title"
+        data-component="steps"
+        id="como-pedir"
+      >
+        <div class="container">
+          <div class="steps-section__header">
+            <span class="steps-section__eyebrow" data-i18n="steps_eyebrow">Cómo pedir</span>
+            <h2 id="steps-title" class="steps-section__title" data-i18n="steps_title">
+              De la canasta al mostrador en tres pasos
+            </h2>
+            <p class="steps-section__subtitle" data-i18n="steps_subtitle">
+              El pedido se confirma por WhatsApp. Aquí no se cobra nada.
+            </p>
+          </div>
+
+          <ol class="steps-section__list" aria-label="Pasos para hacer un encargo">
+            <li class="steps-section__item">
+              <article class="step" aria-label="Paso 1: Elige tus panes" data-step="1">
+                <span class="step__num" aria-hidden="true">1</span>
+                <h3 class="step__title" data-i18n="step_pick_title">Elige tus panes</h3>
+                <p class="step__text" data-i18n="step_pick_text">
+                  Toca «Añadir al carrito» en cada producto. El contador del menú lleva la cuenta
+                  mientras sigues navegando.
+                </p>
+              </article>
+            </li>
+
+            <li class="steps-section__item">
+              <article class="step" aria-label="Paso 2: Revisa tu canasta" data-step="2">
+                <span class="step__num" aria-hidden="true">2</span>
+                <h3 class="step__title" data-i18n="step_review_title">Revisa tu canasta</h3>
+                <p class="step__text" data-i18n="step_review_text">
+                  Ajusta cantidades y comprueba el total. Puedes cambiar lo que quieras antes de
+                  enviar nada.
+                </p>
+              </article>
+            </li>
+
+            <li class="steps-section__item">
+              <article class="step" aria-label="Paso 3: Confirma por WhatsApp" data-step="3">
+                <span class="step__num" aria-hidden="true">3</span>
+                <h3 class="step__title" data-i18n="step_send_title">Confirma por WhatsApp</h3>
+                <p class="step__text" data-i18n="step_send_text">
+                  Al finalizar se abre un chat con tu pedido ya escrito. Te respondemos con la hora
+                  de recogida.
+                </p>
+              </article>
+            </li>
+          </ol>
+
+          <div class="steps-section__footer">
+            <p class="steps-section__note">
+              <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+              <span data-i18n="steps_note">Pagas al recoger, en efectivo o transferencia.</span>
+            </p>
+          </div>
         </div>
       </section>
 

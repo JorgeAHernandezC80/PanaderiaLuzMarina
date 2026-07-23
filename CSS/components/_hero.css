@@ -135,6 +135,13 @@
   margin-top: var(--space-2);
 }
 
+/* Aclaración bajo el módulo de acción dual */
+.hero__note {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 /* Hero pequeño */
 .hero--small {
   padding: calc(var(--header-h) + var(--space-10)) 0 var(--space-10);

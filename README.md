@@ -16,6 +16,7 @@ El proyecto tiene dos partes:
 - [Características](#-características)
 - [Tecnologías](#-tecnologías)
 - [Estructura del proyecto](#-estructura-del-proyecto)
+- [Módulos de interfaz](#-módulos-de-interfaz)
 - [Requisitos](#-requisitos)
 - [Instalación](#-instalación)
 - [Variables de entorno](#-variables-de-entorno)
@@ -35,6 +36,10 @@ El proyecto tiene dos partes:
 - 🔴 **Tiempo real** — el backend emite eventos WebSocket al crear/actualizar órdenes.
 - 🌙 **Modo oscuro** — preferencia recordada por el usuario.
 - 🌍 **Bilingüe (ES/EN)** — internacionalización ligera sin dependencias.
+- 🧭 **Compra guiada** — módulos que explican el flujo antes de pedir: ganchos en la
+  portada e instructivo de tres pasos sobre el catálogo.
+- ♿ **Accesibilidad** — landmarks semánticos, `aria-label` en bloques y acciones,
+  foco visible y `prefers-reduced-motion` respetado.
 - 🛡️ **Backend endurecido** — validación de entrada, rate limiting, CORS restringido y
   comparación de contraseña en tiempo constante.
 
@@ -74,7 +79,15 @@ PanaderiaLuzMarina/
 │
 ├── CSS/
 │   ├── base/               # Reset, variables y utilidades
-│   ├── components/         # Header, footer, botones, cards, formularios, hero
+│   ├── components/         # Bloques reutilizables entre páginas
+│   │   ├── _buttons.css
+│   │   ├── _cards.css
+│   │   ├── _features.css   #   Módulo de ganchos (.features-grid)
+│   │   ├── _footer.css
+│   │   ├── _forms.css
+│   │   ├── _header.css
+│   │   ├── _hero.css       #   Hero y acción dual (.hero-actions)
+│   │   └── _steps.css      #   Módulo instructivo (.steps-section)
 │   └── pages/              # Estilos por página
 │
 ├── JS/
@@ -98,6 +111,29 @@ PanaderiaLuzMarina/
 ├── babel.config.js
 └── package.json
 ```
+
+## 🧩 Módulos de interfaz
+
+Bloques semánticos reutilizables. La clase de la izquierda es el contrato estable:
+si cambia, hay que actualizar el CSS y las claves de traducción a la vez.
+
+| Módulo           | Archivo CSS                    | Página          | Función                                                                       |
+| ---------------- | ------------------------------ | --------------- | ----------------------------------------------------------------------------- |
+| `.features-grid` | `CSS/components/_features.css` | `index.html`    | Tres ganchos bajo el hero: qué se hornea, cómo se encarga y cómo se paga.     |
+| `.hero-actions`  | `CSS/components/_hero.css`     | `index.html`    | Acción dual: segmenta el tráfico hacia encargo en línea o hacia el mostrador. |
+| `.steps-section` | `CSS/components/_steps.css`    | `catalogo.html` | Secuencia de tres pasos (carrito → canasta → WhatsApp) antes del listado.     |
+
+Convenciones al tocar o añadir módulos:
+
+- **Orden de la cascada** — en el `<head>`: `base/` → `components/` → `pages/`.
+  Un componente cargado después de la hoja de página deja de poder sobrescribirse
+  sin `!important`.
+- **Traducciones obligatorias** — todo texto visible lleva `data-i18n="clave"`, y la
+  clave debe existir en los diccionarios `es` **y** `en` de `JS/core/i18n.js`. Los
+  atributos se traducen con `data-i18n-aria-label` / `data-i18n-placeholder`.
+- **Semántica antes que clases** — la estructura la marcan las etiquetas nativas
+  (`<section>`, `<article>`, `<ol>`, `<h3>`); las clases solo aplican estilo. El
+  instructivo usa `<ol>` porque el orden de los pasos es información, no adorno.
 
 ## ✅ Requisitos
 
