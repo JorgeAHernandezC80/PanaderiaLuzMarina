@@ -9,6 +9,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* El navegador omite maquetado y pintado de las tarjetas fuera de pantalla.
+     Con 8 productos no se nota; el beneficio aparece al crecer el catálogo.
+     La altura reservada evita saltos en la barra de desplazamiento. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
   transition:
     box-shadow var(--transition-normal),
     transform var(--transition-normal),
