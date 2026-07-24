@@ -104,8 +104,8 @@ app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+  'Content-Security-Policy',
+  "default-src 'self'; connect-src 'self' " + FRONTEND_ORIGIN + " wss://" + req.headers.host + "; frame-ancestors 'none'; base-uri 'none'",
   );
   /* HSTS: sólo lo aplican los navegadores sobre HTTPS (Render sirve TLS). */
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
