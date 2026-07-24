@@ -46,8 +46,10 @@ const Auth = {
    * @throws {Error} si hay un fallo de red o el servidor responde de forma inesperada
    */
   async login(password) {
-    const res = await fetch(`${API_BASE}/auth`, {
+    // CAMBIO: Usamos apiFetch con timeout de 15s para soportar el "cold start" de Render
+    const res = await apiFetch('/auth', {
       method: 'POST',
+      timeout: 15000, 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });

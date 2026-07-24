@@ -3,6 +3,7 @@
  * Express + better-sqlite3 + WebSocket.
  */
 
+const cors = require('cors');
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
@@ -13,19 +14,11 @@ const { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES } = require
 const PORT = process.env.PORT || 3001;
 
 /* FRONTEND_ORIGIN debe estar configurado como variable de entorno en Render.
-   Si no está, el servidor arranca pero rechaza todos los orígenes cruzados —
-   esto es intencional: no queremos CORS abierto en producción. */
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
-if (!FRONTEND_ORIGIN) {
-  console.warn(
-    '[server] ADVERTENCIA: FRONTEND_ORIGIN no está configurado. Las peticiones CORS serán rechazadas.',
-  );
-}
+   Si no está, se usa el dominio de Netlify por defecto. */
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://luzmarpanaderia.netlify.app';
 
 /* ADMIN_TOKEN: contraseña del panel admin, definida como variable de entorno en Render.
-   Nunca debe estar en el código fuente.
-   Ejemplo: ADMIN_TOKEN=LuzMarina2026 (cambia esto por algo tuyo).
-   Si no está configurada, el panel admin no va a funcionar — intencional. */
+   Nunca debe estar en el código fuente. */
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 if (!ADMIN_TOKEN) {
   console.warn(
@@ -33,30 +26,21 @@ if (!ADMIN_TOKEN) {
   );
 }
 
-/* Secreto para firmar los tokens de sesión del panel admin. Se recomienda uno
-   dedicado (SESSION_SECRET); si no está, se deriva del ADMIN_TOKEN. */
+/* Secreto para firmar los tokens de sesión del panel admin. */
 const SESSION_SECRET = process.env.SESSION_SECRET || ADMIN_TOKEN || '';
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000;
 
 /**
  * Emite un token de sesión firmado (HMAC-SHA256) con expiración.
- * A diferencia de devolver el ADMIN_TOKEN, este token caduca y puede rotarse
- * sin exponer la contraseña del panel.
- * @returns {string} token con forma `<payloadBase64Url>.<firmaBase64Url>`
  */
 function issueSessionToken() {
-  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString(
-    'base64url',
-  );
+  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
   return `${body}.${sig}`;
 }
 
 /**
- * Verifica un token de sesión: firma válida y no expirado. Usa comparación de
- * tiempo constante para no filtrar información por timing.
- * @param {unknown} token
- * @returns {boolean}
+ * Verifica un token de sesión: firma válida y no expirado.
  */
 function verifySessionToken(token) {
   if (typeof token !== 'string') return false;
@@ -76,9 +60,7 @@ function verifySessionToken(token) {
   return Boolean(payload) && typeof payload.exp === 'number' && Date.now() <= payload.exp;
 }
 
-/** Middleware que protege endpoints del panel admin.
- *  Requiere header: Authorization: Bearer <token de sesión firmado>
- */
+/** Middleware que protege endpoints del panel admin. */
 function requireAuth(req, res, next) {
   if (!ADMIN_TOKEN) {
     return res.status(503).json({ error: 'Panel admin no configurado en el servidor.' });
@@ -91,12 +73,28 @@ function requireAuth(req, res, next) {
   next();
 }
 
+/* ═══════════════════════════════════════════
+   CONFIGURACIÓN DE EXPRESS Y MIDDLEWARES
+   ═══════════════════════════════════════════ */
 const app = express();
 app.disable('x-powered-by');
+
+// 1. Parseo de JSON con límite de seguridad
 app.use(express.json({ limit: '100kb' }));
 
-/* Cabeceras de seguridad en todas las respuestas (defensa en profundidad).
-   La API sólo devuelve JSON, por eso una CSP muy restrictiva es segura aquí. */
+// 2. Configuración de CORS unificada y segura (Reemplaza el bloque manual antiguo)
+app.use(cors({
+  origin: [
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'https://luzmarpanaderia.netlify.app' // Dominio de producción
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 3. Cabeceras de seguridad en todas las respuestas (defensa en profundidad)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -105,15 +103,15 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; connect-src 'self' " + FRONTEND_ORIGIN + " wss://" + req.headers.host + "; frame-ancestors 'none'; base-uri 'none'",
+    `default-src 'self'; connect-src 'self' ${FRONTEND_ORIGIN} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
   );
-  /* HSTS: sólo lo aplican los navegadores sobre HTTPS (Render sirve TLS). */
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   next();
 });
 
-/* Rate limiting por IP. Un limitador independiente por endpoint sensible para
-   que el abuso de uno no afecte al otro. */
+/* ═══════════════════════════════════════════
+   RATE LIMITING
+   ═══════════════════════════════════════════ */
 function getClientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
   if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
@@ -142,22 +140,18 @@ function createRateLimiter({ windowMs, max, message }) {
   };
 }
 
-/* POST /ordenes: evita spam de órdenes falsas hacia el WhatsApp del negocio. */
 const rateLimit = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.ORDERS_MAX_PER_WINDOW) || 20,
   message: 'Demasiadas solicitudes. Intenta en unos minutos.',
 });
 
-/* POST /auth: frena ataques de fuerza bruta contra la contraseña del panel. */
 const authRateLimit = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.AUTH_MAX_ATTEMPTS) || 10,
   message: 'Demasiados intentos de acceso. Espera unos minutos e intenta de nuevo.',
 });
 
-/* Limpieza periódica de contadores viejos para evitar crecimiento ilimitado del
-   mapa en memoria. `unref()` evita que el timer mantenga vivo el proceso. */
 const cleanupTimer = setInterval(
   () => {
     const ahora = Date.now();
@@ -171,26 +165,13 @@ const cleanupTimer = setInterval(
 );
 if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
-/** Solo para pruebas: reinicia los contadores de rate limiting. */
 function resetRateLimits() {
   for (const hits of rateLimiters) hits.clear();
 }
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (FRONTEND_ORIGIN && origin === FRONTEND_ORIGIN) {
-    res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
-  } else if (!FRONTEND_ORIGIN) {
-    // Sin variable configurada: rechaza silenciosamente
-  } else if (!origin) {
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
-
+/* ═══════════════════════════════════════════
+   WEBSOCKET Y RUTAS
+   ═══════════════════════════════════════════ */
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -217,12 +198,10 @@ app.get('/', (req, res) => {
   });
 });
 
-/* ---- GET /health ---- */
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
-/* ---- POST /auth — validar password del panel admin ---- */
 app.post('/auth', authRateLimit, (req, res) => {
   if (!ADMIN_TOKEN) {
     return res.status(503).json({ error: 'Panel admin no configurado.' });
@@ -231,7 +210,7 @@ app.post('/auth', authRateLimit, (req, res) => {
   if (!password || typeof password !== 'string') {
     return res.status(400).json({ error: 'Falta la contraseña.' });
   }
-   const expected = Buffer.from(ADMIN_TOKEN);
+  const expected = Buffer.from(ADMIN_TOKEN);
   const received = Buffer.from(password.slice(0, 200)); 
   
   if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
@@ -242,7 +221,6 @@ app.post('/auth', authRateLimit, (req, res) => {
   return res.json({ token });
 });
 
-/* ---- POST /ordenes ---- */
 app.post('/ordenes', rateLimit, (req, res) => {
   let orden;
   try {
@@ -282,7 +260,6 @@ app.post('/ordenes', rateLimit, (req, res) => {
   }
 });
 
-/* ---- GET /ordenes — solo panel admin autenticado ---- */
 app.get('/ordenes', requireAuth, (req, res) => {
   const { fecha, estado } = req.query;
 
@@ -319,7 +296,6 @@ app.get('/ordenes', requireAuth, (req, res) => {
   }
 });
 
-/* ---- PATCH /ordenes/:numero — solo panel admin autenticado ---- */
 app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   const { numero } = req.params;
   const { estado } = req.body ?? {};
