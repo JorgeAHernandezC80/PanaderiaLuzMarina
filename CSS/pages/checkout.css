@@ -7,10 +7,11 @@
    cascada de descargas secuenciales que provoca @import. */
 
 /* --- Page title --- */
-/* El padding horizontal replica el del header (.header__nav) para que el
-   título arranque en el mismo borde izquierdo que el logo «Panadería». */
+/* Los laterales los aporta .container, con la que se combina en el HTML.
+   Fijarlos aquí (space-8 = 32px frente a los 24px del contenedor) desalineaba
+   el título respecto al logo «Panadería» del header. */
 .page-title {
-  padding: var(--space-10) var(--space-8) var(--space-6);
+  padding-block: var(--space-10) var(--space-6);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-10);
 }
