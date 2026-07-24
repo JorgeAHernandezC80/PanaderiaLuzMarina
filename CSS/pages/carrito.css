@@ -6,9 +6,54 @@
    (variables, reset, utilities, header, footer, buttons, cards) para evitar la
    cascada de descargas secuenciales que provoca @import. */
 
+/* --- Alineación con el logo del header ---------------------------------
+   .page-title y .carrito llevan la clase .container en el HTML, que aplica
+   un margen lateral de --container-pad. Pero el logo no vive en .container:
+   .header__nav (CSS/components/_header.css) define su propio margen, con una
+   escala distinta en cada breakpoint. Para que el título arranque en el mismo
+   píxel que «Panadería Luz Marina» hay que replicar esa escala.
+
+   ESTOS VALORES SON UN ESPEJO DE .header__nav. Si allí cambian, cambian aquí.
+   ---------------------------------------------------------------------- */
+.page-title,
+.carrito {
+  --align-logo: var(--space-8);
+  padding-inline: var(--align-logo);
+}
+
+@media (min-width: 1440px) {
+  .page-title,
+  .carrito {
+    --align-logo: var(--space-10);
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-title,
+  .carrito {
+    --align-logo: var(--space-6);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title,
+  .carrito {
+    --align-logo: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title,
+  .carrito {
+    --align-logo: var(--space-3);
+  }
+}
+
 /* --- Page title --- */
 .page-title {
-  padding: var(--space-10) 0 var(--space-6);
+  /* padding-block, no el atajo `padding`: el atajo reescribiría los laterales
+     que fija el bloque de alineación de arriba. */
+  padding-block: var(--space-10) var(--space-6);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-8);
 }
@@ -30,7 +75,7 @@
 
 /* --- Layout carrito --- */
 .carrito {
-  padding: var(--space-4) 0 var(--space-20);
+  padding-block: var(--space-4) var(--space-20);
   background: var(--color-bg);
 }
 
@@ -303,7 +348,7 @@
 
 @media (max-width: 768px) {
   .carrito {
-    padding: var(--space-4) 0 var(--space-16);
+    padding-block: var(--space-4) var(--space-16);
   }
   .page-title__text {
     font-size: var(--text-3xl);
