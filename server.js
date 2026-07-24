@@ -104,8 +104,8 @@ app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
-  'Content-Security-Policy',
-  "default-src 'self'; connect-src 'self' " + FRONTEND_ORIGIN + " wss://" + req.headers.host + "; frame-ancestors 'none'; base-uri 'none'",
+    'Content-Security-Policy',
+    "default-src 'self'; connect-src 'self' " + FRONTEND_ORIGIN + " wss://" + req.headers.host + "; frame-ancestors 'none'; base-uri 'none'",
   );
   /* HSTS: sólo lo aplican los navegadores sobre HTTPS (Render sirve TLS). */
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
@@ -201,6 +201,22 @@ function broadcast(payload) {
   });
 }
 
+// Ruta raíz - Documentación de la API
+app.get('/', (req, res) => {
+  res.json({
+    servicio: 'Panadería Luz Marina API',
+    version: '1.0.0',
+    estado: 'operativo',
+    documentacion: {
+      health: 'GET /health',
+      auth: 'POST /auth (body: { password: "tu_token" })',
+      crearOrden: 'POST /ordenes',
+      listarOrdenes: 'GET /ordenes (Authorization: Bearer token)',
+      actualizarOrden: 'PATCH /ordenes/:numero (Authorization: Bearer token)'
+    }
+  });
+});
+
 /* ---- GET /health ---- */
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
@@ -215,16 +231,15 @@ app.post('/auth', authRateLimit, (req, res) => {
   if (!password || typeof password !== 'string') {
     return res.status(400).json({ error: 'Falta la contraseña.' });
   }
-  /* Comparación de tiempo constante para evitar timing attacks */
-  const expected = Buffer.from(ADMIN_TOKEN);
-  const received = Buffer.from(password.slice(0, 200)); // límite razonable
-  const match = expected.length === received.length && crypto.timingSafeEqual(expected, received);
-
-  if (!match) {
+   const expected = Buffer.from(ADMIN_TOKEN);
+  const received = Buffer.from(password.slice(0, 200)); 
+  
+  if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
   }
-  /* Se emite un token de sesión firmado y con expiración, no el ADMIN_TOKEN. */
-  res.json({ token: issueSessionToken(), expiresIn: SESSION_TTL_MS });
+
+  const token = issueSessionToken();
+  return res.json({ token });
 });
 
 /* ---- POST /ordenes ---- */
@@ -330,7 +345,9 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
 });
 
 /* ---- 404 y errores ---- */
-app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
+app.use((req, res) => {
+  res.status(404).json({ error: "Ruta no encontrada." });
+});
 
 app.use((err, req, res, _next) => {
   console.error('[unhandled]', err);
@@ -339,7 +356,7 @@ app.use((err, req, res, _next) => {
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`[server] Panadería Luz Marina backend escuchando en http://localhost:${PORT}`);
+    console.log(`[server] Escuchando en el puerto ${PORT}`);
   });
 }
 
