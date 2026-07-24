@@ -46,6 +46,7 @@
   },
   "homepage": "https://github.com/JorgeAHernandezC80/PanaderiaLuzMarina#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "better-sqlite3": "^9.4.3",
     "express": "^5.2.1",
     "ws": "^8.21.0"
