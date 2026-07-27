@@ -21,7 +21,9 @@ beforeAll(async () => {
   dbPath = path.join(os.tmpdir(), `plm-test-${process.pid}-${Date.now()}.db`);
   process.env.DB_PATH = dbPath;
   process.env.ADMIN_TOKEN = ADMIN_TOKEN;
-  process.env.FRONTEND_ORIGIN = FRONTEND_ORIGIN;
+  // Con barra final a propósito: el navegador nunca la envía en Origin, así que
+  // el servidor debe normalizarla para que el origen siga siendo permitido.
+  process.env.FRONTEND_ORIGIN = `${FRONTEND_ORIGIN}/`;
   // Rate limiting fuera del alcance de esta suite funcional; se prueba aparte.
   process.env.AUTH_MAX_ATTEMPTS = '100000';
   process.env.ORDERS_MAX_PER_WINDOW = '100000';

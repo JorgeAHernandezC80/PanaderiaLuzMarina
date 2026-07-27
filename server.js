@@ -21,8 +21,13 @@ const {
 const PORT = process.env.PORT || 3001;
 
 /* FRONTEND_ORIGIN debe estar configurado como variable de entorno en Render.
-   Si no está, se usa el dominio de Netlify por defecto. */
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://luzmarpanaderia.netlify.app';
+   Si no está, se usa el dominio de Netlify por defecto. Acepta varios orígenes
+   separados por coma y normaliza la barra final, que un navegador nunca envía
+   en la cabecera Origin (un valor con "/" al final nunca haría match). */
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGIN || 'https://luzmarpanaderia.netlify.app')
+  .split(',')
+  .map((origen) => origen.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 /* ADMIN_TOKEN: contraseña del panel admin, definida como variable de entorno en Render.
    Nunca debe estar en el código fuente. */
@@ -97,7 +102,7 @@ app.use(
     origin: [
       'http://localhost:5500',
       'http://127.0.0.1:5500',
-      FRONTEND_ORIGIN, // Dominio de producción (configurable por entorno)
+      ...FRONTEND_ORIGINS, // Dominios de producción (configurables por entorno)
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
@@ -114,7 +119,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'none'; connect-src 'self' ${FRONTEND_ORIGIN} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
+    `default-src 'none'; connect-src 'self' ${FRONTEND_ORIGINS.join(' ')} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
   );
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   next();
