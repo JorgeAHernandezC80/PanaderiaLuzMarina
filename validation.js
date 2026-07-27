@@ -140,11 +140,7 @@ function validarInsumo(datos) {
   const { nombre, categoria, cantidad, unidad, costoUnitario, stockMinimo, proveedor, notas } =
     datos;
 
-  if (
-    typeof nombre !== 'string' ||
-    nombre.trim() === '' ||
-    nombre.length > MAX_INSUMO_NOMBRE_LEN
-  ) {
+  if (typeof nombre !== 'string' || nombre.trim() === '' || nombre.length > MAX_INSUMO_NOMBRE_LEN) {
     throw new ValidationError('Nombre del insumo inválido.');
   }
 

@@ -8,9 +8,10 @@
 
 /** URL base del backend (Render). */
 /** URL base del backend: detecta automáticamente localhost o producción */
-export const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : 'https://panaderialuzmarina.onrender.com';
+export const API_BASE =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://panaderialuzmarina.onrender.com';
 
 /**
  * fetch contra el backend con soporte de timeout.
