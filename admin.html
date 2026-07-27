@@ -100,38 +100,50 @@
       </section>
 
       <!-- ═══════════ NAV DE SECCIONES ═══════════ -->
-      <nav id="admin-nav" class="admin-nav" hidden aria-label="Secciones del panel" role="tablist">
+      <nav id="admin-nav" class="admin-nav" hidden aria-label="Secciones del panel">
+        <div class="admin-nav__tabs" role="tablist">
+          <button
+            type="button"
+            class="admin-nav__btn is-active"
+            data-view-target="dashboard-view"
+            role="tab"
+            aria-selected="true"
+          >
+            <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+            Pedidos
+          </button>
+          <button
+            type="button"
+            class="admin-nav__btn"
+            data-view-target="insumos-view"
+            role="tab"
+            aria-selected="false"
+          >
+            <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
+            Insumos
+            <span class="admin-nav__count" id="insumos-count">0</span>
+          </button>
+          <button
+            type="button"
+            class="admin-nav__btn"
+            data-view-target="proveedores-view"
+            role="tab"
+            aria-selected="false"
+          >
+            <i class="fa-solid fa-truck-field" aria-hidden="true"></i>
+            Proveedores
+            <span class="admin-nav__count" id="proveedores-count">0</span>
+          </button>
+        </div>
+
         <button
           type="button"
-          class="admin-nav__btn is-active"
-          data-view-target="dashboard-view"
-          role="tab"
-          aria-selected="true"
+          id="btn-logout"
+          class="btn btn--ghost admin-nav__logout"
+          aria-label="Cerrar sesión de administrador"
         >
-          <i class="fa-solid fa-receipt" aria-hidden="true"></i>
-          Pedidos
-        </button>
-        <button
-          type="button"
-          class="admin-nav__btn"
-          data-view-target="insumos-view"
-          role="tab"
-          aria-selected="false"
-        >
-          <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
-          Insumos
-          <span class="admin-nav__count" id="insumos-count">0</span>
-        </button>
-        <button
-          type="button"
-          class="admin-nav__btn"
-          data-view-target="proveedores-view"
-          role="tab"
-          aria-selected="false"
-        >
-          <i class="fa-solid fa-truck-field" aria-hidden="true"></i>
-          Proveedores
-          <span class="admin-nav__count" id="proveedores-count">0</span>
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+          Cerrar sesión
         </button>
       </nav>
 
@@ -151,15 +163,6 @@
               <time id="dashboard-date" datetime="" aria-label="Fecha actual"></time>
             </p>
           </div>
-          <button
-            type="button"
-            id="btn-logout"
-            class="btn btn--ghost"
-            aria-label="Cerrar sesión de administrador"
-          >
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-            Cerrar sesión
-          </button>
         </header>
 
         <!-- Resumen estadístico -->
