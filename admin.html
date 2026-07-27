@@ -99,6 +99,31 @@
         </article>
       </section>
 
+      <!-- ═══════════ NAV DE SECCIONES ═══════════ -->
+      <nav id="admin-nav" class="admin-nav" hidden aria-label="Secciones del panel" role="tablist">
+        <button
+          type="button"
+          class="admin-nav__btn is-active"
+          data-view-target="dashboard-view"
+          role="tab"
+          aria-selected="true"
+        >
+          <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+          Pedidos
+        </button>
+        <button
+          type="button"
+          class="admin-nav__btn"
+          data-view-target="insumos-view"
+          role="tab"
+          aria-selected="false"
+        >
+          <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
+          Insumos
+          <span class="admin-nav__count" id="insumos-count">0</span>
+        </button>
+      </nav>
+
       <!-- ═══════════ DASHBOARD ═══════════ -->
       <section
         id="dashboard-view"
@@ -163,6 +188,163 @@
           <!-- Se inyecta dinámicamente por admin.js -->
         </section>
       </section>
+
+      <!-- ═══════════ INSUMOS ═══════════ -->
+      <section
+        id="insumos-view"
+        class="view view--insumos"
+        hidden
+        aria-labelledby="insumos-title"
+        data-component="insumos"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="insumos-title">Insumos</h1>
+            <p class="dashboard-header__subtitle">
+              Registra manualmente los insumos de la panadería y controla su stock.
+            </p>
+          </div>
+        </header>
+
+        <form id="insumo-form" class="insumo-form" novalidate data-component="insumo-form">
+          <input type="hidden" id="insumo-id" name="id" />
+
+          <div class="form-field">
+            <label for="insumo-nombre" class="form-field__label">Nombre</label>
+            <input
+              type="text"
+              id="insumo-nombre"
+              name="nombre"
+              class="form-field__input"
+              placeholder="Harina de trigo"
+              maxlength="80"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-categoria" class="form-field__label">Categoría</label>
+            <select id="insumo-categoria" name="categoria" class="form-field__input">
+              <option value="harinas">Harinas</option>
+              <option value="lacteos">Lácteos</option>
+              <option value="huevos">Huevos</option>
+              <option value="endulzantes">Endulzantes</option>
+              <option value="grasas">Grasas / aceites</option>
+              <option value="levaduras">Levaduras / leudantes</option>
+              <option value="empaque">Empaque</option>
+              <option value="otros" selected>Otros</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-cantidad" class="form-field__label">Cantidad</label>
+            <input
+              type="number"
+              id="insumo-cantidad"
+              name="cantidad"
+              class="form-field__input"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-unidad" class="form-field__label">Unidad</label>
+            <select id="insumo-unidad" name="unidad" class="form-field__input">
+              <option value="kg" selected>kg</option>
+              <option value="g">g</option>
+              <option value="l">l</option>
+              <option value="ml">ml</option>
+              <option value="unidad">unidad</option>
+              <option value="paquete">paquete</option>
+              <option value="caja">caja</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-costo" class="form-field__label">Costo unitario</label>
+            <input
+              type="number"
+              id="insumo-costo"
+              name="costoUnitario"
+              class="form-field__input"
+              min="0"
+              step="0.01"
+              placeholder="Opcional"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-stock-minimo" class="form-field__label">Stock mínimo</label>
+            <input
+              type="number"
+              id="insumo-stock-minimo"
+              name="stockMinimo"
+              class="form-field__input"
+              min="0"
+              step="0.01"
+              placeholder="Opcional"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="insumo-proveedor" class="form-field__label">Proveedor</label>
+            <input
+              type="text"
+              id="insumo-proveedor"
+              name="proveedor"
+              class="form-field__input"
+              placeholder="Opcional"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <label for="insumo-notas" class="form-field__label">Notas</label>
+            <textarea
+              id="insumo-notas"
+              name="notas"
+              class="form-field__input"
+              rows="2"
+              placeholder="Opcional"
+              maxlength="280"
+            ></textarea>
+          </div>
+
+          <output
+            id="insumo-error"
+            class="form-error insumo-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-insumo-error-msg></span>
+          </output>
+
+          <div class="insumo-form__actions insumo-form__wide">
+            <button type="submit" id="btn-insumo-submit" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Agregar insumo
+            </button>
+            <button type="button" id="btn-insumo-cancel-edit" class="btn btn--ghost" hidden>
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+
+        <section
+          id="insumos-container"
+          class="insumos"
+          aria-label="Listado de insumos"
+          aria-live="polite"
+          data-component="insumos-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
     </main>
 
     <!-- ═══════════ TEMPLATES ═══════════ -->
@@ -211,6 +393,18 @@
         <td class="order-table__productos" data-label="Productos"></td>
         <td class="order-table__total" data-label="Total"></td>
         <td class="order-table__estado" data-label="Estado"></td>
+      </tr>
+    </template>
+
+    <!-- Plantilla: fila de insumo -->
+    <template id="tpl-insumo-row">
+      <tr>
+        <td class="insumo-table__nombre" data-label="Insumo"></td>
+        <td class="insumo-table__categoria" data-label="Categoría"></td>
+        <td class="insumo-table__cantidad" data-label="Cantidad"></td>
+        <td class="insumo-table__costo" data-label="Costo unit."></td>
+        <td class="insumo-table__proveedor" data-label="Proveedor"></td>
+        <td class="insumo-table__acciones" data-label="Acciones"></td>
       </tr>
     </template>
 

@@ -41,7 +41,9 @@ const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 8 * 60 * 60 * 1000;
  * Emite un token de sesión firmado (HMAC-SHA256) con expiración.
  */
 function issueSessionToken() {
-  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString(
+    'base64url',
+  );
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
   return `${body}.${sig}`;
 }
@@ -90,16 +92,18 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
 
 // 2. Configuración de CORS unificada y segura (Reemplaza el bloque manual antiguo)
-app.use(cors({
-  origin: [
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    'https://luzmarpanaderia.netlify.app' // Dominio de producción
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5500',
+      'http://127.0.0.1:5500',
+      'https://luzmarpanaderia.netlify.app', // Dominio de producción
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 
 // 3. Cabeceras de seguridad en todas las respuestas (defensa en profundidad)
 app.use((req, res, next) => {
@@ -204,8 +208,8 @@ app.get('/', (req, res) => {
       listarInsumos: 'GET /insumos (Authorization: Bearer token)',
       crearInsumo: 'POST /insumos (Authorization: Bearer token)',
       actualizarInsumo: 'PUT /insumos/:id (Authorization: Bearer token)',
-      eliminarInsumo: 'DELETE /insumos/:id (Authorization: Bearer token)'
-    }
+      eliminarInsumo: 'DELETE /insumos/:id (Authorization: Bearer token)',
+    },
   });
 });
 
@@ -222,8 +226,8 @@ app.post('/auth', authRateLimit, (req, res) => {
     return res.status(400).json({ error: 'Falta la contraseña.' });
   }
   const expected = Buffer.from(ADMIN_TOKEN);
-  const received = Buffer.from(password.slice(0, 200)); 
-  
+  const received = Buffer.from(password.slice(0, 200));
+
   if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
     return res.status(401).json({ error: 'Contraseña incorrecta.' });
   }
@@ -460,7 +464,7 @@ app.delete('/insumos/:id', requireAuth, (req, res) => {
 
 /* ---- 404 y errores ---- */
 app.use((req, res) => {
-  res.status(404).json({ error: "Ruta no encontrada." });
+  res.status(404).json({ error: 'Ruta no encontrada.' });
 });
 
 app.use((err, req, res, _next) => {
