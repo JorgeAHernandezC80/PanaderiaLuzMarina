@@ -29,6 +29,40 @@ const CONFIG = Object.freeze({
     orders: '#orders-container',
     tplGroup: '#tpl-order-group',
     tplRow: '#tpl-order-row',
+
+    // Nav de secciones
+    adminNav: '#admin-nav',
+    navBtns: '.admin-nav__btn',
+
+    // Insumos
+    insumosView: '#insumos-view',
+    insumosCount: '#insumos-count',
+    insumosContainer: '#insumos-container',
+    tplInsumoRow: '#tpl-insumo-row',
+    insumoForm: '#insumo-form',
+    insumoId: '#insumo-id',
+    insumoNombre: '#insumo-nombre',
+    insumoCategoria: '#insumo-categoria',
+    insumoCantidad: '#insumo-cantidad',
+    insumoUnidad: '#insumo-unidad',
+    insumoCosto: '#insumo-costo',
+    insumoStockMinimo: '#insumo-stock-minimo',
+    insumoProveedor: '#insumo-proveedor',
+    insumoNotas: '#insumo-notas',
+    insumoError: '#insumo-error',
+    insumoErrorMsg: '#insumo-error [data-insumo-error-msg]',
+    insumoSubmitBtn: '#btn-insumo-submit',
+    insumoCancelEditBtn: '#btn-insumo-cancel-edit',
+  },
+  CATEGORIA_LABELS: {
+    harinas: 'Harinas',
+    lacteos: 'Lácteos',
+    huevos: 'Huevos',
+    endulzantes: 'Endulzantes',
+    grasas: 'Grasas / aceites',
+    levaduras: 'Levaduras / leudantes',
+    empaque: 'Empaque',
+    otros: 'Otros',
   },
 });
 
@@ -168,6 +202,12 @@ const Api = {
 const Format = {
   currency: formatPrice,
 
+  /** Muestra cantidades sin decimales innecesarios (2 -> "2", 2.5 -> "2.5"). */
+  cantidad(valor) {
+    const num = Number(valor) || 0;
+    return num % 1 === 0 ? String(num) : num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  },
+
   todayDate() {
     return new Date().toLocaleDateString('es-US', {
       weekday: 'long',
@@ -179,7 +219,93 @@ const Format = {
 };
 
 /* ═══════════════════════════════════════════
-   5. MÓDULO: RENDERIZADO
+   5. MÓDULO: INSUMOS (backend real)
+   ═══════════════════════════════════════════
+   CRUD contra /insumos, protegido por el mismo token de sesión que
+   /ordenes. Mismo patrón que el módulo Api: apiFetch con timeout,
+   401 => sesión expirada, errores de red devuelven null/ok:false
+   en lugar de lanzar, para que la UI decida qué mostrar. */
+const Insumos = {
+  async listar() {
+    try {
+      const res = await apiFetch('/insumos', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('[Insumos] Timeout obteniendo insumos (el servidor puede estar iniciando).');
+      } else {
+        console.error('[Insumos] Error obteniendo insumos:', err.message);
+      }
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/insumos', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/insumos/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, insumo: await res.json() };
+    } catch (err) {
+      console.error(`[Insumos] Error en ${method} ${path}:`, err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/insumos/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        return { ok: false, reason: 'error' };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[Insumos] Error eliminando insumo:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6. MÓDULO: RENDERIZADO
    ═══════════════════════════════════════════ */
 const Render = {
   updateStats(orders) {
@@ -324,13 +450,121 @@ const Render = {
 
     return tr;
   },
+
+  updateInsumosCount(lista) {
+    const el = document.querySelector(CONFIG.SELECTORS.insumosCount);
+    if (el) el.textContent = lista.length;
+  },
+
+  renderInsumos(lista, huboErrorConexion) {
+    const container = document.querySelector(CONFIG.SELECTORS.insumosContainer);
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (lista.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">📦</span>
+        <h2 class="empty-state__title">Sin insumos registrados</h2>
+        <p class="empty-state__text">Usa el formulario de arriba para agregar el primer insumo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Detalle de insumos registrados</caption>
+      <thead>
+        <tr>
+          <th scope="col">Insumo</th>
+          <th scope="col">Categoría</th>
+          <th scope="col">Cantidad</th>
+          <th scope="col">Costo unit.</th>
+          <th scope="col">Proveedor</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    lista.forEach((insumo) => tbody.appendChild(this._renderInsumoRow(insumo)));
+
+    container.appendChild(table);
+  },
+
+  _renderInsumoRow(insumo) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplInsumoRow);
+    const row = tpl.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+
+    const bajoMinimo =
+      insumo.stockMinimo != null &&
+      insumo.stockMinimo !== '' &&
+      Number(insumo.cantidad) <= Number(insumo.stockMinimo);
+    if (bajoMinimo) tr.classList.add('insumo-row--bajo-stock');
+
+    row.querySelector('.insumo-table__nombre').textContent = insumo.nombre;
+    row.querySelector('.insumo-table__categoria').textContent =
+      CONFIG.CATEGORIA_LABELS[insumo.categoria] || insumo.categoria || '—';
+
+    const cantidadCell = row.querySelector('.insumo-table__cantidad');
+    cantidadCell.textContent = `${Format.cantidad(insumo.cantidad)} ${escapeHTML(insumo.unidad || '')}`;
+    if (bajoMinimo) {
+      const badge = document.createElement('span');
+      badge.className = 'insumo-badge insumo-badge--bajo-stock';
+      badge.textContent = 'Stock bajo';
+      cantidadCell.appendChild(document.createElement('br'));
+      cantidadCell.appendChild(badge);
+    }
+
+    row.querySelector('.insumo-table__costo').textContent =
+      insumo.costoUnitario != null && insumo.costoUnitario !== ''
+        ? Format.currency(insumo.costoUnitario)
+        : '—';
+    row.querySelector('.insumo-table__proveedor').textContent = insumo.proveedor || '—';
+
+    const acciones = row.querySelector('.insumo-table__acciones');
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'btn btn--action';
+    btnEditar.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i> Editar';
+    btnEditar.addEventListener('click', () => App.startEditInsumo(insumo.id));
+
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'btn btn--ghost btn--danger';
+    btnEliminar.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Eliminar';
+    btnEliminar.addEventListener('click', () => App.deleteInsumo(insumo.id, insumo.nombre));
+
+    acciones.appendChild(btnEditar);
+    acciones.appendChild(btnEliminar);
+
+    return tr;
+  },
 };
 
 /* ═══════════════════════════════════════════
-   6. APP: ORQUESTADOR PRINCIPAL
+   7. APP: ORQUESTADOR PRINCIPAL
    ═══════════════════════════════════════════ */
 const App = {
   _liveConnected: false,
+  _insumosCache: [],
 
   init() {
     this._bindEvents();
@@ -354,6 +588,77 @@ const App = {
       this._liveConnected = true;
       Api.connectLive(() => this.refresh());
     }
+  },
+
+  async refreshInsumos() {
+    const lista = await Insumos.listar();
+
+    if (lista === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._insumosCache = Array.isArray(lista) ? lista : [];
+    Render.updateInsumosCount(this._insumosCache);
+    Render.renderInsumos(this._insumosCache, lista === null);
+  },
+
+  startEditInsumo(id) {
+    const insumo = this._insumosCache.find((i) => i.id === id);
+    if (!insumo) return;
+
+    document.querySelector(CONFIG.SELECTORS.insumoId).value = insumo.id;
+    document.querySelector(CONFIG.SELECTORS.insumoNombre).value = insumo.nombre || '';
+    document.querySelector(CONFIG.SELECTORS.insumoCategoria).value = insumo.categoria || 'otros';
+    document.querySelector(CONFIG.SELECTORS.insumoCantidad).value = insumo.cantidad ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoUnidad).value = insumo.unidad || 'kg';
+    document.querySelector(CONFIG.SELECTORS.insumoCosto).value = insumo.costoUnitario ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoStockMinimo).value = insumo.stockMinimo ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoProveedor).value = insumo.proveedor || '';
+    document.querySelector(CONFIG.SELECTORS.insumoNotas).value = insumo.notas || '';
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.insumoSubmitBtn);
+    submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.insumoCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.insumoForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(CONFIG.SELECTORS.insumoNombre).focus();
+  },
+
+  cancelEditInsumo() {
+    this._resetInsumoForm();
+  },
+
+  async deleteInsumo(id, nombre) {
+    const confirmado = window.confirm(`¿Eliminar "${nombre}" del listado de insumos?`);
+    if (!confirmado) return;
+
+    const resultado = await Insumos.eliminar(id);
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar el insumo. Intenta de nuevo en unos segundos.');
+      return;
+    }
+
+    this.refreshInsumos();
+  },
+
+  _resetInsumoForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.insumoForm);
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.insumoId).value = '';
+    document.querySelector(CONFIG.SELECTORS.insumoSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Agregar insumo';
+    document.querySelector(CONFIG.SELECTORS.insumoCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.insumoError).hidden = true;
   },
 
   _bindEvents() {
@@ -392,6 +697,98 @@ const App = {
       Auth.logout();
       this._showCorrectView();
     });
+
+    // Nav entre secciones (Dashboard / Insumos)
+    document.querySelectorAll(CONFIG.SELECTORS.navBtns).forEach((btn) => {
+      btn.addEventListener('click', () => this._switchView(btn.dataset.viewTarget));
+    });
+
+    // Formulario de insumos: alta y edición
+    document.querySelector(CONFIG.SELECTORS.insumoForm).addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleInsumoSubmit();
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.insumoCancelEditBtn)
+      .addEventListener('click', () => this.cancelEditInsumo());
+  },
+
+  async _handleInsumoSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.insumoError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.insumoErrorMsg);
+
+    const nombre = document.querySelector(CONFIG.SELECTORS.insumoNombre).value.trim();
+    const cantidadRaw = document.querySelector(CONFIG.SELECTORS.insumoCantidad).value;
+    const unidad = document.querySelector(CONFIG.SELECTORS.insumoUnidad).value;
+
+    if (!nombre || cantidadRaw === '' || Number(cantidadRaw) < 0) {
+      errorMsgEl.textContent =
+        'Completa nombre, cantidad y unidad (la cantidad no puede ser negativa).';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const costoRaw = document.querySelector(CONFIG.SELECTORS.insumoCosto).value;
+    const stockMinRaw = document.querySelector(CONFIG.SELECTORS.insumoStockMinimo).value;
+    const idExistente = document.querySelector(CONFIG.SELECTORS.insumoId).value || null;
+
+    const datos = {
+      nombre,
+      categoria: document.querySelector(CONFIG.SELECTORS.insumoCategoria).value,
+      cantidad: Number(cantidadRaw),
+      unidad,
+      costoUnitario: costoRaw === '' ? null : Number(costoRaw),
+      stockMinimo: stockMinRaw === '' ? null : Number(stockMinRaw),
+      proveedor: document.querySelector(CONFIG.SELECTORS.insumoProveedor).value.trim(),
+      notas: document.querySelector(CONFIG.SELECTORS.insumoNotas).value.trim(),
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.insumoSubmitBtn);
+    const textoOriginal = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando…';
+
+    const resultado = idExistente
+      ? await Insumos.actualizar(idExistente, datos)
+      : await Insumos.crear(datos);
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = textoOriginal;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar el insumo. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetInsumoForm();
+    this.refreshInsumos();
+  },
+
+  _switchView(targetId) {
+    const views = [CONFIG.SELECTORS.dashboardView, CONFIG.SELECTORS.insumosView];
+    views.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (el) el.hidden = el.id !== targetId;
+    });
+
+    document.querySelectorAll(CONFIG.SELECTORS.navBtns).forEach((btn) => {
+      const active = btn.dataset.viewTarget === targetId;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+
+    if (targetId === CONFIG.SELECTORS.insumosView.slice(1)) {
+      this.refreshInsumos();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -405,10 +802,14 @@ const App = {
   _showCorrectView() {
     const loginView = document.querySelector(CONFIG.SELECTORS.loginView);
     const dashView = document.querySelector(CONFIG.SELECTORS.dashboardView);
+    const insumosView = document.querySelector(CONFIG.SELECTORS.insumosView);
+    const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
       loginView.hidden = true;
+      navEl.hidden = false;
       dashView.hidden = false;
+      insumosView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -418,13 +819,15 @@ const App = {
       this.refresh();
     } else {
       loginView.hidden = false;
+      navEl.hidden = true;
       dashView.hidden = true;
+      insumosView.hidden = true;
       document.querySelector(CONFIG.SELECTORS.password).value = '';
     }
   },
 };
 
 /* ═══════════════════════════════════════════
-   7. ARRANQUE
+   8. ARRANQUE
    ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => App.init());

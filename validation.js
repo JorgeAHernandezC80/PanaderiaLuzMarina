@@ -13,6 +13,24 @@ const NUMERO_ORDEN_RE = /^LM-\d{8}-\d{4}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 const ORDER_STATES = ['pendiente', 'preparada'];
 
+const MAX_INSUMO_NOMBRE_LEN = 120;
+const MAX_INSUMO_PROVEEDOR_LEN = 120;
+const MAX_INSUMO_NOTAS_LEN = 500;
+const MAX_INSUMO_CANTIDAD = 999999;
+const MAX_INSUMO_COSTO = 999999;
+const INSUMO_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const CATEGORIAS_INSUMO = [
+  'harinas',
+  'lacteos',
+  'huevos',
+  'endulzantes',
+  'grasas',
+  'levaduras',
+  'empaque',
+  'otros',
+];
+const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'unidad', 'paquete', 'caja'];
+
 class ValidationError extends Error {
   constructor(message) {
     super(message);
@@ -106,4 +124,82 @@ function validarOrden(orden) {
   };
 }
 
-module.exports = { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES };
+/**
+ * Valida y sanea los datos de un insumo tal como los envía admin.js.
+ * Nunca confía en el cliente: categoría y unidad se validan contra listas
+ * blancas, los números se acotan a rangos razonables y los textos libres
+ * se recortan a un largo máximo antes de tocar la base de datos.
+ * @param {*} datos
+ * @returns {object} insumo saneado
+ */
+function validarInsumo(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const { nombre, categoria, cantidad, unidad, costoUnitario, stockMinimo, proveedor, notas } =
+    datos;
+
+  if (
+    typeof nombre !== 'string' ||
+    nombre.trim() === '' ||
+    nombre.length > MAX_INSUMO_NOMBRE_LEN
+  ) {
+    throw new ValidationError('Nombre del insumo inválido.');
+  }
+
+  const categoriaFinal = CATEGORIAS_INSUMO.includes(categoria) ? categoria : 'otros';
+
+  const cantidadNum = Number(cantidad);
+  if (!Number.isFinite(cantidadNum) || cantidadNum < 0 || cantidadNum > MAX_INSUMO_CANTIDAD) {
+    throw new ValidationError('Cantidad inválida.');
+  }
+
+  if (typeof unidad !== 'string' || !UNIDADES_INSUMO.includes(unidad)) {
+    throw new ValidationError('Unidad inválida.');
+  }
+
+  let costoFinal = null;
+  if (costoUnitario !== null && costoUnitario !== undefined && costoUnitario !== '') {
+    const costoNum = Number(costoUnitario);
+    if (!Number.isFinite(costoNum) || costoNum < 0 || costoNum > MAX_INSUMO_COSTO) {
+      throw new ValidationError('Costo unitario inválido.');
+    }
+    costoFinal = costoNum;
+  }
+
+  let stockMinFinal = null;
+  if (stockMinimo !== null && stockMinimo !== undefined && stockMinimo !== '') {
+    const stockNum = Number(stockMinimo);
+    if (!Number.isFinite(stockNum) || stockNum < 0 || stockNum > MAX_INSUMO_CANTIDAD) {
+      throw new ValidationError('Stock mínimo inválido.');
+    }
+    stockMinFinal = stockNum;
+  }
+
+  const proveedorFinal =
+    typeof proveedor === 'string' ? proveedor.trim().slice(0, MAX_INSUMO_PROVEEDOR_LEN) : '';
+  const notasFinal = typeof notas === 'string' ? notas.trim().slice(0, MAX_INSUMO_NOTAS_LEN) : '';
+
+  return {
+    nombre: nombre.trim(),
+    categoria: categoriaFinal,
+    cantidad: cantidadNum,
+    unidad,
+    costoUnitario: costoFinal,
+    stockMinimo: stockMinFinal,
+    proveedor: proveedorFinal,
+    notas: notasFinal,
+  };
+}
+
+module.exports = {
+  validarOrden,
+  ValidationError,
+  NUMERO_ORDEN_RE,
+  ORDER_STATES,
+  validarInsumo,
+  INSUMO_ID_RE,
+  CATEGORIAS_INSUMO,
+  UNIDADES_INSUMO,
+};

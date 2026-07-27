@@ -43,9 +43,9 @@ const translations = {
     /* Ganchos (inicio) */
     features_title: 'Así funciona la panadería',
     features_subtitle: 'Tres cosas que conviene saber antes de pedir.',
-    feature_fresh_title: 'Horneado cada mañana',
+    feature_fresh_title: 'Horneado antes de abrir',
     feature_fresh_text:
-      'La primera hornada sale a las 7:00. En el catálogo verás lo que hay hoy, no una lista genérica.',
+      'Horneamos dos horas antes de levantar la persiana. En el catálogo verás a qué hora salió la hornada de hoy.',
     feature_fresh_link: 'Ver la hornada de hoy →',
     feature_fresh_link_aria: 'Ver la hornada de hoy en el catálogo',
     feature_order_title: 'Encargas y recoges',
@@ -257,9 +257,9 @@ const translations = {
     /* Hooks (home) */
     features_title: 'How the bakery works',
     features_subtitle: 'Three things worth knowing before you order.',
-    feature_fresh_title: 'Baked every morning',
+    feature_fresh_title: 'Baked before we open',
     feature_fresh_text:
-      'The first batch comes out at 7:00. The catalog shows what we have today, not a generic list.',
+      "We bake two hours before opening. The catalog shows what time today's batch came out.",
     feature_fresh_link: "See today's batch →",
     feature_fresh_link_aria: "See today's batch in the catalog",
     feature_order_title: 'Order and pick up',

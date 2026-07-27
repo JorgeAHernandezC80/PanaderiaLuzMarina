@@ -32,6 +32,24 @@ try {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON ordenes(fecha_iso)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON ordenes(estado)');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS insumos (
+      id             TEXT PRIMARY KEY,
+      nombre         TEXT NOT NULL,
+      categoria      TEXT NOT NULL DEFAULT 'otros',
+      cantidad       REAL NOT NULL,
+      unidad         TEXT NOT NULL,
+      costo_unitario REAL,
+      stock_minimo   REAL,
+      proveedor      TEXT,
+      notas          TEXT,
+      creado_en      TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_insumos_nombre ON insumos(nombre)');
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */

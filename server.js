@@ -9,7 +9,14 @@ const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
-const { validarOrden, ValidationError, NUMERO_ORDEN_RE, ORDER_STATES } = require('./validation');
+const {
+  validarOrden,
+  ValidationError,
+  NUMERO_ORDEN_RE,
+  ORDER_STATES,
+  validarInsumo,
+  INSUMO_ID_RE,
+} = require('./validation');
 
 const PORT = process.env.PORT || 3001;
 
@@ -193,7 +200,11 @@ app.get('/', (req, res) => {
       auth: 'POST /auth (body: { password: "tu_token" })',
       crearOrden: 'POST /ordenes',
       listarOrdenes: 'GET /ordenes (Authorization: Bearer token)',
-      actualizarOrden: 'PATCH /ordenes/:numero (Authorization: Bearer token)'
+      actualizarOrden: 'PATCH /ordenes/:numero (Authorization: Bearer token)',
+      listarInsumos: 'GET /insumos (Authorization: Bearer token)',
+      crearInsumo: 'POST /insumos (Authorization: Bearer token)',
+      actualizarInsumo: 'PUT /insumos/:id (Authorization: Bearer token)',
+      eliminarInsumo: 'DELETE /insumos/:id (Authorization: Bearer token)'
     }
   });
 });
@@ -317,6 +328,133 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[PATCH /ordenes/:numero]', err.message);
     res.status(500).json({ error: 'Error al actualizar la orden.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   INSUMOS — CRUD protegido (solo panel admin)
+   ═══════════════════════════════════════════ */
+function serializeInsumo(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    cantidad: row.cantidad,
+    unidad: row.unidad,
+    costoUnitario: row.costo_unitario,
+    stockMinimo: row.stock_minimo,
+    proveedor: row.proveedor,
+    notas: row.notas,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+app.get('/insumos', requireAuth, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT * FROM insumos ORDER BY nombre COLLATE NOCASE ASC').all();
+    res.json(rows.map(serializeInsumo));
+  } catch (err) {
+    console.error('[GET /insumos]', err.message);
+    res.status(500).json({ error: 'Error al consultar insumos.' });
+  }
+});
+
+app.post('/insumos', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarInsumo(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const id = crypto.randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO insumos (id, nombre, categoria, cantidad, unidad, costo_unitario, stock_minimo, proveedor, notas)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      datos.nombre,
+      datos.categoria,
+      datos.cantidad,
+      datos.unidad,
+      datos.costoUnitario,
+      datos.stockMinimo,
+      datos.proveedor,
+      datos.notas,
+    );
+    const fila = db.prepare('SELECT * FROM insumos WHERE id = ?').get(id);
+    res.status(201).json(serializeInsumo(fila));
+  } catch (err) {
+    console.error('[POST /insumos]', err.message);
+    res.status(500).json({ error: 'Error al guardar el insumo.' });
+  }
+});
+
+app.put('/insumos/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!INSUMO_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de insumo inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarInsumo(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const info = db
+      .prepare(
+        `UPDATE insumos
+         SET nombre = ?, categoria = ?, cantidad = ?, unidad = ?, costo_unitario = ?,
+             stock_minimo = ?, proveedor = ?, notas = ?, actualizado_en = datetime('now')
+         WHERE id = ?`,
+      )
+      .run(
+        datos.nombre,
+        datos.categoria,
+        datos.cantidad,
+        datos.unidad,
+        datos.costoUnitario,
+        datos.stockMinimo,
+        datos.proveedor,
+        datos.notas,
+        id,
+      );
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Insumo no encontrado.' });
+    }
+    const fila = db.prepare('SELECT * FROM insumos WHERE id = ?').get(id);
+    res.json(serializeInsumo(fila));
+  } catch (err) {
+    console.error('[PUT /insumos/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar el insumo.' });
+  }
+});
+
+app.delete('/insumos/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!INSUMO_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de insumo inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM insumos WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Insumo no encontrado.' });
+    }
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /insumos/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar el insumo.' });
   }
 });
 
