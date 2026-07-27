@@ -122,6 +122,17 @@
           Insumos
           <span class="admin-nav__count" id="insumos-count">0</span>
         </button>
+        <button
+          type="button"
+          class="admin-nav__btn"
+          data-view-target="proveedores-view"
+          role="tab"
+          aria-selected="false"
+        >
+          <i class="fa-solid fa-truck-field" aria-hidden="true"></i>
+          Proveedores
+          <span class="admin-nav__count" id="proveedores-count">0</span>
+        </button>
       </nav>
 
       <!-- ═══════════ DASHBOARD ═══════════ -->
@@ -345,6 +356,378 @@
           <!-- Se inyecta dinámicamente por admin.js -->
         </section>
       </section>
+
+      <!-- ═══════════ PROVEEDORES ═══════════ -->
+      <section
+        id="proveedores-view"
+        class="view view--proveedores"
+        hidden
+        aria-labelledby="proveedores-title"
+        data-component="proveedores"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="proveedores-title">Proveedores</h1>
+            <p class="dashboard-header__subtitle">
+              Registra los datos de identificación, contacto, financieros y operativos de cada
+              proveedor.
+            </p>
+          </div>
+        </header>
+
+        <form id="proveedor-form" class="proveedor-form" novalidate data-component="proveedor-form">
+          <input type="hidden" id="proveedor-id" name="id" />
+
+          <!-- Bloque 1: Datos de Identificación (Legal) -->
+          <fieldset class="proveedor-form__group">
+            <legend class="proveedor-form__legend">1. Datos de Identificación (Legal)</legend>
+
+            <div class="form-field">
+              <label for="proveedor-nombre-legal" class="form-field__label"
+                >Nombre o Razón Social</label
+              >
+              <input
+                type="text"
+                id="proveedor-nombre-legal"
+                name="nombreLegal"
+                class="form-field__input"
+                placeholder="Distribuidora Harinas del Valle S.A. de C.V."
+                maxlength="150"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-nombre-comercial" class="form-field__label"
+                >Nombre Comercial</label
+              >
+              <input
+                type="text"
+                id="proveedor-nombre-comercial"
+                name="nombreComercial"
+                class="form-field__input"
+                placeholder="Harinas del Valle"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-id-fiscal" class="form-field__label"
+                >Identificación Fiscal (RFC / RUT / CUIT / NIF / EIN)</label
+              >
+              <input
+                type="text"
+                id="proveedor-id-fiscal"
+                name="identificacionFiscal"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-giro" class="form-field__label">Giro Comercial</label>
+              <input
+                type="text"
+                id="proveedor-giro"
+                name="giroComercial"
+                class="form-field__input"
+                placeholder="Distribución de materias primas"
+                maxlength="120"
+              />
+            </div>
+          </fieldset>
+
+          <!-- Bloque 2: Información de Contacto -->
+          <fieldset class="proveedor-form__group">
+            <legend class="proveedor-form__legend">2. Información de Contacto</legend>
+
+            <div class="form-field proveedor-form__wide">
+              <label for="proveedor-direccion" class="form-field__label"
+                >Dirección Física Completa</label
+              >
+              <input
+                type="text"
+                id="proveedor-direccion"
+                name="direccion"
+                class="form-field__input"
+                placeholder="Calle, número, código postal, ciudad y país"
+                maxlength="250"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-contacto-nombre" class="form-field__label"
+                >Contacto Principal</label
+              >
+              <input
+                type="text"
+                id="proveedor-contacto-nombre"
+                name="contactoNombre"
+                class="form-field__input"
+                placeholder="Nombre completo"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-contacto-cargo" class="form-field__label">Cargo</label>
+              <input
+                type="text"
+                id="proveedor-contacto-cargo"
+                name="contactoCargo"
+                class="form-field__input"
+                placeholder="Ejecutivo de Ventas"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-email-general" class="form-field__label"
+                >Correo General (facturas)</label
+              >
+              <input
+                type="email"
+                id="proveedor-email-general"
+                name="emailGeneral"
+                class="form-field__input"
+                placeholder="facturas@proveedor.com"
+                maxlength="150"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-email-contacto" class="form-field__label"
+                >Correo del Contacto Directo</label
+              >
+              <input
+                type="email"
+                id="proveedor-email-contacto"
+                name="emailContacto"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="150"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-tel-empresa" class="form-field__label"
+                >Teléfono Fijo (Empresa)</label
+              >
+              <input
+                type="tel"
+                id="proveedor-tel-empresa"
+                name="telefonoEmpresa"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="30"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-tel-celular" class="form-field__label"
+                >Celular (Ejecutivo)</label
+              >
+              <input
+                type="tel"
+                id="proveedor-tel-celular"
+                name="telefonoCelular"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="30"
+              />
+            </div>
+          </fieldset>
+
+          <!-- Bloque 3: Datos Financieros y de Facturación -->
+          <fieldset class="proveedor-form__group">
+            <legend class="proveedor-form__legend">3. Datos Financieros y de Facturación</legend>
+
+            <div class="form-field">
+              <label for="proveedor-banco" class="form-field__label">Banco</label>
+              <input
+                type="text"
+                id="proveedor-banco"
+                name="banco"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-numero-cuenta" class="form-field__label"
+                >Número de Cuenta</label
+              >
+              <input
+                type="text"
+                id="proveedor-numero-cuenta"
+                name="numeroCuenta"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="60"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-clabe-iban" class="form-field__label">CLABE / IBAN</label>
+              <input
+                type="text"
+                id="proveedor-clabe-iban"
+                name="clabeIban"
+                class="form-field__input"
+                placeholder="Opcional"
+                maxlength="60"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-condiciones-pago" class="form-field__label"
+                >Condiciones de Pago</label
+              >
+              <input
+                type="text"
+                id="proveedor-condiciones-pago"
+                name="condicionesPago"
+                class="form-field__input"
+                placeholder="Contado, crédito 30/60/90 días"
+                maxlength="120"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-moneda" class="form-field__label">Moneda de Pago</label>
+              <select id="proveedor-moneda" name="moneda" class="form-field__input">
+                <option value="" selected>Sin especificar</option>
+                <option value="USD">USD</option>
+                <option value="MXN">MXN</option>
+                <option value="COP">COP</option>
+                <option value="EUR">EUR</option>
+                <option value="ARS">ARS</option>
+                <option value="CLP">CLP</option>
+              </select>
+            </div>
+
+            <div class="form-field proveedor-form__wide">
+              <label for="proveedor-metodo-facturacion" class="form-field__label"
+                >Método de Facturación</label
+              >
+              <textarea
+                id="proveedor-metodo-facturacion"
+                name="metodoFacturacion"
+                class="form-field__input"
+                rows="2"
+                placeholder="Requisitos específicos para la recepción de facturas"
+                maxlength="500"
+              ></textarea>
+            </div>
+          </fieldset>
+
+          <!-- Bloque 4: Datos Operativos y de Logística -->
+          <fieldset class="proveedor-form__group">
+            <legend class="proveedor-form__legend">4. Datos Operativos y de Logística</legend>
+
+            <div class="form-field">
+              <label for="proveedor-lead-time" class="form-field__label"
+                >Tiempo de Entrega (días)</label
+              >
+              <input
+                type="number"
+                id="proveedor-lead-time"
+                name="leadTimeDias"
+                class="form-field__input"
+                min="0"
+                step="1"
+                placeholder="Opcional"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="proveedor-pedido-minimo" class="form-field__label">Pedido Mínimo</label>
+              <input
+                type="number"
+                id="proveedor-pedido-minimo"
+                name="pedidoMinimo"
+                class="form-field__input"
+                min="0"
+                step="0.01"
+                placeholder="Monto o cantidad mínima"
+              />
+            </div>
+
+            <div class="form-field proveedor-form__wide">
+              <label for="proveedor-politicas-devolucion" class="form-field__label"
+                >Políticas de Devolución</label
+              >
+              <textarea
+                id="proveedor-politicas-devolucion"
+                name="politicasDevolucion"
+                class="form-field__input"
+                rows="2"
+                placeholder="Condiciones bajo las cuales aceptan cambios de mercancía"
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <div class="form-field proveedor-form__wide">
+              <label for="proveedor-certificaciones" class="form-field__label"
+                >Certificaciones</label
+              >
+              <textarea
+                id="proveedor-certificaciones"
+                name="certificaciones"
+                class="form-field__input"
+                rows="2"
+                placeholder="ISO 9001, etc."
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <div class="form-field proveedor-form__wide">
+              <label for="proveedor-notas" class="form-field__label">Notas</label>
+              <textarea
+                id="proveedor-notas"
+                name="notas"
+                class="form-field__input"
+                rows="2"
+                placeholder="Opcional"
+                maxlength="500"
+              ></textarea>
+            </div>
+          </fieldset>
+
+          <output
+            id="proveedor-error"
+            class="form-error proveedor-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-proveedor-error-msg></span>
+          </output>
+
+          <div class="proveedor-form__actions proveedor-form__wide">
+            <button type="submit" id="btn-proveedor-submit" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Agregar proveedor
+            </button>
+            <button type="button" id="btn-proveedor-cancel-edit" class="btn btn--ghost" hidden>
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+
+        <section
+          id="proveedores-container"
+          class="proveedores"
+          aria-label="Listado de proveedores"
+          aria-live="polite"
+          data-component="proveedores-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
     </main>
 
     <!-- ═══════════ TEMPLATES ═══════════ -->
@@ -405,6 +788,18 @@
         <td class="insumo-table__costo" data-label="Costo unit."></td>
         <td class="insumo-table__proveedor" data-label="Proveedor"></td>
         <td class="insumo-table__acciones" data-label="Acciones"></td>
+      </tr>
+    </template>
+
+    <!-- Plantilla: fila de proveedor -->
+    <template id="tpl-proveedor-row">
+      <tr>
+        <td class="proveedor-table__nombre" data-label="Proveedor"></td>
+        <td class="proveedor-table__giro" data-label="Giro"></td>
+        <td class="proveedor-table__contacto" data-label="Contacto"></td>
+        <td class="proveedor-table__telefono" data-label="Teléfono"></td>
+        <td class="proveedor-table__condiciones" data-label="Condiciones de pago"></td>
+        <td class="proveedor-table__acciones" data-label="Acciones"></td>
       </tr>
     </template>
 

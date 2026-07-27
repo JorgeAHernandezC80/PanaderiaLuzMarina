@@ -663,6 +663,107 @@ button {
   color: var(--color-danger);
 }
 
+/* ═══════════════════════════════════════════
+   14. PROVEEDORES
+   ═══════════════════════════════════════════ */
+.proveedor-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-6);
+}
+
+.proveedor-form__group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+
+.proveedor-form__legend {
+  padding: 0 var(--space-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.proveedor-form__wide {
+  grid-column: 1 / -1;
+}
+
+.proveedor-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.proveedor-form textarea.form-field__input {
+  resize: vertical;
+}
+
+.proveedores {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.proveedores .empty-state {
+  border: none;
+  box-shadow: none;
+}
+
+.proveedor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.proveedor-table thead {
+  background: var(--color-soft-bg);
+}
+
+.proveedor-table th {
+  padding: var(--space-3) var(--space-5);
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.proveedor-table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-soft);
+  vertical-align: middle;
+}
+
+.proveedor-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.proveedor-table__nombre {
+  font-weight: 600;
+}
+
+.proveedor-table__acciones {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .btn--danger {
   color: var(--color-danger);
   border-color: var(--color-danger);
@@ -704,6 +805,22 @@ button {
   .order-group__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .insumo-form,
+  .proveedor-form__group {
+    grid-template-columns: 1fr;
+  }
+
+  .insumo-table,
+  .proveedor-table {
+    font-size: 0.85rem;
+  }
+  .insumo-table th,
+  .insumo-table td,
+  .proveedor-table th,
+  .proveedor-table td {
+    padding: var(--space-3);
   }
 }
 

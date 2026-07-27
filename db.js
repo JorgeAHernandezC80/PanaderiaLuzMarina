@@ -50,6 +50,40 @@ try {
   `);
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_insumos_nombre ON insumos(nombre)');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS proveedores (
+      id                     TEXT PRIMARY KEY,
+      nombre_legal           TEXT NOT NULL,
+      nombre_comercial       TEXT,
+      identificacion_fiscal  TEXT,
+      giro_comercial         TEXT,
+      direccion              TEXT,
+      contacto_nombre        TEXT,
+      contacto_cargo         TEXT,
+      email_general          TEXT,
+      email_contacto         TEXT,
+      telefono_empresa       TEXT,
+      telefono_celular       TEXT,
+      banco                  TEXT,
+      numero_cuenta          TEXT,
+      clabe_iban             TEXT,
+      condiciones_pago       TEXT,
+      moneda                 TEXT,
+      metodo_facturacion     TEXT,
+      lead_time_dias         REAL,
+      pedido_minimo          REAL,
+      politicas_devolucion   TEXT,
+      certificaciones        TEXT,
+      notas                  TEXT,
+      creado_en              TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en         TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_proveedores_nombre ON proveedores(nombre_comercial, nombre_legal)',
+  );
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */

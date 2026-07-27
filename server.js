@@ -16,6 +16,8 @@ const {
   ORDER_STATES,
   validarInsumo,
   INSUMO_ID_RE,
+  validarProveedor,
+  PROVEEDOR_ID_RE,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -464,6 +466,188 @@ app.delete('/insumos/:id', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[DELETE /insumos/:id]', err.message);
     res.status(500).json({ error: 'Error al eliminar el insumo.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   PROVEEDORES — CRUD protegido (solo panel admin)
+   ═══════════════════════════════════════════ */
+function serializeProveedor(row) {
+  return {
+    id: row.id,
+    nombreLegal: row.nombre_legal,
+    nombreComercial: row.nombre_comercial,
+    identificacionFiscal: row.identificacion_fiscal,
+    giroComercial: row.giro_comercial,
+    direccion: row.direccion,
+    contactoNombre: row.contacto_nombre,
+    contactoCargo: row.contacto_cargo,
+    emailGeneral: row.email_general,
+    emailContacto: row.email_contacto,
+    telefonoEmpresa: row.telefono_empresa,
+    telefonoCelular: row.telefono_celular,
+    banco: row.banco,
+    numeroCuenta: row.numero_cuenta,
+    clabeIban: row.clabe_iban,
+    condicionesPago: row.condiciones_pago,
+    moneda: row.moneda,
+    metodoFacturacion: row.metodo_facturacion,
+    leadTimeDias: row.lead_time_dias,
+    pedidoMinimo: row.pedido_minimo,
+    politicasDevolucion: row.politicas_devolucion,
+    certificaciones: row.certificaciones,
+    notas: row.notas,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+app.get('/proveedores', requireAuth, (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `SELECT * FROM proveedores
+         ORDER BY COALESCE(NULLIF(nombre_comercial, ''), nombre_legal) COLLATE NOCASE ASC`,
+      )
+      .all();
+    res.json(rows.map(serializeProveedor));
+  } catch (err) {
+    console.error('[GET /proveedores]', err.message);
+    res.status(500).json({ error: 'Error al consultar proveedores.' });
+  }
+});
+
+app.post('/proveedores', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarProveedor(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const id = crypto.randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO proveedores (
+        id, nombre_legal, nombre_comercial, identificacion_fiscal, giro_comercial,
+        direccion, contacto_nombre, contacto_cargo, email_general, email_contacto,
+        telefono_empresa, telefono_celular, banco, numero_cuenta, clabe_iban,
+        condiciones_pago, moneda, metodo_facturacion, lead_time_dias, pedido_minimo,
+        politicas_devolucion, certificaciones, notas
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      datos.nombreLegal,
+      datos.nombreComercial,
+      datos.identificacionFiscal,
+      datos.giroComercial,
+      datos.direccion,
+      datos.contactoNombre,
+      datos.contactoCargo,
+      datos.emailGeneral,
+      datos.emailContacto,
+      datos.telefonoEmpresa,
+      datos.telefonoCelular,
+      datos.banco,
+      datos.numeroCuenta,
+      datos.clabeIban,
+      datos.condicionesPago,
+      datos.moneda,
+      datos.metodoFacturacion,
+      datos.leadTimeDias,
+      datos.pedidoMinimo,
+      datos.politicasDevolucion,
+      datos.certificaciones,
+      datos.notas,
+    );
+    const fila = db.prepare('SELECT * FROM proveedores WHERE id = ?').get(id);
+    res.status(201).json(serializeProveedor(fila));
+  } catch (err) {
+    console.error('[POST /proveedores]', err.message);
+    res.status(500).json({ error: 'Error al guardar el proveedor.' });
+  }
+});
+
+app.put('/proveedores/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!PROVEEDOR_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de proveedor inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarProveedor(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const info = db
+      .prepare(
+        `UPDATE proveedores
+         SET nombre_legal = ?, nombre_comercial = ?, identificacion_fiscal = ?, giro_comercial = ?,
+             direccion = ?, contacto_nombre = ?, contacto_cargo = ?, email_general = ?, email_contacto = ?,
+             telefono_empresa = ?, telefono_celular = ?, banco = ?, numero_cuenta = ?, clabe_iban = ?,
+             condiciones_pago = ?, moneda = ?, metodo_facturacion = ?, lead_time_dias = ?, pedido_minimo = ?,
+             politicas_devolucion = ?, certificaciones = ?, notas = ?, actualizado_en = datetime('now')
+         WHERE id = ?`,
+      )
+      .run(
+        datos.nombreLegal,
+        datos.nombreComercial,
+        datos.identificacionFiscal,
+        datos.giroComercial,
+        datos.direccion,
+        datos.contactoNombre,
+        datos.contactoCargo,
+        datos.emailGeneral,
+        datos.emailContacto,
+        datos.telefonoEmpresa,
+        datos.telefonoCelular,
+        datos.banco,
+        datos.numeroCuenta,
+        datos.clabeIban,
+        datos.condicionesPago,
+        datos.moneda,
+        datos.metodoFacturacion,
+        datos.leadTimeDias,
+        datos.pedidoMinimo,
+        datos.politicasDevolucion,
+        datos.certificaciones,
+        datos.notas,
+        id,
+      );
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Proveedor no encontrado.' });
+    }
+    const fila = db.prepare('SELECT * FROM proveedores WHERE id = ?').get(id);
+    res.json(serializeProveedor(fila));
+  } catch (err) {
+    console.error('[PUT /proveedores/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar el proveedor.' });
+  }
+});
+
+app.delete('/proveedores/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!PROVEEDOR_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de proveedor inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM proveedores WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Proveedor no encontrado.' });
+    }
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /proveedores/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar el proveedor.' });
   }
 });
 

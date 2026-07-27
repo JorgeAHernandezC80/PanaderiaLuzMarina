@@ -31,6 +31,17 @@ const CATEGORIAS_INSUMO = [
 ];
 const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'unidad', 'paquete', 'caja'];
 
+const MAX_PROV_NOMBRE_LEN = 150;
+const MAX_PROV_CORTO_LEN = 120;
+const MAX_PROV_DIRECCION_LEN = 250;
+const MAX_PROV_EMAIL_LEN = 150;
+const MAX_PROV_TELEFONO_LEN = 30;
+const MAX_PROV_CUENTA_LEN = 60;
+const MAX_PROV_TEXTO_LARGO_LEN = 500;
+const MAX_PROV_LEAD_TIME = 365;
+const MAX_PROV_PEDIDO_MINIMO = 999999;
+const PROVEEDOR_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+
 class ValidationError extends Error {
   constructor(message) {
     super(message);
@@ -189,6 +200,84 @@ function validarInsumo(datos) {
   };
 }
 
+/** Recorta un string opcional a un largo máximo; nunca confía en el tipo recibido. */
+function texto(valor, maxLen) {
+  return typeof valor === 'string' ? valor.trim().slice(0, maxLen) : '';
+}
+
+/**
+ * Valida y sanea los datos de un proveedor tal como los envía admin.js.
+ * Solo nombreLegal es obligatorio (es el único dato indispensable para
+ * poder identificar al proveedor); el resto son campos opcionales de los
+ * 4 bloques: identificación legal, contacto, financiero/facturación y
+ * operativo/logística. Todo texto libre se recorta a un largo máximo
+ * antes de tocar la base de datos.
+ * @param {*} datos
+ * @returns {object} proveedor saneado
+ */
+function validarProveedor(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const { nombreLegal, leadTimeDias, pedidoMinimo } = datos;
+
+  if (
+    typeof nombreLegal !== 'string' ||
+    nombreLegal.trim() === '' ||
+    nombreLegal.length > MAX_PROV_NOMBRE_LEN
+  ) {
+    throw new ValidationError('El nombre o razón social del proveedor es obligatorio.');
+  }
+
+  let leadTimeFinal = null;
+  if (leadTimeDias !== null && leadTimeDias !== undefined && leadTimeDias !== '') {
+    const leadTimeNum = Number(leadTimeDias);
+    if (!Number.isFinite(leadTimeNum) || leadTimeNum < 0 || leadTimeNum > MAX_PROV_LEAD_TIME) {
+      throw new ValidationError('Tiempo de entrega (lead time) inválido.');
+    }
+    leadTimeFinal = leadTimeNum;
+  }
+
+  let pedidoMinimoFinal = null;
+  if (pedidoMinimo !== null && pedidoMinimo !== undefined && pedidoMinimo !== '') {
+    const pedidoMinimoNum = Number(pedidoMinimo);
+    if (
+      !Number.isFinite(pedidoMinimoNum) ||
+      pedidoMinimoNum < 0 ||
+      pedidoMinimoNum > MAX_PROV_PEDIDO_MINIMO
+    ) {
+      throw new ValidationError('Pedido mínimo inválido.');
+    }
+    pedidoMinimoFinal = pedidoMinimoNum;
+  }
+
+  return {
+    nombreLegal: nombreLegal.trim(),
+    nombreComercial: texto(datos.nombreComercial, MAX_PROV_CORTO_LEN),
+    identificacionFiscal: texto(datos.identificacionFiscal, MAX_PROV_CORTO_LEN),
+    giroComercial: texto(datos.giroComercial, MAX_PROV_CORTO_LEN),
+    direccion: texto(datos.direccion, MAX_PROV_DIRECCION_LEN),
+    contactoNombre: texto(datos.contactoNombre, MAX_PROV_CORTO_LEN),
+    contactoCargo: texto(datos.contactoCargo, MAX_PROV_CORTO_LEN),
+    emailGeneral: texto(datos.emailGeneral, MAX_PROV_EMAIL_LEN),
+    emailContacto: texto(datos.emailContacto, MAX_PROV_EMAIL_LEN),
+    telefonoEmpresa: texto(datos.telefonoEmpresa, MAX_PROV_TELEFONO_LEN),
+    telefonoCelular: texto(datos.telefonoCelular, MAX_PROV_TELEFONO_LEN),
+    banco: texto(datos.banco, MAX_PROV_CORTO_LEN),
+    numeroCuenta: texto(datos.numeroCuenta, MAX_PROV_CUENTA_LEN),
+    clabeIban: texto(datos.clabeIban, MAX_PROV_CUENTA_LEN),
+    condicionesPago: texto(datos.condicionesPago, MAX_PROV_CORTO_LEN),
+    moneda: texto(datos.moneda, 10),
+    metodoFacturacion: texto(datos.metodoFacturacion, MAX_PROV_TEXTO_LARGO_LEN),
+    leadTimeDias: leadTimeFinal,
+    pedidoMinimo: pedidoMinimoFinal,
+    politicasDevolucion: texto(datos.politicasDevolucion, MAX_PROV_TEXTO_LARGO_LEN),
+    certificaciones: texto(datos.certificaciones, MAX_PROV_TEXTO_LARGO_LEN),
+    notas: texto(datos.notas, MAX_PROV_TEXTO_LARGO_LEN),
+  };
+}
+
 module.exports = {
   validarOrden,
   ValidationError,
@@ -198,4 +287,6 @@ module.exports = {
   INSUMO_ID_RE,
   CATEGORIAS_INSUMO,
   UNIDADES_INSUMO,
+  validarProveedor,
+  PROVEEDOR_ID_RE,
 };
