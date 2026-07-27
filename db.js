@@ -51,25 +51,45 @@ try {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_insumos_nombre ON insumos(nombre)');
 
+  /* Migración: la tabla proveedores pudo haber sido creada por una
+     implementación anterior con la columna nombre_legal. CREATE TABLE
+     IF NOT EXISTS no toca una tabla que ya existe, así que si detectamos
+     el esquema viejo la renombramos a un respaldo, dejamos que se cree
+     la tabla nueva más abajo, y luego copiamos los datos preservando
+     cualquier proveedor ya guardado. */
+  const proveedoresInfo = db.prepare('PRAGMA table_info(proveedores)').all();
+  const proveedoresColumnas = proveedoresInfo.map((c) => c.name);
+  const proveedoresEsquemaViejo =
+    proveedoresColumnas.includes('nombre_legal') && !proveedoresColumnas.includes('razon_social');
+
+  if (proveedoresEsquemaViejo) {
+    console.log(
+      '[db] Migrando tabla proveedores del esquema antiguo (nombre_legal) al nuevo (razon_social)...',
+    );
+    db.exec('ALTER TABLE proveedores RENAME TO proveedores_legacy_backup');
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS proveedores (
       id                     TEXT PRIMARY KEY,
-      nombre_legal           TEXT NOT NULL,
+      razon_social           TEXT NOT NULL,
       nombre_comercial       TEXT,
       identificacion_fiscal  TEXT,
       giro_comercial         TEXT,
       direccion              TEXT,
+      codigo_postal          TEXT,
+      ciudad                 TEXT,
+      pais                   TEXT,
       contacto_nombre        TEXT,
-      contacto_cargo         TEXT,
-      email_general          TEXT,
+      email_facturacion      TEXT,
       email_contacto         TEXT,
-      telefono_empresa       TEXT,
-      telefono_celular       TEXT,
+      telefono_fijo          TEXT,
+      celular                TEXT,
       banco                  TEXT,
       numero_cuenta          TEXT,
       clabe_iban             TEXT,
-      condiciones_pago       TEXT,
-      moneda                 TEXT,
+      condiciones_pago       TEXT NOT NULL DEFAULT 'contado',
+      moneda                 TEXT NOT NULL DEFAULT 'COP',
       metodo_facturacion     TEXT,
       lead_time_dias         REAL,
       pedido_minimo          REAL,
@@ -81,9 +101,32 @@ try {
     )
   `);
 
-  db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_proveedores_nombre ON proveedores(nombre_comercial, nombre_legal)',
-  );
+  db.exec('CREATE INDEX IF NOT EXISTS idx_proveedores_razon ON proveedores(razon_social)');
+
+  if (proveedoresEsquemaViejo) {
+    db.exec(`
+      INSERT INTO proveedores (
+        id, razon_social, nombre_comercial, identificacion_fiscal, giro_comercial,
+        direccion, contacto_nombre, email_facturacion, email_contacto,
+        telefono_fijo, celular, banco, numero_cuenta, clabe_iban,
+        condiciones_pago, moneda, metodo_facturacion, lead_time_dias,
+        pedido_minimo, politicas_devolucion, certificaciones, notas,
+        creado_en, actualizado_en
+      )
+      SELECT
+        id, nombre_legal, nombre_comercial, identificacion_fiscal, giro_comercial,
+        direccion, contacto_nombre, email_general, email_contacto,
+        telefono_empresa, telefono_celular, banco, numero_cuenta, clabe_iban,
+        COALESCE(NULLIF(condiciones_pago, ''), 'contado'),
+        COALESCE(NULLIF(moneda, ''), 'COP'),
+        metodo_facturacion, lead_time_dias, pedido_minimo, politicas_devolucion,
+        certificaciones, notas, creado_en, actualizado_en
+      FROM proveedores_legacy_backup
+    `);
+    console.log(
+      '[db] Migración completada. Respaldo conservado en la tabla proveedores_legacy_backup.',
+    );
+  }
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */
