@@ -156,16 +156,16 @@ El backend se configura mediante variables de entorno. Copia el ejemplo y ajúst
 cp .env.example .env
 ```
 
-| Variable                | Requerida   | Descripción                                                                                                      |
-| ----------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| `PORT`                  | No          | Puerto del backend. Por defecto `3001`.                                                                          |
-| `FRONTEND_ORIGIN`       | Sí (prod)   | Origen permitido para CORS (p. ej. `https://tu-sitio.netlify.app`). Sin él, se rechazan las peticiones cruzadas. |
-| `ADMIN_TOKEN`           | Sí (prod)   | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                                |
-| `SESSION_SECRET`        | Recomendada | Secreto para firmar los tokens de sesión del panel (HMAC). Si se omite, se deriva del `ADMIN_TOKEN`.             |
-| `SESSION_TTL_MS`        | No          | Duración de la sesión admin en ms. Por defecto `28800000` (8 h).                                                 |
-| `AUTH_MAX_ATTEMPTS`     | No          | Intentos de login por IP cada 15 min antes de responder `429`. Por defecto `10`.                                 |
-| `ORDERS_MAX_PER_WINDOW` | No          | Creaciones de orden por IP cada 15 min. Por defecto `20`.                                                        |
-| `DB_PATH`               | No          | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                           |
+| Variable                | Requerida   | Descripción                                                                                                 |
+| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `PORT`                  | No          | Puerto del backend. Por defecto `3001`.                                                                     |
+| `FRONTEND_ORIGIN`       | Sí (prod)   | Orígenes permitidos para CORS, separados por coma (p. ej. `https://tu-sitio.netlify.app`). Sin barra final. |
+| `ADMIN_TOKEN`           | Sí (prod)   | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                           |
+| `SESSION_SECRET`        | Recomendada | Secreto para firmar los tokens de sesión del panel (HMAC). Si se omite, se deriva del `ADMIN_TOKEN`.        |
+| `SESSION_TTL_MS`        | No          | Duración de la sesión admin en ms. Por defecto `28800000` (8 h).                                            |
+| `AUTH_MAX_ATTEMPTS`     | No          | Intentos de login por IP cada 15 min antes de responder `429`. Por defecto `10`.                            |
+| `ORDERS_MAX_PER_WINDOW` | No          | Creaciones de orden por IP cada 15 min. Por defecto `20`.                                                   |
+| `DB_PATH`               | No          | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                      |
 
 > ⚠️ La base de datos (`*.db`) contiene datos de clientes (PII) y **no** se versiona.
 > El archivo `.env` tampoco: nunca subas secretos al repositorio.
