@@ -97,7 +97,7 @@ app.use(
     origin: [
       'http://localhost:5500',
       'http://127.0.0.1:5500',
-      'https://luzmarpanaderia.netlify.app', // Dominio de producción
+      FRONTEND_ORIGIN, // Dominio de producción (configurable por entorno)
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
@@ -114,7 +114,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; connect-src 'self' ${FRONTEND_ORIGIN} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
+    `default-src 'none'; connect-src 'self' ${FRONTEND_ORIGIN} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
   );
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   next();
@@ -233,7 +233,7 @@ app.post('/auth', authRateLimit, (req, res) => {
   }
 
   const token = issueSessionToken();
-  return res.json({ token });
+  return res.json({ token, expiresIn: SESSION_TTL_MS });
 });
 
 app.post('/ordenes', rateLimit, (req, res) => {
