@@ -61,32 +61,45 @@ const CONFIG = Object.freeze({
     tplProveedorRow: '#tpl-proveedor-row',
     proveedorForm: '#proveedor-form',
     proveedorId: '#proveedor-id',
-    proveedorNombreLegal: '#proveedor-nombre-legal',
-    proveedorNombreComercial: '#proveedor-nombre-comercial',
-    proveedorIdFiscal: '#proveedor-id-fiscal',
-    proveedorGiro: '#proveedor-giro',
-    proveedorDireccion: '#proveedor-direccion',
-    proveedorContactoNombre: '#proveedor-contacto-nombre',
-    proveedorContactoCargo: '#proveedor-contacto-cargo',
-    proveedorEmailGeneral: '#proveedor-email-general',
-    proveedorEmailContacto: '#proveedor-email-contacto',
-    proveedorTelEmpresa: '#proveedor-tel-empresa',
-    proveedorTelCelular: '#proveedor-tel-celular',
-    proveedorBanco: '#proveedor-banco',
-    proveedorNumeroCuenta: '#proveedor-numero-cuenta',
-    proveedorClabeIban: '#proveedor-clabe-iban',
-    proveedorCondicionesPago: '#proveedor-condiciones-pago',
-    proveedorMoneda: '#proveedor-moneda',
-    proveedorMetodoFacturacion: '#proveedor-metodo-facturacion',
-    proveedorLeadTime: '#proveedor-lead-time',
-    proveedorPedidoMinimo: '#proveedor-pedido-minimo',
-    proveedorPoliticasDevolucion: '#proveedor-politicas-devolucion',
-    proveedorCertificaciones: '#proveedor-certificaciones',
-    proveedorNotas: '#proveedor-notas',
     proveedorError: '#proveedor-error',
     proveedorErrorMsg: '#proveedor-error [data-proveedor-error-msg]',
     proveedorSubmitBtn: '#btn-proveedor-submit',
     proveedorCancelEditBtn: '#btn-proveedor-cancel-edit',
+  },
+  /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
+     leer el formulario sea una sola iteración en lugar de 24 querySelector. */
+  PROVEEDOR_FIELDS: {
+    razonSocial: '#proveedor-razon-social',
+    nombreComercial: '#proveedor-nombre-comercial',
+    identificacionFiscal: '#proveedor-identificacion-fiscal',
+    giroComercial: '#proveedor-giro-comercial',
+    direccion: '#proveedor-direccion',
+    codigoPostal: '#proveedor-codigo-postal',
+    ciudad: '#proveedor-ciudad',
+    pais: '#proveedor-pais',
+    contactoNombre: '#proveedor-contacto-nombre',
+    emailFacturacion: '#proveedor-email-facturacion',
+    emailContacto: '#proveedor-email-contacto',
+    telefonoFijo: '#proveedor-telefono-fijo',
+    celular: '#proveedor-celular',
+    banco: '#proveedor-banco',
+    numeroCuenta: '#proveedor-numero-cuenta',
+    clabeIban: '#proveedor-clabe-iban',
+    condicionesPago: '#proveedor-condiciones-pago',
+    moneda: '#proveedor-moneda',
+    metodoFacturacion: '#proveedor-metodo-facturacion',
+    leadTimeDias: '#proveedor-lead-time',
+    pedidoMinimo: '#proveedor-pedido-minimo',
+    politicasDevolucion: '#proveedor-politicas-devolucion',
+    certificaciones: '#proveedor-certificaciones',
+    notas: '#proveedor-notas',
+  },
+  PROVEEDOR_NUMERIC_FIELDS: ['leadTimeDias', 'pedidoMinimo'],
+  CONDICIONES_PAGO_LABELS: {
+    contado: 'Contado',
+    credito_30: 'Crédito 30 días',
+    credito_60: 'Crédito 60 días',
+    credito_90: 'Crédito 90 días',
   },
   CATEGORIA_LABELS: {
     harinas: 'Harinas',
@@ -339,11 +352,10 @@ const Insumos = {
 };
 
 /* ═══════════════════════════════════════════
-   5b. MÓDULO: PROVEEDORES (backend real)
+   6. MÓDULO: PROVEEDORES (backend real)
    ═══════════════════════════════════════════
-   CRUD contra /proveedores, mismo patrón que Insumos: apiFetch con
-   timeout, 401 => sesión expirada, errores de red devuelven null/ok:false
-   en lugar de lanzar, para que la UI decida qué mostrar. */
+   Mismo contrato que el módulo Insumos: CRUD contra /proveedores con el token
+   de sesión, 401 => sesión expirada, fallos de red devuelven null / ok:false. */
 const Proveedores = {
   async listar() {
     try {
@@ -359,9 +371,7 @@ const Proveedores = {
       return await res.json();
     } catch (err) {
       if (err.name === 'AbortError') {
-        console.error(
-          '[Proveedores] Timeout obteniendo proveedores (el servidor puede estar iniciando).',
-        );
+        console.error('[Proveedores] Timeout obteniendo proveedores.');
       } else {
         console.error('[Proveedores] Error obteniendo proveedores:', err.message);
       }
@@ -426,7 +436,7 @@ const Proveedores = {
 };
 
 /* ═══════════════════════════════════════════
-   6. MÓDULO: RENDERIZADO
+   7. MÓDULO: RENDERIZADO
    ═══════════════════════════════════════════ */
 const Render = {
   updateStats(orders) {
@@ -686,43 +696,42 @@ const Render = {
 
   renderProveedores(lista, huboErrorConexion) {
     const container = document.querySelector(CONFIG.SELECTORS.proveedoresContainer);
+    if (!container) return;
     container.innerHTML = '';
 
     if (huboErrorConexion) {
-      const div = document.createElement('div');
-      div.className = 'empty-state';
-      div.innerHTML = `
-        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
-        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
-        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
-      `;
-      container.appendChild(div);
+      container.appendChild(
+        this._proveedorEmptyState(
+          '⚠️',
+          'No se pudo conectar con el servidor',
+          'Verifica que el backend esté corriendo e intenta de nuevo.',
+        ),
+      );
       return;
     }
 
     if (lista.length === 0) {
-      const div = document.createElement('div');
-      div.className = 'empty-state';
-      div.innerHTML = `
-        <span class="empty-state__icon" aria-hidden="true">🚚</span>
-        <h2 class="empty-state__title">Sin proveedores registrados</h2>
-        <p class="empty-state__text">Usa el formulario de arriba para agregar el primer proveedor.</p>
-      `;
-      container.appendChild(div);
+      container.appendChild(
+        this._proveedorEmptyState(
+          '🚛',
+          'Sin proveedores registrados',
+          'Usa el formulario de arriba para agregar el primer proveedor.',
+        ),
+      );
       return;
     }
 
     const table = document.createElement('table');
-    table.className = 'proveedor-table';
+    table.className = 'insumo-table proveedor-table';
     table.innerHTML = `
       <caption class="visually-hidden">Detalle de proveedores registrados</caption>
       <thead>
         <tr>
           <th scope="col">Proveedor</th>
-          <th scope="col">Giro</th>
+          <th scope="col">Ident. fiscal</th>
           <th scope="col">Contacto</th>
-          <th scope="col">Teléfono</th>
-          <th scope="col">Condiciones de pago</th>
+          <th scope="col">Pago</th>
+          <th scope="col">Logística</th>
           <th scope="col">Acciones</th>
         </tr>
       </thead>
@@ -735,33 +744,57 @@ const Render = {
     container.appendChild(table);
   },
 
+  _proveedorEmptyState(icono, titulo, texto) {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.innerHTML = `
+      <span class="empty-state__icon" aria-hidden="true">${icono}</span>
+      <h2 class="empty-state__title">${titulo}</h2>
+      <p class="empty-state__text">${texto}</p>
+    `;
+    return div;
+  },
+
   _renderProveedorRow(proveedor) {
     const tpl = document.querySelector(CONFIG.SELECTORS.tplProveedorRow);
     const row = tpl.content.cloneNode(true);
     const tr = row.querySelector('tr');
 
-    row.querySelector('.proveedor-table__nombre').textContent =
-      proveedor.nombreComercial || proveedor.nombreLegal;
-    row.querySelector('.proveedor-table__giro').textContent = proveedor.giroComercial || '—';
-
-    const contactoCell = row.querySelector('.proveedor-table__contacto');
-    if (proveedor.contactoNombre) {
-      contactoCell.textContent = proveedor.contactoCargo
-        ? `${proveedor.contactoNombre} (${proveedor.contactoCargo})`
-        : proveedor.contactoNombre;
-    } else {
-      contactoCell.textContent = '—';
+    const nombreCell = row.querySelector('.insumo-table__nombre');
+    nombreCell.textContent = proveedor.razonSocial || '—';
+    if (proveedor.nombreComercial) {
+      const alias = document.createElement('small');
+      alias.className = 'proveedor-table__alias';
+      alias.textContent = proveedor.nombreComercial;
+      nombreCell.appendChild(document.createElement('br'));
+      nombreCell.appendChild(alias);
     }
 
-    const tel = proveedor.telefonoCelular || proveedor.telefonoEmpresa || '';
-    row.querySelector('.proveedor-table__telefono').innerHTML = tel
-      ? `<a href="tel:${escapeHTML(tel)}">${escapeHTML(tel)}</a>`
-      : '—';
+    row.querySelector('.proveedor-table__fiscal').textContent =
+      proveedor.identificacionFiscal || '—';
 
-    row.querySelector('.proveedor-table__condiciones').textContent =
-      proveedor.condicionesPago || '—';
+    const contacto = [proveedor.contactoNombre, proveedor.celular || proveedor.telefonoFijo]
+      .filter(Boolean)
+      .join(' · ');
+    row.querySelector('.proveedor-table__contacto').textContent = contacto || '—';
 
-    const acciones = row.querySelector('.proveedor-table__acciones');
+    const pago = [
+      CONFIG.CONDICIONES_PAGO_LABELS[proveedor.condicionesPago] || proveedor.condicionesPago,
+      proveedor.moneda,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    row.querySelector('.proveedor-table__pago').textContent = pago || '—';
+
+    const logistica = [
+      proveedor.leadTimeDias != null ? `${Format.cantidad(proveedor.leadTimeDias)} días` : null,
+      proveedor.pedidoMinimo != null ? `mín. ${Format.currency(proveedor.pedidoMinimo)}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    row.querySelector('.proveedor-table__logistica').textContent = logistica || '—';
+
+    const acciones = row.querySelector('.insumo-table__acciones');
 
     const btnEditar = document.createElement('button');
     btnEditar.type = 'button';
@@ -774,7 +807,7 @@ const Render = {
     btnEliminar.className = 'btn btn--ghost btn--danger';
     btnEliminar.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Eliminar';
     btnEliminar.addEventListener('click', () =>
-      App.deleteProveedor(proveedor.id, proveedor.nombreComercial || proveedor.nombreLegal),
+      App.deleteProveedor(proveedor.id, proveedor.razonSocial),
     );
 
     acciones.appendChild(btnEditar);
@@ -785,7 +818,7 @@ const Render = {
 };
 
 /* ═══════════════════════════════════════════
-   7. APP: ORQUESTADOR PRINCIPAL
+   8. APP: ORQUESTADOR PRINCIPAL
    ═══════════════════════════════════════════ */
 const App = {
   _liveConnected: false,
@@ -844,6 +877,108 @@ const App = {
     Render.renderProveedores(this._proveedoresCache, lista === null);
   },
 
+  startEditProveedor(id) {
+    const proveedor = this._proveedoresCache.find((p) => p.id === id);
+    if (!proveedor) return;
+
+    document.querySelector(CONFIG.SELECTORS.proveedorId).value = proveedor.id;
+    Object.entries(CONFIG.PROVEEDOR_FIELDS).forEach(([campo, selector]) => {
+      const input = document.querySelector(selector);
+      if (input) input.value = proveedor[campo] ?? '';
+    });
+
+    document.querySelector(CONFIG.SELECTORS.proveedorSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.proveedorCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.proveedorForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(CONFIG.PROVEEDOR_FIELDS.razonSocial).focus();
+  },
+
+  cancelEditProveedor() {
+    this._resetProveedorForm();
+  },
+
+  async deleteProveedor(id, nombre) {
+    const confirmado = window.confirm(`¿Eliminar "${nombre}" del listado de proveedores?`);
+    if (!confirmado) return;
+
+    const resultado = await Proveedores.eliminar(id);
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar el proveedor. Intenta de nuevo en unos segundos.');
+      return;
+    }
+
+    this.refreshProveedores();
+  },
+
+  _resetProveedorForm() {
+    document.querySelector(CONFIG.SELECTORS.proveedorForm).reset();
+    document.querySelector(CONFIG.SELECTORS.proveedorId).value = '';
+    document.querySelector(CONFIG.SELECTORS.proveedorSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Agregar proveedor';
+    document.querySelector(CONFIG.SELECTORS.proveedorCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.proveedorError).hidden = true;
+  },
+
+  async _handleProveedorSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.proveedorError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.proveedorErrorMsg);
+
+    const datos = {};
+    Object.entries(CONFIG.PROVEEDOR_FIELDS).forEach(([campo, selector]) => {
+      const valor = document.querySelector(selector)?.value ?? '';
+      datos[campo] = CONFIG.PROVEEDOR_NUMERIC_FIELDS.includes(campo)
+        ? valor === ''
+          ? null
+          : Number(valor)
+        : valor.trim();
+    });
+
+    if (!datos.razonSocial) {
+      errorMsgEl.textContent = 'El nombre o razón social es obligatorio.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.proveedorId).value || null;
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.proveedorSubmitBtn);
+    const textoOriginal = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando…';
+
+    const resultado = idExistente
+      ? await Proveedores.actualizar(idExistente, datos)
+      : await Proveedores.crear(datos);
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = textoOriginal;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar el proveedor. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetProveedorForm();
+    this.refreshProveedores();
+  },
+
   startEditInsumo(id) {
     const insumo = this._insumosCache.find((i) => i.id === id);
     if (!insumo) return;
@@ -899,77 +1034,6 @@ const App = {
       '<i class="fa-solid fa-plus" aria-hidden="true"></i> Agregar insumo';
     document.querySelector(CONFIG.SELECTORS.insumoCancelEditBtn).hidden = true;
     document.querySelector(CONFIG.SELECTORS.insumoError).hidden = true;
-  },
-
-  startEditProveedor(id) {
-    const proveedor = this._proveedoresCache.find((p) => p.id === id);
-    if (!proveedor) return;
-
-    const S = CONFIG.SELECTORS;
-    document.querySelector(S.proveedorId).value = proveedor.id;
-    document.querySelector(S.proveedorNombreLegal).value = proveedor.nombreLegal || '';
-    document.querySelector(S.proveedorNombreComercial).value = proveedor.nombreComercial || '';
-    document.querySelector(S.proveedorIdFiscal).value = proveedor.identificacionFiscal || '';
-    document.querySelector(S.proveedorGiro).value = proveedor.giroComercial || '';
-    document.querySelector(S.proveedorDireccion).value = proveedor.direccion || '';
-    document.querySelector(S.proveedorContactoNombre).value = proveedor.contactoNombre || '';
-    document.querySelector(S.proveedorContactoCargo).value = proveedor.contactoCargo || '';
-    document.querySelector(S.proveedorEmailGeneral).value = proveedor.emailGeneral || '';
-    document.querySelector(S.proveedorEmailContacto).value = proveedor.emailContacto || '';
-    document.querySelector(S.proveedorTelEmpresa).value = proveedor.telefonoEmpresa || '';
-    document.querySelector(S.proveedorTelCelular).value = proveedor.telefonoCelular || '';
-    document.querySelector(S.proveedorBanco).value = proveedor.banco || '';
-    document.querySelector(S.proveedorNumeroCuenta).value = proveedor.numeroCuenta || '';
-    document.querySelector(S.proveedorClabeIban).value = proveedor.clabeIban || '';
-    document.querySelector(S.proveedorCondicionesPago).value = proveedor.condicionesPago || '';
-    document.querySelector(S.proveedorMoneda).value = proveedor.moneda || '';
-    document.querySelector(S.proveedorMetodoFacturacion).value = proveedor.metodoFacturacion || '';
-    document.querySelector(S.proveedorLeadTime).value = proveedor.leadTimeDias ?? '';
-    document.querySelector(S.proveedorPedidoMinimo).value = proveedor.pedidoMinimo ?? '';
-    document.querySelector(S.proveedorPoliticasDevolucion).value =
-      proveedor.politicasDevolucion || '';
-    document.querySelector(S.proveedorCertificaciones).value = proveedor.certificaciones || '';
-    document.querySelector(S.proveedorNotas).value = proveedor.notas || '';
-
-    const submitBtn = document.querySelector(S.proveedorSubmitBtn);
-    submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
-    document.querySelector(S.proveedorCancelEditBtn).hidden = false;
-
-    document.querySelector(S.proveedorForm).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.querySelector(S.proveedorNombreLegal).focus();
-  },
-
-  cancelEditProveedor() {
-    this._resetProveedorForm();
-  },
-
-  async deleteProveedor(id, nombre) {
-    const confirmado = window.confirm(`¿Eliminar "${nombre}" del listado de proveedores?`);
-    if (!confirmado) return;
-
-    const resultado = await Proveedores.eliminar(id);
-
-    if (resultado.reason === 'unauthorized') {
-      this._showCorrectView();
-      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
-      return;
-    }
-    if (!resultado.ok) {
-      window.alert('No se pudo eliminar el proveedor. Intenta de nuevo en unos segundos.');
-      return;
-    }
-
-    this.refreshProveedores();
-  },
-
-  _resetProveedorForm() {
-    const form = document.querySelector(CONFIG.SELECTORS.proveedorForm);
-    form.reset();
-    document.querySelector(CONFIG.SELECTORS.proveedorId).value = '';
-    document.querySelector(CONFIG.SELECTORS.proveedorSubmitBtn).innerHTML =
-      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Agregar proveedor';
-    document.querySelector(CONFIG.SELECTORS.proveedorCancelEditBtn).hidden = true;
-    document.querySelector(CONFIG.SELECTORS.proveedorError).hidden = true;
   },
 
   _bindEvents() {
@@ -1094,77 +1158,6 @@ const App = {
     this.refreshInsumos();
   },
 
-  async _handleProveedorSubmit() {
-    const S = CONFIG.SELECTORS;
-    const errorEl = document.querySelector(S.proveedorError);
-    const errorMsgEl = document.querySelector(S.proveedorErrorMsg);
-
-    const nombreLegal = document.querySelector(S.proveedorNombreLegal).value.trim();
-
-    if (!nombreLegal) {
-      errorMsgEl.textContent = 'El nombre o razón social del proveedor es obligatorio.';
-      errorEl.hidden = false;
-      return;
-    }
-    errorEl.hidden = true;
-
-    const leadTimeRaw = document.querySelector(S.proveedorLeadTime).value;
-    const pedidoMinimoRaw = document.querySelector(S.proveedorPedidoMinimo).value;
-    const idExistente = document.querySelector(S.proveedorId).value || null;
-
-    const datos = {
-      nombreLegal,
-      nombreComercial: document.querySelector(S.proveedorNombreComercial).value.trim(),
-      identificacionFiscal: document.querySelector(S.proveedorIdFiscal).value.trim(),
-      giroComercial: document.querySelector(S.proveedorGiro).value.trim(),
-      direccion: document.querySelector(S.proveedorDireccion).value.trim(),
-      contactoNombre: document.querySelector(S.proveedorContactoNombre).value.trim(),
-      contactoCargo: document.querySelector(S.proveedorContactoCargo).value.trim(),
-      emailGeneral: document.querySelector(S.proveedorEmailGeneral).value.trim(),
-      emailContacto: document.querySelector(S.proveedorEmailContacto).value.trim(),
-      telefonoEmpresa: document.querySelector(S.proveedorTelEmpresa).value.trim(),
-      telefonoCelular: document.querySelector(S.proveedorTelCelular).value.trim(),
-      banco: document.querySelector(S.proveedorBanco).value.trim(),
-      numeroCuenta: document.querySelector(S.proveedorNumeroCuenta).value.trim(),
-      clabeIban: document.querySelector(S.proveedorClabeIban).value.trim(),
-      condicionesPago: document.querySelector(S.proveedorCondicionesPago).value.trim(),
-      moneda: document.querySelector(S.proveedorMoneda).value,
-      metodoFacturacion: document.querySelector(S.proveedorMetodoFacturacion).value.trim(),
-      leadTimeDias: leadTimeRaw === '' ? null : Number(leadTimeRaw),
-      pedidoMinimo: pedidoMinimoRaw === '' ? null : Number(pedidoMinimoRaw),
-      politicasDevolucion: document.querySelector(S.proveedorPoliticasDevolucion).value.trim(),
-      certificaciones: document.querySelector(S.proveedorCertificaciones).value.trim(),
-      notas: document.querySelector(S.proveedorNotas).value.trim(),
-    };
-
-    const submitBtn = document.querySelector(S.proveedorSubmitBtn);
-    const textoOriginal = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Guardando…';
-
-    const resultado = idExistente
-      ? await Proveedores.actualizar(idExistente, datos)
-      : await Proveedores.crear(datos);
-
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = textoOriginal;
-
-    if (resultado.reason === 'unauthorized') {
-      this._showCorrectView();
-      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
-      return;
-    }
-    if (!resultado.ok) {
-      errorMsgEl.textContent =
-        resultado.message || 'No se pudo guardar el proveedor. Intenta de nuevo.';
-      errorEl.hidden = false;
-      return;
-    }
-
-    this._resetProveedorForm();
-    this.refreshProveedores();
-  },
-
   _switchView(targetId) {
     const views = [
       CONFIG.SELECTORS.dashboardView,
@@ -1233,6 +1226,6 @@ const App = {
 };
 
 /* ═══════════════════════════════════════════
-   8. ARRANQUE
+   9. ARRANQUE
    ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => App.init());

@@ -54,22 +54,24 @@ try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS proveedores (
       id                     TEXT PRIMARY KEY,
-      nombre_legal           TEXT NOT NULL,
+      razon_social           TEXT NOT NULL,
       nombre_comercial       TEXT,
       identificacion_fiscal  TEXT,
       giro_comercial         TEXT,
       direccion              TEXT,
+      codigo_postal          TEXT,
+      ciudad                 TEXT,
+      pais                   TEXT,
       contacto_nombre        TEXT,
-      contacto_cargo         TEXT,
-      email_general          TEXT,
+      email_facturacion      TEXT,
       email_contacto         TEXT,
-      telefono_empresa       TEXT,
-      telefono_celular       TEXT,
+      telefono_fijo          TEXT,
+      celular                TEXT,
       banco                  TEXT,
       numero_cuenta          TEXT,
       clabe_iban             TEXT,
-      condiciones_pago       TEXT,
-      moneda                 TEXT,
+      condiciones_pago       TEXT NOT NULL DEFAULT 'contado',
+      moneda                 TEXT NOT NULL DEFAULT 'COP',
       metodo_facturacion     TEXT,
       lead_time_dias         REAL,
       pedido_minimo          REAL,
@@ -81,9 +83,7 @@ try {
     )
   `);
 
-  db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_proveedores_nombre ON proveedores(nombre_comercial, nombre_legal)',
-  );
+  db.exec('CREATE INDEX IF NOT EXISTS idx_proveedores_razon ON proveedores(razon_social)');
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */
