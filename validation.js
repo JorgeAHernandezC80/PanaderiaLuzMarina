@@ -31,16 +31,14 @@ const CATEGORIAS_INSUMO = [
 ];
 const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'unidad', 'paquete', 'caja'];
 
-const MAX_PROV_NOMBRE_LEN = 150;
-const MAX_PROV_CORTO_LEN = 120;
-const MAX_PROV_DIRECCION_LEN = 250;
-const MAX_PROV_EMAIL_LEN = 150;
-const MAX_PROV_TELEFONO_LEN = 30;
-const MAX_PROV_CUENTA_LEN = 60;
-const MAX_PROV_TEXTO_LARGO_LEN = 500;
-const MAX_PROV_LEAD_TIME = 365;
-const MAX_PROV_PEDIDO_MINIMO = 999999;
+const MAX_PROVEEDOR_TEXTO_LEN = 120;
+const MAX_PROVEEDOR_LARGO_LEN = 500;
+const MAX_PROVEEDOR_LEAD_TIME = 365;
+const MAX_PROVEEDOR_PEDIDO_MINIMO = 99999999;
 const PROVEEDOR_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const CONDICIONES_PAGO = ['contado', 'credito_30', 'credito_60', 'credito_90'];
+const MONEDAS_PROVEEDOR = ['COP', 'MXN', 'USD', 'EUR', 'CLP', 'ARS'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 class ValidationError extends Error {
   constructor(message) {
@@ -200,18 +198,11 @@ function validarInsumo(datos) {
   };
 }
 
-/** Recorta un string opcional a un largo máximo; nunca confía en el tipo recibido. */
-function texto(valor, maxLen) {
-  return typeof valor === 'string' ? valor.trim().slice(0, maxLen) : '';
-}
-
 /**
  * Valida y sanea los datos de un proveedor tal como los envía admin.js.
- * Solo nombreLegal es obligatorio (es el único dato indispensable para
- * poder identificar al proveedor); el resto son campos opcionales de los
- * 4 bloques: identificación legal, contacto, financiero/facturación y
- * operativo/logística. Todo texto libre se recorta a un largo máximo
- * antes de tocar la base de datos.
+ * Solo la razón social es obligatoria; el resto son campos opcionales que se
+ * recortan a un largo máximo. Condiciones de pago y moneda se validan contra
+ * listas blancas, los emails contra un formato básico y los números se acotan.
  * @param {*} datos
  * @returns {object} proveedor saneado
  */
@@ -220,61 +211,68 @@ function validarProveedor(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const { nombreLegal, leadTimeDias, pedidoMinimo } = datos;
+  const { razonSocial, condicionesPago, moneda, leadTimeDias, pedidoMinimo } = datos;
 
   if (
-    typeof nombreLegal !== 'string' ||
-    nombreLegal.trim() === '' ||
-    nombreLegal.length > MAX_PROV_NOMBRE_LEN
+    typeof razonSocial !== 'string' ||
+    razonSocial.trim() === '' ||
+    razonSocial.length > MAX_PROVEEDOR_TEXTO_LEN
   ) {
-    throw new ValidationError('El nombre o razón social del proveedor es obligatorio.');
+    throw new ValidationError('Nombre o razón social inválido.');
   }
 
-  let leadTimeFinal = null;
-  if (leadTimeDias !== null && leadTimeDias !== undefined && leadTimeDias !== '') {
-    const leadTimeNum = Number(leadTimeDias);
-    if (!Number.isFinite(leadTimeNum) || leadTimeNum < 0 || leadTimeNum > MAX_PROV_LEAD_TIME) {
-      throw new ValidationError('Tiempo de entrega (lead time) inválido.');
-    }
-    leadTimeFinal = leadTimeNum;
+  if (!CONDICIONES_PAGO.includes(condicionesPago)) {
+    throw new ValidationError('Condiciones de pago inválidas.');
+  }
+  if (!MONEDAS_PROVEEDOR.includes(moneda)) {
+    throw new ValidationError('Moneda inválida.');
   }
 
-  let pedidoMinimoFinal = null;
-  if (pedidoMinimo !== null && pedidoMinimo !== undefined && pedidoMinimo !== '') {
-    const pedidoMinimoNum = Number(pedidoMinimo);
-    if (
-      !Number.isFinite(pedidoMinimoNum) ||
-      pedidoMinimoNum < 0 ||
-      pedidoMinimoNum > MAX_PROV_PEDIDO_MINIMO
-    ) {
-      throw new ValidationError('Pedido mínimo inválido.');
+  const texto = (valor, max = MAX_PROVEEDOR_TEXTO_LEN) =>
+    typeof valor === 'string' ? valor.trim().slice(0, max) : '';
+
+  const email = (valor, campo) => {
+    const limpio = texto(valor);
+    if (limpio !== '' && !EMAIL_RE.test(limpio)) {
+      throw new ValidationError(`${campo} inválido.`);
     }
-    pedidoMinimoFinal = pedidoMinimoNum;
-  }
+    return limpio;
+  };
+
+  const numeroOpcional = (valor, max, campo) => {
+    if (valor === null || valor === undefined || valor === '') return null;
+    const num = Number(valor);
+    if (!Number.isFinite(num) || num < 0 || num > max) {
+      throw new ValidationError(`${campo} inválido.`);
+    }
+    return num;
+  };
 
   return {
-    nombreLegal: nombreLegal.trim(),
-    nombreComercial: texto(datos.nombreComercial, MAX_PROV_CORTO_LEN),
-    identificacionFiscal: texto(datos.identificacionFiscal, MAX_PROV_CORTO_LEN),
-    giroComercial: texto(datos.giroComercial, MAX_PROV_CORTO_LEN),
-    direccion: texto(datos.direccion, MAX_PROV_DIRECCION_LEN),
-    contactoNombre: texto(datos.contactoNombre, MAX_PROV_CORTO_LEN),
-    contactoCargo: texto(datos.contactoCargo, MAX_PROV_CORTO_LEN),
-    emailGeneral: texto(datos.emailGeneral, MAX_PROV_EMAIL_LEN),
-    emailContacto: texto(datos.emailContacto, MAX_PROV_EMAIL_LEN),
-    telefonoEmpresa: texto(datos.telefonoEmpresa, MAX_PROV_TELEFONO_LEN),
-    telefonoCelular: texto(datos.telefonoCelular, MAX_PROV_TELEFONO_LEN),
-    banco: texto(datos.banco, MAX_PROV_CORTO_LEN),
-    numeroCuenta: texto(datos.numeroCuenta, MAX_PROV_CUENTA_LEN),
-    clabeIban: texto(datos.clabeIban, MAX_PROV_CUENTA_LEN),
-    condicionesPago: texto(datos.condicionesPago, MAX_PROV_CORTO_LEN),
-    moneda: texto(datos.moneda, 10),
-    metodoFacturacion: texto(datos.metodoFacturacion, MAX_PROV_TEXTO_LARGO_LEN),
-    leadTimeDias: leadTimeFinal,
-    pedidoMinimo: pedidoMinimoFinal,
-    politicasDevolucion: texto(datos.politicasDevolucion, MAX_PROV_TEXTO_LARGO_LEN),
-    certificaciones: texto(datos.certificaciones, MAX_PROV_TEXTO_LARGO_LEN),
-    notas: texto(datos.notas, MAX_PROV_TEXTO_LARGO_LEN),
+    razonSocial: razonSocial.trim(),
+    nombreComercial: texto(datos.nombreComercial),
+    identificacionFiscal: texto(datos.identificacionFiscal, 40),
+    giroComercial: texto(datos.giroComercial),
+    direccion: texto(datos.direccion, MAX_PROVEEDOR_LARGO_LEN),
+    codigoPostal: texto(datos.codigoPostal, 20),
+    ciudad: texto(datos.ciudad),
+    pais: texto(datos.pais),
+    contactoNombre: texto(datos.contactoNombre),
+    emailFacturacion: email(datos.emailFacturacion, 'Correo de facturación'),
+    emailContacto: email(datos.emailContacto, 'Correo del contacto'),
+    telefonoFijo: texto(datos.telefonoFijo, 30),
+    celular: texto(datos.celular, 30),
+    banco: texto(datos.banco),
+    numeroCuenta: texto(datos.numeroCuenta, 40),
+    clabeIban: texto(datos.clabeIban, 40),
+    condicionesPago,
+    moneda,
+    metodoFacturacion: texto(datos.metodoFacturacion, MAX_PROVEEDOR_LARGO_LEN),
+    leadTimeDias: numeroOpcional(leadTimeDias, MAX_PROVEEDOR_LEAD_TIME, 'Tiempo de entrega'),
+    pedidoMinimo: numeroOpcional(pedidoMinimo, MAX_PROVEEDOR_PEDIDO_MINIMO, 'Pedido mínimo'),
+    politicasDevolucion: texto(datos.politicasDevolucion, MAX_PROVEEDOR_LARGO_LEN),
+    certificaciones: texto(datos.certificaciones, MAX_PROVEEDOR_LARGO_LEN),
+    notas: texto(datos.notas, MAX_PROVEEDOR_LARGO_LEN),
   };
 }
 
@@ -289,4 +287,6 @@ module.exports = {
   UNIDADES_INSUMO,
   validarProveedor,
   PROVEEDOR_ID_RE,
+  CONDICIONES_PAGO,
+  MONEDAS_PROVEEDOR,
 };

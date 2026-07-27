@@ -216,6 +216,10 @@ app.get('/', (req, res) => {
       crearInsumo: 'POST /insumos (Authorization: Bearer token)',
       actualizarInsumo: 'PUT /insumos/:id (Authorization: Bearer token)',
       eliminarInsumo: 'DELETE /insumos/:id (Authorization: Bearer token)',
+      listarProveedores: 'GET /proveedores (Authorization: Bearer token)',
+      crearProveedor: 'POST /proveedores (Authorization: Bearer token)',
+      actualizarProveedor: 'PUT /proveedores/:id (Authorization: Bearer token)',
+      eliminarProveedor: 'DELETE /proveedores/:id (Authorization: Bearer token)',
     },
   });
 });
@@ -475,17 +479,19 @@ app.delete('/insumos/:id', requireAuth, (req, res) => {
 function serializeProveedor(row) {
   return {
     id: row.id,
-    nombreLegal: row.nombre_legal,
+    razonSocial: row.razon_social,
     nombreComercial: row.nombre_comercial,
     identificacionFiscal: row.identificacion_fiscal,
     giroComercial: row.giro_comercial,
     direccion: row.direccion,
+    codigoPostal: row.codigo_postal,
+    ciudad: row.ciudad,
+    pais: row.pais,
     contactoNombre: row.contacto_nombre,
-    contactoCargo: row.contacto_cargo,
-    emailGeneral: row.email_general,
+    emailFacturacion: row.email_facturacion,
     emailContacto: row.email_contacto,
-    telefonoEmpresa: row.telefono_empresa,
-    telefonoCelular: row.telefono_celular,
+    telefonoFijo: row.telefono_fijo,
+    celular: row.celular,
     banco: row.banco,
     numeroCuenta: row.numero_cuenta,
     clabeIban: row.clabe_iban,
@@ -502,13 +508,67 @@ function serializeProveedor(row) {
   };
 }
 
+/** Columnas en el mismo orden que los valores de `valoresProveedor`. */
+const COLUMNAS_PROVEEDOR = [
+  'razon_social',
+  'nombre_comercial',
+  'identificacion_fiscal',
+  'giro_comercial',
+  'direccion',
+  'codigo_postal',
+  'ciudad',
+  'pais',
+  'contacto_nombre',
+  'email_facturacion',
+  'email_contacto',
+  'telefono_fijo',
+  'celular',
+  'banco',
+  'numero_cuenta',
+  'clabe_iban',
+  'condiciones_pago',
+  'moneda',
+  'metodo_facturacion',
+  'lead_time_dias',
+  'pedido_minimo',
+  'politicas_devolucion',
+  'certificaciones',
+  'notas',
+];
+
+function valoresProveedor(datos) {
+  return [
+    datos.razonSocial,
+    datos.nombreComercial,
+    datos.identificacionFiscal,
+    datos.giroComercial,
+    datos.direccion,
+    datos.codigoPostal,
+    datos.ciudad,
+    datos.pais,
+    datos.contactoNombre,
+    datos.emailFacturacion,
+    datos.emailContacto,
+    datos.telefonoFijo,
+    datos.celular,
+    datos.banco,
+    datos.numeroCuenta,
+    datos.clabeIban,
+    datos.condicionesPago,
+    datos.moneda,
+    datos.metodoFacturacion,
+    datos.leadTimeDias,
+    datos.pedidoMinimo,
+    datos.politicasDevolucion,
+    datos.certificaciones,
+    datos.notas,
+  ];
+}
+
 app.get('/proveedores', requireAuth, (req, res) => {
   try {
     const rows = db
-      .prepare(
-        `SELECT * FROM proveedores
-         ORDER BY COALESCE(NULLIF(nombre_comercial, ''), nombre_legal) COLLATE NOCASE ASC`,
-      )
+      .prepare('SELECT * FROM proveedores ORDER BY razon_social COLLATE NOCASE ASC')
       .all();
     res.json(rows.map(serializeProveedor));
   } catch (err) {
@@ -529,40 +589,12 @@ app.post('/proveedores', requireAuth, rateLimit, (req, res) => {
   }
 
   const id = crypto.randomUUID();
+  const placeholders = COLUMNAS_PROVEEDOR.map(() => '?').join(', ');
   try {
     db.prepare(
-      `INSERT INTO proveedores (
-        id, nombre_legal, nombre_comercial, identificacion_fiscal, giro_comercial,
-        direccion, contacto_nombre, contacto_cargo, email_general, email_contacto,
-        telefono_empresa, telefono_celular, banco, numero_cuenta, clabe_iban,
-        condiciones_pago, moneda, metodo_facturacion, lead_time_dias, pedido_minimo,
-        politicas_devolucion, certificaciones, notas
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id,
-      datos.nombreLegal,
-      datos.nombreComercial,
-      datos.identificacionFiscal,
-      datos.giroComercial,
-      datos.direccion,
-      datos.contactoNombre,
-      datos.contactoCargo,
-      datos.emailGeneral,
-      datos.emailContacto,
-      datos.telefonoEmpresa,
-      datos.telefonoCelular,
-      datos.banco,
-      datos.numeroCuenta,
-      datos.clabeIban,
-      datos.condicionesPago,
-      datos.moneda,
-      datos.metodoFacturacion,
-      datos.leadTimeDias,
-      datos.pedidoMinimo,
-      datos.politicasDevolucion,
-      datos.certificaciones,
-      datos.notas,
-    );
+      `INSERT INTO proveedores (id, ${COLUMNAS_PROVEEDOR.join(', ')})
+       VALUES (?, ${placeholders})`,
+    ).run(id, ...valoresProveedor(datos));
     const fila = db.prepare('SELECT * FROM proveedores WHERE id = ?').get(id);
     res.status(201).json(serializeProveedor(fila));
   } catch (err) {
@@ -587,42 +619,15 @@ app.put('/proveedores/:id', requireAuth, (req, res) => {
     throw err;
   }
 
+  const asignaciones = COLUMNAS_PROVEEDOR.map((col) => `${col} = ?`).join(', ');
   try {
     const info = db
       .prepare(
         `UPDATE proveedores
-         SET nombre_legal = ?, nombre_comercial = ?, identificacion_fiscal = ?, giro_comercial = ?,
-             direccion = ?, contacto_nombre = ?, contacto_cargo = ?, email_general = ?, email_contacto = ?,
-             telefono_empresa = ?, telefono_celular = ?, banco = ?, numero_cuenta = ?, clabe_iban = ?,
-             condiciones_pago = ?, moneda = ?, metodo_facturacion = ?, lead_time_dias = ?, pedido_minimo = ?,
-             politicas_devolucion = ?, certificaciones = ?, notas = ?, actualizado_en = datetime('now')
+         SET ${asignaciones}, actualizado_en = datetime('now')
          WHERE id = ?`,
       )
-      .run(
-        datos.nombreLegal,
-        datos.nombreComercial,
-        datos.identificacionFiscal,
-        datos.giroComercial,
-        datos.direccion,
-        datos.contactoNombre,
-        datos.contactoCargo,
-        datos.emailGeneral,
-        datos.emailContacto,
-        datos.telefonoEmpresa,
-        datos.telefonoCelular,
-        datos.banco,
-        datos.numeroCuenta,
-        datos.clabeIban,
-        datos.condicionesPago,
-        datos.moneda,
-        datos.metodoFacturacion,
-        datos.leadTimeDias,
-        datos.pedidoMinimo,
-        datos.politicasDevolucion,
-        datos.certificaciones,
-        datos.notas,
-        id,
-      );
+      .run(...valoresProveedor(datos), id);
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Proveedor no encontrado.' });
     }
