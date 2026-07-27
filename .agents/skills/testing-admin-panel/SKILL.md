@@ -6,6 +6,7 @@ description: How to run and test the Panadería Luz Marina admin panel (login, p
 # Testing the admin panel locally
 
 ## Servicios
+
 1. Backend (Express + SQLite). **No carga `.env`** (no usa dotenv): exporta las variables al arrancar.
    ```
    PORT=3000 FRONTEND_ORIGIN=http://localhost:5500 ADMIN_TOKEN=<clave> SESSION_SECRET=<algo> node server.js
@@ -19,6 +20,7 @@ description: How to run and test the Panadería Luz Marina admin panel (login, p
 3. Abrir `http://localhost:5500/admin.html` y entrar con el valor de `ADMIN_TOKEN` como contraseña.
 
 ## Notas
+
 - Arrancar procesos en segundo plano con `&`/`nohup` desde el shell one-shot puede matarlos; usa una sesión de shell persistente (tty).
 - La sesión se guarda en `sessionStorage` (`plm_admin_session` / `plm_admin_token`), así que sobrevive a F5 pero no a una pestaña nueva.
 - Insumos: pestaña «Insumos» en `#admin-nav`; CRUD contra `/insumos` (GET/POST/PUT/DELETE con `Authorization: Bearer`). El badge «Stock bajo» aparece cuando cantidad <= stock mínimo.
@@ -27,4 +29,5 @@ description: How to run and test the Panadería Luz Marina admin panel (login, p
   `T=$(curl -s -X POST localhost:3000/auth -H 'Content-Type: application/json' -d '{"password":"<clave>"}' | jq -r .token); curl -s localhost:3000/insumos -H "Authorization: Bearer $T"`
 
 ## Devin Secrets Needed
+
 - Ninguno para pruebas locales: define tú `ADMIN_TOKEN` y `SESSION_SECRET`.
