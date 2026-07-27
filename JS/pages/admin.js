@@ -83,7 +83,7 @@ const Auth = {
     // CAMBIO: Usamos apiFetch con timeout de 15s para soportar el "cold start" de Render
     const res = await apiFetch('/auth', {
       method: 'POST',
-      timeout: 15000, 
+      timeout: 15000,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
@@ -663,7 +663,7 @@ const App = {
 
   _bindEvents() {
     // Login
-    document.querySelector(CONFIG.SELECTORS.loginForm).addEventListener('submit', async (e) => {
+    document.querySelector(CONFIG.SELECTORS.loginForm)?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const pwd = document.querySelector(CONFIG.SELECTORS.password).value;
       const errorEl = document.querySelector(CONFIG.SELECTORS.loginError);
@@ -693,7 +693,7 @@ const App = {
     });
 
     // Logout
-    document.querySelector(CONFIG.SELECTORS.logoutBtn).addEventListener('click', () => {
+    document.querySelector(CONFIG.SELECTORS.logoutBtn)?.addEventListener('click', () => {
       Auth.logout();
       this._showCorrectView();
     });
@@ -704,14 +704,14 @@ const App = {
     });
 
     // Formulario de insumos: alta y edición
-    document.querySelector(CONFIG.SELECTORS.insumoForm).addEventListener('submit', (e) => {
+    document.querySelector(CONFIG.SELECTORS.insumoForm)?.addEventListener('submit', (e) => {
       e.preventDefault();
       this._handleInsumoSubmit();
     });
 
     document
       .querySelector(CONFIG.SELECTORS.insumoCancelEditBtn)
-      .addEventListener('click', () => this.cancelEditInsumo());
+      ?.addEventListener('click', () => this.cancelEditInsumo());
   },
 
   async _handleInsumoSubmit() {
@@ -796,7 +796,7 @@ const App = {
     const msgEl = document.querySelector(CONFIG.SELECTORS.loginErrorMsg);
     if (msgEl) msgEl.textContent = mensaje;
     if (errorEl) errorEl.hidden = false;
-    document.querySelector(CONFIG.SELECTORS.password).focus();
+    document.querySelector(CONFIG.SELECTORS.password)?.focus();
   },
 
   _showCorrectView() {
@@ -806,23 +806,26 @@ const App = {
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
-      loginView.hidden = true;
-      navEl.hidden = false;
-      dashView.hidden = false;
-      insumosView.hidden = true;
+      if (loginView) loginView.hidden = true;
+      if (navEl) navEl.hidden = false;
+      if (dashView) dashView.hidden = false;
+      if (insumosView) insumosView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
-      dateEl.textContent = Format.todayDate();
-      dateEl.dateTime = new Date().toISOString().slice(0, 10);
+      if (dateEl) {
+        dateEl.textContent = Format.todayDate();
+        dateEl.dateTime = new Date().toISOString().slice(0, 10);
+      }
 
       this.refresh();
     } else {
-      loginView.hidden = false;
-      navEl.hidden = true;
-      dashView.hidden = true;
-      insumosView.hidden = true;
-      document.querySelector(CONFIG.SELECTORS.password).value = '';
+      if (loginView) loginView.hidden = false;
+      if (navEl) navEl.hidden = true;
+      if (dashView) dashView.hidden = true;
+      if (insumosView) insumosView.hidden = true;
+      const pwd = document.querySelector(CONFIG.SELECTORS.password);
+      if (pwd) pwd.value = '';
     }
   },
 };
