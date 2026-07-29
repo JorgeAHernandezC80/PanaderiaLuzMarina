@@ -19,6 +19,15 @@ const ORDER_STATE_FLOW = {
   entregada: { label: 'Entregada', siguiente: null, accion: null },
 };
 
+/* Etiquetas legibles para el motivo de un ajuste de inventario (el valor
+   interno, en snake_case, es el que viaja al backend). */
+const MOTIVO_AJUSTE_LABELS = {
+  merma: 'Merma',
+  error_conteo: 'Error de conteo',
+  consumo_interno: 'Consumo interno',
+  otro: 'Otro',
+};
+
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
@@ -101,6 +110,32 @@ const CONFIG = Object.freeze({
     horneadaFiltroFecha: '#horneada-filtro-fecha',
     btnHorneadaFiltrar: '#btn-horneada-filtrar',
     btnHorneadaHoy: '#btn-horneada-hoy',
+
+    // Inventario
+    inventarioView: '#inventario-view',
+    inventarioCount: '#inventario-count',
+    inventarioContainer: '#inventario-container',
+    tplInventarioRow: '#tpl-inventario-row',
+    inventarioFiltroFecha: '#inventario-filtro-fecha',
+    btnInventarioFiltrar: '#btn-inventario-filtrar',
+    btnInventarioHoy: '#btn-inventario-hoy',
+
+    // Ajustes de inventario (mermas)
+    ajustesContainer: '#ajustes-container',
+    tplAjusteRow: '#tpl-ajuste-row',
+    ajusteForm: '#ajuste-form',
+    ajusteId: '#ajuste-id',
+    ajusteProducto: '#ajuste-producto',
+    ajusteCantidad: '#ajuste-cantidad',
+    ajusteMotivo: '#ajuste-motivo',
+    ajusteFecha: '#ajuste-fecha',
+    ajusteHora: '#ajuste-hora',
+    ajusteRegistradoPor: '#ajuste-registrado-por',
+    ajusteNotas: '#ajuste-notas',
+    ajusteError: '#ajuste-error',
+    ajusteErrorMsg: '#ajuste-error [data-ajuste-error-msg]',
+    ajusteSubmitBtn: '#btn-ajuste-submit',
+    ajusteCancelEditBtn: '#btn-ajuste-cancel-edit',
   },
   /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
      leer el formulario sea una sola iteración en lugar de 24 querySelector. */
@@ -556,6 +591,149 @@ const Horneadas = {
       return { ok: true };
     } catch (err) {
       console.error('[Horneadas] Error eliminando horneada:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6c. MÓDULO: INVENTARIO (vista agregada, solo lectura)
+   ═══════════════════════════════════════════ */
+const Inventario = {
+  async ver(fecha) {
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    try {
+      const res = await apiFetch(`/inventario?fecha=${fechaConsulta}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('[Inventario] Timeout obteniendo inventario.');
+      } else {
+        console.error('[Inventario] Error obteniendo inventario:', err.message);
+      }
+      return null;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6d. MÓDULO: AJUSTES DE INVENTARIO (mermas, errores de conteo...)
+   Mismo contrato que Horneadas.
+   ═══════════════════════════════════════════ */
+const Ajustes = {
+  async listar(fecha) {
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    try {
+      const res = await apiFetch(`/ajustes-inventario?fecha=${fechaConsulta}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('[Ajustes] Timeout obteniendo ajustes.');
+      } else {
+        console.error('[Ajustes] Error obteniendo ajustes:', err.message);
+      }
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/ajustes-inventario', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/ajustes-inventario/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, ajuste: await res.json() };
+    } catch (err) {
+      console.error(`[Ajustes] Error en ${method} ${path}:`, err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/ajustes-inventario/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        return { ok: false, reason: 'error' };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[Ajustes] Error eliminando ajuste:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6e. MÓDULO: STOCK MÍNIMO por producto
+   ═══════════════════════════════════════════ */
+const StockMinimo = {
+  async actualizar(productoId, stockMinimo) {
+    try {
+      const res = await apiFetch(`/productos/${encodeURIComponent(productoId)}/stock-minimo`, {
+        method: 'PUT',
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify({ stockMinimo }),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[StockMinimo] Error actualizando stock mínimo:', err.message);
       return { ok: false, reason: 'network' };
     }
   },
@@ -1100,6 +1278,189 @@ const Render = {
 
     return tr;
   },
+
+  updateInventarioCount(productos) {
+    const el = document.querySelector(CONFIG.SELECTORS.inventarioCount);
+    if (!el) return;
+    const bajoStock = productos.filter((p) => p.bajoStock).length;
+    el.textContent = bajoStock;
+    if (bajoStock === 0) el.setAttribute('data-zero', '');
+    else el.removeAttribute('data-zero');
+  },
+
+  renderInventario(productos, huboErrorConexion) {
+    const container = document.querySelector(CONFIG.SELECTORS.inventarioContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Disponible por producto para la fecha consultada</caption>
+      <thead>
+        <tr>
+          <th scope="col">Producto</th>
+          <th scope="col">Horneado</th>
+          <th scope="col">Preparado</th>
+          <th scope="col">Vendido</th>
+          <th scope="col">Ajustes</th>
+          <th scope="col">Disponible</th>
+          <th scope="col">Stock mínimo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    (productos || []).forEach((producto) => tbody.appendChild(this._renderInventarioRow(producto)));
+
+    container.appendChild(table);
+  },
+
+  _renderInventarioRow(producto) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplInventarioRow);
+    const row = tpl.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+
+    if (producto.bajoStock) tr.classList.add('insumo-row--bajo-stock');
+
+    row.querySelector('.insumo-table__nombre').textContent = producto.productoNombre;
+
+    const nums = row.querySelectorAll('.inventario-table__num');
+    nums[0].textContent = producto.horneado;
+    nums[1].textContent = producto.preparado;
+    nums[2].textContent = producto.vendido;
+    nums[3].textContent = producto.ajustes;
+
+    const disponibleCell = row.querySelector('.inventario-table__disponible');
+    disponibleCell.textContent = producto.disponible;
+    if (producto.bajoStock) {
+      const badge = document.createElement('span');
+      badge.className = 'insumo-badge insumo-badge--bajo-stock';
+      badge.textContent = 'Stock bajo';
+      disponibleCell.appendChild(document.createElement('br'));
+      disponibleCell.appendChild(badge);
+    }
+
+    const stockMinimoCell = row.querySelector('.inventario-table__stock-minimo');
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '1';
+    input.value = producto.stockMinimo;
+    input.setAttribute('aria-label', `Stock mínimo de ${producto.productoNombre}`);
+
+    const feedback = document.createElement('span');
+    feedback.className = 'inventario-table__stock-minimo__guardado';
+    feedback.textContent = '✓ Guardado';
+
+    input.addEventListener('change', () => {
+      App.guardarStockMinimo(producto.productoId, input.value, input, feedback);
+    });
+
+    stockMinimoCell.appendChild(input);
+    stockMinimoCell.appendChild(feedback);
+
+    return tr;
+  },
+
+  renderAjustes(lista, huboErrorConexion, fecha) {
+    const container = document.querySelector(CONFIG.SELECTORS.ajustesContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (!lista || lista.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">📋</span>
+        <h2 class="empty-state__title">Sin ajustes registrados para ${escapeHTML(fecha || 'esta fecha')}</h2>
+        <p class="empty-state__text">Usa el formulario de arriba si hay una merma o error de conteo que registrar.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Ajustes de inventario registrados el ${fecha || ''}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Producto</th>
+          <th scope="col">Cantidad</th>
+          <th scope="col">Motivo</th>
+          <th scope="col">Hora</th>
+          <th scope="col">Registrado por</th>
+          <th scope="col">Notas</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    lista.forEach((ajuste) => tbody.appendChild(this._renderAjusteRow(ajuste)));
+
+    container.appendChild(table);
+  },
+
+  _renderAjusteRow(ajuste) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplAjusteRow);
+    const row = tpl.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+
+    row.querySelector('.insumo-table__nombre').textContent = ajuste.productoNombre;
+    row.querySelector('.horneada-table__cantidad').textContent = ajuste.cantidad;
+    row.querySelector('.ajuste-table__motivo').textContent =
+      MOTIVO_AJUSTE_LABELS[ajuste.motivo] || ajuste.motivo;
+    row.querySelector('.horneada-table__hora').textContent = ajuste.hora;
+    row.querySelector('.horneada-table__registrado-por').textContent = ajuste.registradoPor || '—';
+    row.querySelector('.horneada-table__notas').textContent = ajuste.notas || '—';
+
+    const acciones = row.querySelector('.insumo-table__acciones');
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'btn btn--action';
+    btnEditar.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i> Editar';
+    btnEditar.addEventListener('click', () => App.startEditAjuste(ajuste.id));
+
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'btn btn--ghost btn--danger';
+    btnEliminar.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Eliminar';
+    btnEliminar.addEventListener('click', () => App.deleteAjuste(ajuste.id, ajuste.productoNombre));
+
+    acciones.appendChild(btnEditar);
+    acciones.appendChild(btnEliminar);
+
+    return tr;
+  },
 };
 
 /* ═══════════════════════════════════════════
@@ -1114,6 +1475,10 @@ const App = {
   // pero el toolbar de la vista permite cambiarla para revisar trazabilidad
   // de días anteriores.
   _horneadaFechaConsulta: new Date().toISOString().slice(0, 10),
+  _inventarioCache: [],
+  _ajustesCache: [],
+  // Misma idea que _horneadaFechaConsulta, para la pestaña Inventario.
+  _inventarioFechaConsulta: new Date().toISOString().slice(0, 10),
 
   init() {
     this._bindEvents();
@@ -1200,6 +1565,77 @@ const App = {
     const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
     if (filtroEl) filtroEl.value = hoy;
     this.verFechaHorneadas(hoy);
+  },
+
+  /** Carga /inventario y /ajustes-inventario juntos para la misma fecha: el
+   *  disponible que se ve en la tabla depende de los ajustes que aparecen
+   *  debajo, así que tiene que refrescarse todo junto. */
+  async refreshInventario() {
+    const fecha = this._inventarioFechaConsulta;
+    const [inventario, ajustes] = await Promise.all([Inventario.ver(fecha), Ajustes.listar(fecha)]);
+
+    if (inventario === 'UNAUTHORIZED' || ajustes === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._inventarioCache =
+      inventario && Array.isArray(inventario.productos) ? inventario.productos : [];
+    Render.updateInventarioCount(this._inventarioCache);
+    Render.renderInventario(this._inventarioCache, inventario === null);
+
+    this._ajustesCache = Array.isArray(ajustes) ? ajustes : [];
+    Render.renderAjustes(this._ajustesCache, ajustes === null, fecha);
+  },
+
+  verFechaInventario(fecha) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
+    this._inventarioFechaConsulta = fecha;
+    const btnHoy = document.querySelector(CONFIG.SELECTORS.btnInventarioHoy);
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (btnHoy) btnHoy.hidden = fecha === hoy;
+    this.refreshInventario();
+  },
+
+  volverAHoyInventario() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const filtroEl = document.querySelector(CONFIG.SELECTORS.inventarioFiltroFecha);
+    if (filtroEl) filtroEl.value = hoy;
+    this.verFechaInventario(hoy);
+  },
+
+  /** Guarda el stock mínimo de un producto al vuelo (blur/change del input
+   *  en la tabla de Inventario) — no hay botón de guardar aparte. */
+  async guardarStockMinimo(productoId, valor, inputEl, feedbackEl) {
+    const stockMinimo = Number(valor);
+    if (!Number.isInteger(stockMinimo) || stockMinimo < 0) {
+      inputEl.value = inputEl.defaultValue;
+      return;
+    }
+
+    const resultado = await StockMinimo.actualizar(productoId, stockMinimo);
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo guardar el stock mínimo. Intenta de nuevo.');
+      return;
+    }
+
+    inputEl.defaultValue = String(stockMinimo);
+    feedbackEl.classList.add('inventario-table__stock-minimo__guardado--visible');
+    setTimeout(
+      () => feedbackEl.classList.remove('inventario-table__stock-minimo__guardado--visible'),
+      2000,
+    );
+
+    // El cambio de stock mínimo puede mover a un producto dentro o fuera de
+    // "bajo stock", así que refrescamos la tabla completa (y el badge del nav).
+    this.refreshInventario();
   },
 
   startEditProveedor(id) {
@@ -1431,6 +1867,139 @@ const App = {
     this.refreshHorneadas();
   },
 
+  startEditAjuste(id) {
+    const ajuste = this._ajustesCache.find((a) => a.id === id);
+    if (!ajuste) return;
+
+    document.querySelector(CONFIG.SELECTORS.ajusteId).value = ajuste.id;
+    document.querySelector(CONFIG.SELECTORS.ajusteProducto).value = ajuste.productoId;
+    document.querySelector(CONFIG.SELECTORS.ajusteCantidad).value = ajuste.cantidad ?? '';
+    document.querySelector(CONFIG.SELECTORS.ajusteMotivo).value = ajuste.motivo || 'merma';
+    document.querySelector(CONFIG.SELECTORS.ajusteFecha).value = ajuste.fecha || '';
+    document.querySelector(CONFIG.SELECTORS.ajusteHora).value = ajuste.hora || '';
+    document.querySelector(CONFIG.SELECTORS.ajusteRegistradoPor).value = ajuste.registradoPor || '';
+    document.querySelector(CONFIG.SELECTORS.ajusteNotas).value = ajuste.notas || '';
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.ajusteSubmitBtn);
+    submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.ajusteCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.ajusteForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(CONFIG.SELECTORS.ajusteProducto).focus();
+  },
+
+  cancelEditAjuste() {
+    this._resetAjusteForm();
+  },
+
+  async deleteAjuste(id, productoNombre) {
+    const confirmado = window.confirm(`¿Eliminar el ajuste de inventario de "${productoNombre}"?`);
+    if (!confirmado) return;
+
+    const resultado = await Ajustes.eliminar(id);
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar el ajuste. Intenta de nuevo en unos segundos.');
+      return;
+    }
+
+    this.refreshInventario();
+  },
+
+  _resetAjusteForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.ajusteForm);
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.ajusteId).value = '';
+    document.querySelector(CONFIG.SELECTORS.ajusteSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Registrar ajuste';
+    document.querySelector(CONFIG.SELECTORS.ajusteCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.ajusteError).hidden = true;
+    this._prefillAjusteFechaHora();
+  },
+
+  _prefillAjusteFechaHora() {
+    const ahora = new Date();
+    const fechaEl = document.querySelector(CONFIG.SELECTORS.ajusteFecha);
+    const horaEl = document.querySelector(CONFIG.SELECTORS.ajusteHora);
+    if (fechaEl && !fechaEl.value) fechaEl.value = ahora.toISOString().slice(0, 10);
+    if (horaEl && !horaEl.value) {
+      horaEl.value = `${String(ahora.getHours()).padStart(2, '0')}:${String(
+        ahora.getMinutes(),
+      ).padStart(2, '0')}`;
+    }
+  },
+
+  async _handleAjusteSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.ajusteError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.ajusteErrorMsg);
+
+    const productoId = document.querySelector(CONFIG.SELECTORS.ajusteProducto).value;
+    const cantidadRaw = document.querySelector(CONFIG.SELECTORS.ajusteCantidad).value;
+    const motivo = document.querySelector(CONFIG.SELECTORS.ajusteMotivo).value;
+    const fecha = document.querySelector(CONFIG.SELECTORS.ajusteFecha).value;
+    const hora = document.querySelector(CONFIG.SELECTORS.ajusteHora).value;
+
+    if (
+      !productoId ||
+      cantidadRaw === '' ||
+      Number(cantidadRaw) <= 0 ||
+      !motivo ||
+      !fecha ||
+      !hora
+    ) {
+      errorMsgEl.textContent = 'Completa producto, cantidad (mayor a 0), motivo, fecha y hora.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.ajusteId).value || null;
+
+    const datos = {
+      productoId,
+      cantidad: Number(cantidadRaw),
+      motivo,
+      fecha,
+      hora,
+      registradoPor: document.querySelector(CONFIG.SELECTORS.ajusteRegistradoPor).value.trim(),
+      notas: document.querySelector(CONFIG.SELECTORS.ajusteNotas).value.trim(),
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.ajusteSubmitBtn);
+    const textoOriginal = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando…';
+
+    const resultado = idExistente
+      ? await Ajustes.actualizar(idExistente, datos)
+      : await Ajustes.crear(datos);
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = textoOriginal;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar el ajuste. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetAjusteForm();
+    this.refreshInventario();
+  },
+
   startEditInsumo(id) {
     const insumo = this._insumosCache.find((i) => i.id === id);
     if (!insumo) return;
@@ -1569,6 +2138,26 @@ const App = {
     document
       .querySelector(CONFIG.SELECTORS.btnHorneadaHoy)
       ?.addEventListener('click', () => this.volverAHoyHorneadas());
+
+    // Formulario de ajustes de inventario: alta y edición
+    document.querySelector(CONFIG.SELECTORS.ajusteForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleAjusteSubmit();
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.ajusteCancelEditBtn)
+      ?.addEventListener('click', () => this.cancelEditAjuste());
+
+    // Toolbar de Inventario: consultar otra fecha
+    document.querySelector(CONFIG.SELECTORS.btnInventarioFiltrar)?.addEventListener('click', () => {
+      const valor = document.querySelector(CONFIG.SELECTORS.inventarioFiltroFecha)?.value;
+      this.verFechaInventario(valor);
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.btnInventarioHoy)
+      ?.addEventListener('click', () => this.volverAHoyInventario());
   },
 
   async _handleInsumoSubmit() {
@@ -1636,6 +2225,7 @@ const App = {
       CONFIG.SELECTORS.insumosView,
       CONFIG.SELECTORS.proveedoresView,
       CONFIG.SELECTORS.horneadasView,
+      CONFIG.SELECTORS.inventarioView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -1660,6 +2250,12 @@ const App = {
       if (filtroEl && !filtroEl.value) filtroEl.value = this._horneadaFechaConsulta;
       this.refreshHorneadas();
     }
+    if (targetId === CONFIG.SELECTORS.inventarioView.slice(1)) {
+      this._prefillAjusteFechaHora();
+      const filtroEl = document.querySelector(CONFIG.SELECTORS.inventarioFiltroFecha);
+      if (filtroEl && !filtroEl.value) filtroEl.value = this._inventarioFechaConsulta;
+      this.refreshInventario();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -1676,6 +2272,7 @@ const App = {
     const insumosView = document.querySelector(CONFIG.SELECTORS.insumosView);
     const proveedoresView = document.querySelector(CONFIG.SELECTORS.proveedoresView);
     const horneadasView = document.querySelector(CONFIG.SELECTORS.horneadasView);
+    const inventarioView = document.querySelector(CONFIG.SELECTORS.inventarioView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
@@ -1685,6 +2282,7 @@ const App = {
       if (insumosView) insumosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
+      if (inventarioView) inventarioView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -1701,6 +2299,7 @@ const App = {
       if (insumosView) insumosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
+      if (inventarioView) inventarioView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';
     }

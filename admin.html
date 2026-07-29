@@ -145,6 +145,17 @@
             Horneadas
             <span class="admin-nav__count" id="horneadas-count">0</span>
           </button>
+          <button
+            type="button"
+            class="admin-nav__btn"
+            data-view-target="inventario-view"
+            role="tab"
+            aria-selected="false"
+          >
+            <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
+            Inventario
+            <span class="admin-nav__count admin-nav__count--alerta" id="inventario-count">0</span>
+          </button>
         </div>
 
         <button
@@ -912,6 +923,164 @@
           <!-- Se inyecta dinámicamente por admin.js -->
         </section>
       </section>
+
+      <!-- ═══════════ INVENTARIO / STOCK ═══════════ -->
+      <section
+        id="inventario-view"
+        class="view view--inventario"
+        hidden
+        aria-labelledby="inventario-title"
+        data-component="inventario"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="inventario-title">Inventario</h1>
+            <p class="dashboard-header__subtitle">
+              Disponible = Horneado − Vendido − Preparado − Ajustes. Se calcula al vuelo para la
+              fecha consultada, no hay que actualizarlo a mano.
+            </p>
+          </div>
+        </header>
+
+        <section
+          class="horneadas-toolbar"
+          aria-label="Consultar inventario de otra fecha"
+          data-component="inventario-toolbar"
+        >
+          <div class="form-field">
+            <label for="inventario-filtro-fecha" class="form-field__label">Consultar fecha</label>
+            <input type="date" id="inventario-filtro-fecha" class="form-field__input" />
+          </div>
+          <button type="button" id="btn-inventario-filtrar" class="btn btn--ghost">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Ver esa fecha
+          </button>
+          <button type="button" id="btn-inventario-hoy" class="btn btn--ghost" hidden>
+            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+            Volver a hoy
+          </button>
+        </section>
+
+        <section
+          id="inventario-container"
+          class="insumos"
+          aria-label="Disponible por producto"
+          aria-live="polite"
+          data-component="inventario-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+
+        <h2 class="section-subtitle">Registrar ajuste (merma, error de conteo...)</h2>
+
+        <form id="ajuste-form" class="insumo-form" novalidate data-component="ajuste-form">
+          <input type="hidden" id="ajuste-id" name="id" />
+
+          <div class="form-field">
+            <label for="ajuste-producto" class="form-field__label">Producto</label>
+            <select id="ajuste-producto" name="productoId" class="form-field__input" required>
+              <option value="" selected disabled>Selecciona un producto</option>
+              <option value="1">Donuts Glaseadas</option>
+              <option value="2">Buñuelos</option>
+              <option value="3">Roscón de Arequipe</option>
+              <option value="4">Croissant</option>
+              <option value="5">Almojábanas</option>
+              <option value="6">Pandebono</option>
+              <option value="7">Pan de Yuca</option>
+              <option value="8">Conchas</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="ajuste-cantidad" class="form-field__label">Cantidad</label>
+            <input
+              type="number"
+              id="ajuste-cantidad"
+              name="cantidad"
+              class="form-field__input"
+              min="1"
+              step="1"
+              placeholder="0"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="ajuste-motivo" class="form-field__label">Motivo</label>
+            <select id="ajuste-motivo" name="motivo" class="form-field__input" required>
+              <option value="merma">Merma</option>
+              <option value="error_conteo">Error de conteo</option>
+              <option value="consumo_interno">Consumo interno</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="ajuste-fecha" class="form-field__label">Fecha</label>
+            <input type="date" id="ajuste-fecha" name="fecha" class="form-field__input" required />
+          </div>
+
+          <div class="form-field">
+            <label for="ajuste-hora" class="form-field__label">Hora</label>
+            <input type="time" id="ajuste-hora" name="hora" class="form-field__input" required />
+          </div>
+
+          <div class="form-field">
+            <label for="ajuste-registrado-por" class="form-field__label">Registrado por</label>
+            <input
+              type="text"
+              id="ajuste-registrado-por"
+              name="registradoPor"
+              class="form-field__input"
+              placeholder="Opcional · nombre de quien registra"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <label for="ajuste-notas" class="form-field__label">Notas</label>
+            <textarea
+              id="ajuste-notas"
+              name="notas"
+              class="form-field__input"
+              rows="2"
+              placeholder="Opcional"
+              maxlength="280"
+            ></textarea>
+          </div>
+
+          <output
+            id="ajuste-error"
+            class="form-error insumo-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-ajuste-error-msg></span>
+          </output>
+
+          <div class="insumo-form__actions insumo-form__wide">
+            <button type="submit" id="btn-ajuste-submit" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Registrar ajuste
+            </button>
+            <button type="button" id="btn-ajuste-cancel-edit" class="btn btn--ghost" hidden>
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+
+        <section
+          id="ajustes-container"
+          class="insumos"
+          aria-label="Listado de ajustes de inventario"
+          aria-live="polite"
+          data-component="ajustes-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
     </main>
 
     <!-- ═══════════ TEMPLATES ═══════════ -->
@@ -992,6 +1161,32 @@
       <tr>
         <td class="insumo-table__nombre" data-label="Producto"></td>
         <td class="horneada-table__cantidad" data-label="Cantidad"></td>
+        <td class="horneada-table__hora" data-label="Hora"></td>
+        <td class="horneada-table__registrado-por" data-label="Registrado por"></td>
+        <td class="horneada-table__notas" data-label="Notas"></td>
+        <td class="insumo-table__acciones" data-label="Acciones"></td>
+      </tr>
+    </template>
+
+    <!-- Plantilla: fila de producto en la tabla de Inventario -->
+    <template id="tpl-inventario-row">
+      <tr>
+        <td class="insumo-table__nombre" data-label="Producto"></td>
+        <td class="inventario-table__num" data-label="Horneado"></td>
+        <td class="inventario-table__num" data-label="Preparado"></td>
+        <td class="inventario-table__num" data-label="Vendido"></td>
+        <td class="inventario-table__num" data-label="Ajustes"></td>
+        <td class="inventario-table__disponible" data-label="Disponible"></td>
+        <td class="inventario-table__stock-minimo" data-label="Stock mínimo"></td>
+      </tr>
+    </template>
+
+    <!-- Plantilla: fila de ajuste de inventario -->
+    <template id="tpl-ajuste-row">
+      <tr>
+        <td class="insumo-table__nombre" data-label="Producto"></td>
+        <td class="horneada-table__cantidad" data-label="Cantidad"></td>
+        <td class="ajuste-table__motivo" data-label="Motivo"></td>
         <td class="horneada-table__hora" data-label="Hora"></td>
         <td class="horneada-table__registrado-por" data-label="Registrado por"></td>
         <td class="horneada-table__notas" data-label="Notas"></td>
