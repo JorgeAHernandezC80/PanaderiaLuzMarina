@@ -207,6 +207,24 @@ describe('GET /ordenes (protegido)', () => {
     expect(vacio.body).toHaveLength(0);
   });
 
+  test('filtra también por los estados nuevos del ciclo (en_preparacion, entregada)', async () => {
+    await request(app)
+      .patch('/ordenes/LM-20260117-1111')
+      .set('Authorization', auth())
+      .send({ estado: 'en_preparacion' });
+
+    const enPrep = await request(app)
+      .get('/ordenes?estado=en_preparacion')
+      .set('Authorization', auth());
+    expect(enPrep.body).toHaveLength(1);
+    expect(enPrep.body[0].numero).toBe('LM-20260117-1111');
+
+    const entregadas = await request(app)
+      .get('/ordenes?estado=entregada')
+      .set('Authorization', auth());
+    expect(entregadas.body).toHaveLength(0);
+  });
+
   test('ignora filtros con formato inválido', async () => {
     const res = await request(app)
       .get('/ordenes?fecha=xx&estado=raro')
@@ -237,6 +255,18 @@ describe('PATCH /ordenes/:numero (protegido)', () => {
     const row = db.prepare('SELECT estado FROM ordenes WHERE numero = ?').get('LM-20260117-1234');
     expect(row.estado).toBe('preparada');
   });
+
+  test.each([['en_preparacion'], ['entregada']])(
+    'acepta el nuevo estado "%s" del ciclo de 4 pasos',
+    async (estado) => {
+      const res = await request(app)
+        .patch('/ordenes/LM-20260117-1234')
+        .set('Authorization', auth())
+        .send({ estado });
+      expect(res.status).toBe(200);
+      expect(res.body.estado).toBe(estado);
+    },
+  );
 
   test('rechaza número de orden con formato inválido con 400', async () => {
     const res = await request(app)

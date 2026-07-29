@@ -268,7 +268,12 @@ function initForm() {
       cliente: datos.nombre,
       telefono: datos.telefono,
       retiro: `${datos.hora}:${datos.minuto}`,
-      items: items.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+      items: items.map((i) => ({
+        productoId: i.id,
+        nombre: i.nombre,
+        cantidad: i.cantidad,
+        precio: i.precio,
+      })),
       total: total,
     };
 

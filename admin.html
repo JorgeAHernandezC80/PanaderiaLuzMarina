@@ -190,14 +190,24 @@
             <data id="stat-ingresos" class="stat-card__value" value="0">$0.00</data>
           </article>
 
+          <article class="stat-card" aria-labelledby="stat-label-pendientes">
+            <span id="stat-label-pendientes" class="stat-card__label">Recibidas</span>
+            <data id="stat-pendientes" class="stat-card__value" value="0">0</data>
+          </article>
+
+          <article class="stat-card" aria-labelledby="stat-label-en-preparacion">
+            <span id="stat-label-en-preparacion" class="stat-card__label">En preparación</span>
+            <data id="stat-en-preparacion" class="stat-card__value" value="0">0</data>
+          </article>
+
           <article class="stat-card" aria-labelledby="stat-label-preparadas">
             <span id="stat-label-preparadas" class="stat-card__label">Preparadas</span>
             <data id="stat-preparadas" class="stat-card__value" value="0">0</data>
           </article>
 
-          <article class="stat-card" aria-labelledby="stat-label-pendientes">
-            <span id="stat-label-pendientes" class="stat-card__label">Pendientes</span>
-            <data id="stat-pendientes" class="stat-card__value" value="0">0</data>
+          <article class="stat-card" aria-labelledby="stat-label-entregadas">
+            <span id="stat-label-entregadas" class="stat-card__label">Entregadas</span>
+            <data id="stat-entregadas" class="stat-card__value" value="0">0</data>
           </article>
         </section>
 
@@ -804,7 +814,13 @@
 
           <div class="form-field">
             <label for="horneada-fecha" class="form-field__label">Fecha</label>
-            <input type="date" id="horneada-fecha" name="fecha" class="form-field__input" required />
+            <input
+              type="date"
+              id="horneada-fecha"
+              name="fecha"
+              class="form-field__input"
+              required
+            />
           </div>
 
           <div class="form-field">

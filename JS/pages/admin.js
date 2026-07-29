@@ -7,6 +7,18 @@ import { escapeHTML } from '../core/cart.js';
 import { formatPrice, pluralizeEs } from '../core/format.js';
 import { API_BASE, apiFetch } from '../core/api.js';
 
+/* Ciclo de vida de una orden: Recibida → En Preparación → Preparada →
+   Entregada. El valor interno (clave) es el que viaja al backend en
+   `estado`; `label` y `siguiente` (próximo estado + texto del botón de
+   avance) son solo para la UI del panel admin. `entregada` es terminal:
+   no tiene `siguiente`. */
+const ORDER_STATE_FLOW = {
+  pendiente: { label: 'Recibida', siguiente: 'en_preparacion', accion: 'Marcar en preparación' },
+  en_preparacion: { label: 'En preparación', siguiente: 'preparada', accion: 'Marcar preparada' },
+  preparada: { label: 'Preparada', siguiente: 'entregada', accion: 'Marcar entregada' },
+  entregada: { label: 'Entregada', siguiente: null, accion: null },
+};
+
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
@@ -26,6 +38,8 @@ const CONFIG = Object.freeze({
     statIngresos: '#stat-ingresos',
     statPrep: '#stat-preparadas',
     statPend: '#stat-pendientes',
+    statEnPreparacion: '#stat-en-preparacion',
+    statEntregadas: '#stat-entregadas',
     orders: '#orders-container',
     tplGroup: '#tpl-order-group',
     tplRow: '#tpl-order-row',
@@ -211,7 +225,9 @@ const Api = {
     }
   },
 
-  async markAsPrepared(numero) {
+  /** Avanza una orden a cualquiera de los estados de ORDER_STATE_FLOW
+   *  (antes solo existía markAsPrepared, fijo a 'preparada'). */
+  async updateOrderStatus(numero, estado) {
     try {
       const res = await apiFetch(`/ordenes/${encodeURIComponent(numero)}`, {
         method: 'PATCH',
@@ -219,7 +235,7 @@ const Api = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${Auth.getToken()}`,
         },
-        body: JSON.stringify({ estado: 'preparada' }),
+        body: JSON.stringify({ estado }),
       });
       return res.ok;
     } catch (err) {
@@ -553,13 +569,14 @@ const Render = {
     const lista = orders || [];
     const total = lista.length;
     const ingresos = lista.reduce((s, o) => s + (Number(o.total) || 0), 0);
-    const preparadas = lista.filter((o) => o.estado === 'preparada').length;
-    const pendientes = total - preparadas;
+    const contarPor = (estado) => lista.filter((o) => o.estado === estado).length;
 
     this._setStat(CONFIG.SELECTORS.statOrdenes, total);
     this._setStat(CONFIG.SELECTORS.statIngresos, Format.currency(ingresos), ingresos);
-    this._setStat(CONFIG.SELECTORS.statPrep, preparadas);
-    this._setStat(CONFIG.SELECTORS.statPend, pendientes);
+    this._setStat(CONFIG.SELECTORS.statPend, contarPor('pendiente'));
+    this._setStat(CONFIG.SELECTORS.statEnPreparacion, contarPor('en_preparacion'));
+    this._setStat(CONFIG.SELECTORS.statPrep, contarPor('preparada'));
+    this._setStat(CONFIG.SELECTORS.statEntregadas, contarPor('entregada'));
   },
 
   _setStat(selector, displayValue, rawValue) {
@@ -639,8 +656,10 @@ const Render = {
     const row = tpl.content.cloneNode(true);
     const tr = row.querySelector('tr');
 
-    const estaPreparada = order.estado === 'preparada';
-    if (estaPreparada) tr.classList.add('order-row--done');
+    const flow = ORDER_STATE_FLOW[order.estado] || ORDER_STATE_FLOW.pendiente;
+    const esTerminal = !flow.siguiente; // 'entregada': ya no hay más pasos
+    if (esTerminal) tr.classList.add('order-row--done');
+    if (order.estado === 'en_preparacion') tr.classList.add('order-row--in-progress');
 
     row.querySelector('.order-table__id').textContent = order.numero || '—';
     row.querySelector('.order-table__cliente').textContent = order.cliente || '—';
@@ -658,20 +677,28 @@ const Render = {
     row.querySelector('.order-table__total').textContent = Format.currency(order.total);
 
     const estadoCell = row.querySelector('.order-table__estado');
-    if (estaPreparada) {
+    if (esTerminal) {
       estadoCell.innerHTML = `
-        <span class="order-status order-status--done">✓ Lista</span>
+        <span class="order-status order-status--done">✓ ${escapeHTML(flow.label)}</span>
       `;
     } else {
+      const siguienteEstado = flow.siguiente;
+      const textoBoton = flow.accion;
+
+      const badge = document.createElement('span');
+      badge.className = `order-status order-status--${order.estado.replace(/_/g, '-')}`;
+      badge.textContent = flow.label;
+      estadoCell.appendChild(badge);
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn--action';
-      btn.textContent = 'Marcar lista';
+      btn.textContent = textoBoton;
       btn.disabled = false;
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.textContent = 'Guardando…';
-        const ok = await Api.markAsPrepared(order.numero);
+        const ok = await Api.updateOrderStatus(order.numero, siguienteEstado);
         if (ok) {
           App.refresh();
         } else {
@@ -680,7 +707,7 @@ const Render = {
           btn.classList.add('btn--error');
           btn.title = 'No se pudo actualizar. Haz clic para intentar de nuevo.';
           setTimeout(() => {
-            btn.textContent = 'Marcar lista';
+            btn.textContent = textoBoton;
             btn.classList.remove('btn--error');
             btn.title = '';
           }, 3000);
@@ -1305,9 +1332,7 @@ const App = {
   },
 
   async deleteHorneada(id, productoNombre) {
-    const confirmado = window.confirm(
-      `¿Eliminar el registro de horneada de "${productoNombre}"?`,
-    );
+    const confirmado = window.confirm(`¿Eliminar el registro de horneada de "${productoNombre}"?`);
     if (!confirmado) return;
 
     const resultado = await Horneadas.eliminar(id);

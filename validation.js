@@ -11,7 +11,7 @@ const MAX_PRECIO = 1000;
 const MAX_TOTAL = 50000;
 const NUMERO_ORDEN_RE = /^LM-\d{8}-\d{4}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
-const ORDER_STATES = ['pendiente', 'preparada'];
+const ORDER_STATES = ['pendiente', 'en_preparacion', 'preparada', 'entregada'];
 
 const MAX_INSUMO_NOMBRE_LEN = 120;
 const MAX_INSUMO_PROVEEDOR_LEN = 120;
@@ -63,6 +63,13 @@ const PRODUCTOS_CATALOGO = {
   8: 'Conchas',
 };
 
+const AJUSTE_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const MAX_AJUSTE_CANTIDAD = 9999;
+const MAX_AJUSTE_NOTAS_LEN = 280;
+const MAX_AJUSTE_REGISTRADO_POR_LEN = 80;
+const MOTIVOS_AJUSTE = ['merma', 'error_conteo', 'consumo_interno', 'otro'];
+const MAX_STOCK_MINIMO = 999;
+
 class ValidationError extends Error {
   constructor(message) {
     super(message);
@@ -88,6 +95,17 @@ function validarItem(item, idx) {
   const precio = Number(item.precio);
   if (!Number.isFinite(precio) || precio <= 0 || precio > MAX_PRECIO) {
     throw new ValidationError(`Item #${idx}: precio inválido.`);
+  }
+  // productoId es opcional a propósito: el carrito (cart.js) siempre lo
+  // manda desde que existe, pero no lo exigimos aquí para no tumbar el
+  // checkout si algún día el catálogo cambia de forma o queda un cliente
+  // con JS cacheado viejo. Si viene, se sanea a string; si no, queda null
+  // y el cruce con Inventario cae de vuelta al nombre (ver GET /inventario).
+  if (item.productoId !== undefined && item.productoId !== null && item.productoId !== '') {
+    const productoIdStr = String(item.productoId).trim();
+    if (productoIdStr.length > 20) {
+      throw new ValidationError(`Item #${idx}: productoId inválido.`);
+    }
   }
 }
 
@@ -148,6 +166,10 @@ function validarOrden(orden) {
     telefono: telefonoDigitos,
     retiro,
     items: items.map((i) => ({
+      productoId:
+        i.productoId !== undefined && i.productoId !== null && i.productoId !== ''
+          ? String(i.productoId).trim()
+          : null,
       nombre: i.nombre.trim(),
       cantidad: i.cantidad,
       precio: Number(i.precio),
@@ -350,6 +372,82 @@ function validarHorneada(datos) {
   };
 }
 
+/**
+ * Valida y sanea un ajuste de inventario (merma, error de conteo, etc.)
+ * tal como lo envía admin.js. Mismo patrón que validarHorneada: producto
+ * contra la whitelist del catálogo, cantidad entera positiva, motivo
+ * contra una lista blanca en vez de texto libre.
+ * @param {*} datos
+ * @returns {object} ajuste saneado
+ */
+function validarAjusteInventario(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const { productoId, cantidad, motivo, fecha, hora } = datos;
+
+  const productoNombre = PRODUCTOS_CATALOGO[Number(productoId)];
+  if (!productoNombre) {
+    throw new ValidationError('Producto inválido.');
+  }
+
+  const cantidadNum = Number(cantidad);
+  if (!Number.isInteger(cantidadNum) || cantidadNum <= 0 || cantidadNum > MAX_AJUSTE_CANTIDAD) {
+    throw new ValidationError('Cantidad de ajuste inválida.');
+  }
+
+  if (!MOTIVOS_AJUSTE.includes(motivo)) {
+    throw new ValidationError('Motivo de ajuste inválido.');
+  }
+
+  if (typeof fecha !== 'string' || !FECHA_RE.test(fecha)) {
+    throw new ValidationError('Fecha de ajuste inválida.');
+  }
+  if (typeof hora !== 'string' || !HORA_RE.test(hora)) {
+    throw new ValidationError('Hora de ajuste inválida.');
+  }
+
+  const notasFinal =
+    typeof datos.notas === 'string' ? datos.notas.trim().slice(0, MAX_AJUSTE_NOTAS_LEN) : '';
+  const registradoPorFinal =
+    typeof datos.registradoPor === 'string'
+      ? datos.registradoPor.trim().slice(0, MAX_AJUSTE_REGISTRADO_POR_LEN)
+      : '';
+
+  return {
+    productoId: String(Number(productoId)),
+    productoNombre,
+    cantidad: cantidadNum,
+    motivo,
+    fecha,
+    hora,
+    registradoPor: registradoPorFinal,
+    notas: notasFinal,
+  };
+}
+
+/**
+ * Valida el stock mínimo configurable de un producto (alertas de quiebre
+ * de stock en Inventario).
+ * @param {*} datos
+ * @returns {object} { stockMinimo }
+ */
+function validarStockMinimo(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+  const stockMinimoNum = Number(datos.stockMinimo);
+  if (
+    !Number.isInteger(stockMinimoNum) ||
+    stockMinimoNum < 0 ||
+    stockMinimoNum > MAX_STOCK_MINIMO
+  ) {
+    throw new ValidationError('Stock mínimo inválido.');
+  }
+  return { stockMinimo: stockMinimoNum };
+}
+
 module.exports = {
   validarOrden,
   ValidationError,
@@ -366,4 +464,8 @@ module.exports = {
   validarHorneada,
   HORNEADA_ID_RE,
   PRODUCTOS_CATALOGO,
+  validarAjusteInventario,
+  AJUSTE_ID_RE,
+  MOTIVOS_AJUSTE,
+  validarStockMinimo,
 };

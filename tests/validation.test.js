@@ -222,6 +222,37 @@ describe('validarOrden — items', () => {
       validarOrden(ordenValida({ items: [{ nombre: 'Pan', cantidad: 1, precio }], total: 5 })),
     ).toThrow('precio inválido');
   });
+
+  test('preserva productoId cuando el item lo trae, saneado a string', () => {
+    const { items } = validarOrden(
+      ordenValida({
+        items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 2, precio: 1.5 }],
+        total: 3,
+      }),
+    );
+    expect(items[0].productoId).toBe('6');
+  });
+
+  test('deja productoId en null cuando el item no lo trae (compatibilidad con carritos viejos)', () => {
+    const { items } = validarOrden(
+      ordenValida({
+        items: [{ nombre: 'Pandebono', cantidad: 2, precio: 1.5 }],
+        total: 3,
+      }),
+    );
+    expect(items[0].productoId).toBeNull();
+  });
+
+  test('rechaza un productoId demasiado largo', () => {
+    expect(() =>
+      validarOrden(
+        ordenValida({
+          items: [{ productoId: 'x'.repeat(21), nombre: 'Pan', cantidad: 1, precio: 5 }],
+          total: 5,
+        }),
+      ),
+    ).toThrow('productoId inválido');
+  });
 });
 
 describe('validarOrden — total', () => {

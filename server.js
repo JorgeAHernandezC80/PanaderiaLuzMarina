@@ -20,6 +20,10 @@ const {
   PROVEEDOR_ID_RE,
   validarHorneada,
   HORNEADA_ID_RE,
+  PRODUCTOS_CATALOGO,
+  validarAjusteInventario,
+  AJUSTE_ID_RE,
+  validarStockMinimo,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -226,6 +230,13 @@ app.get('/', (req, res) => {
       crearHorneada: 'POST /horneadas (Authorization: Bearer token)',
       actualizarHorneada: 'PUT /horneadas/:id (Authorization: Bearer token)',
       eliminarHorneada: 'DELETE /horneadas/:id (Authorization: Bearer token)',
+      listarAjustesInventario:
+        'GET /ajustes-inventario?fecha=YYYY-MM-DD (Authorization: Bearer token)',
+      crearAjusteInventario: 'POST /ajustes-inventario (Authorization: Bearer token)',
+      actualizarAjusteInventario: 'PUT /ajustes-inventario/:id (Authorization: Bearer token)',
+      eliminarAjusteInventario: 'DELETE /ajustes-inventario/:id (Authorization: Bearer token)',
+      actualizarStockMinimo: 'PUT /productos/:id/stock-minimo (Authorization: Bearer token)',
+      verInventario: 'GET /inventario?fecha=YYYY-MM-DD (Authorization: Bearer token)',
     },
   });
 });
@@ -800,6 +811,289 @@ app.delete('/horneadas/:id', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[DELETE /horneadas/:id]', err.message);
     res.status(500).json({ error: 'Error al eliminar la horneada.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   AJUSTES DE INVENTARIO — CRUD protegido (mermas, errores de conteo, etc.)
+   Mismo patrón que Horneadas. Se restan del disponible junto con lo
+   preparado/vendido del día.
+   ═══════════════════════════════════════════ */
+function serializeAjuste(row) {
+  return {
+    id: row.id,
+    productoId: row.producto_id,
+    productoNombre: row.producto_nombre,
+    cantidad: row.cantidad,
+    motivo: row.motivo,
+    fecha: row.fecha,
+    hora: row.hora,
+    registradoPor: row.registrado_por,
+    notas: row.notas,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+app.get('/ajustes-inventario', requireAuth, (req, res) => {
+  const { fecha } = req.query;
+
+  let sql = 'SELECT * FROM ajustes_inventario WHERE 1=1';
+  const params = [];
+
+  if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    sql += ' AND fecha = ?';
+    params.push(fecha);
+  }
+  sql += ' ORDER BY fecha DESC, hora ASC';
+
+  try {
+    const rows = db.prepare(sql).all(...params);
+    res.json(rows.map(serializeAjuste));
+  } catch (err) {
+    console.error('[GET /ajustes-inventario]', err.message);
+    res.status(500).json({ error: 'Error al consultar ajustes de inventario.' });
+  }
+});
+
+app.post('/ajustes-inventario', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarAjusteInventario(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const id = crypto.randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO ajustes_inventario
+         (id, producto_id, producto_nombre, cantidad, motivo, fecha, hora, registrado_por, notas)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      datos.productoId,
+      datos.productoNombre,
+      datos.cantidad,
+      datos.motivo,
+      datos.fecha,
+      datos.hora,
+      datos.registradoPor,
+      datos.notas,
+    );
+    const fila = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
+    broadcast({ tipo: 'ajuste:nuevo', ajuste: serializeAjuste(fila) });
+    res.status(201).json(serializeAjuste(fila));
+  } catch (err) {
+    console.error('[POST /ajustes-inventario]', err.message);
+    res.status(500).json({ error: 'Error al guardar el ajuste de inventario.' });
+  }
+});
+
+app.put('/ajustes-inventario/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!AJUSTE_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de ajuste inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarAjusteInventario(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const info = db
+      .prepare(
+        `UPDATE ajustes_inventario
+         SET producto_id = ?, producto_nombre = ?, cantidad = ?, motivo = ?, fecha = ?, hora = ?,
+             registrado_por = ?, notas = ?, actualizado_en = datetime('now')
+         WHERE id = ?`,
+      )
+      .run(
+        datos.productoId,
+        datos.productoNombre,
+        datos.cantidad,
+        datos.motivo,
+        datos.fecha,
+        datos.hora,
+        datos.registradoPor,
+        datos.notas,
+        id,
+      );
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Ajuste no encontrado.' });
+    }
+    const fila = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
+    broadcast({ tipo: 'ajuste:actualizado', ajuste: serializeAjuste(fila) });
+    res.json(serializeAjuste(fila));
+  } catch (err) {
+    console.error('[PUT /ajustes-inventario/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar el ajuste de inventario.' });
+  }
+});
+
+app.delete('/ajustes-inventario/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!AJUSTE_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de ajuste inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM ajustes_inventario WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Ajuste no encontrado.' });
+    }
+    broadcast({ tipo: 'ajuste:eliminado', id });
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /ajustes-inventario/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar el ajuste de inventario.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   STOCK MÍNIMO POR PRODUCTO — usado por las alertas de Inventario
+   ═══════════════════════════════════════════ */
+app.put('/productos/:id/stock-minimo', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!PRODUCTOS_CATALOGO[Number(id)]) {
+    return res.status(400).json({ error: 'Producto inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarStockMinimo(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const productoId = String(Number(id));
+  try {
+    db.prepare(
+      `INSERT INTO producto_stock_minimo (producto_id, stock_minimo, actualizado_en)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(producto_id) DO UPDATE SET
+         stock_minimo = excluded.stock_minimo,
+         actualizado_en = datetime('now')`,
+    ).run(productoId, datos.stockMinimo);
+    res.json({ productoId, stockMinimo: datos.stockMinimo });
+  } catch (err) {
+    console.error('[PUT /productos/:id/stock-minimo]', err.message);
+    res.status(500).json({ error: 'Error al actualizar el stock mínimo.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   INVENTARIO — vista agregada (solo lectura, no es una tabla propia)
+   Disponible = Horneado (hoy) − Vendido (hoy) − Preparado (hoy) − Ajustes.
+   "Vendido" son órdenes en estado entregada; "Preparado" son órdenes en
+   estado preparada que ya reservaron el pan pero aún no salieron. El cruce
+   con órdenes es por productoId cuando el item lo trae (checkout.js lo
+   manda desde JS/pages/checkout.js), y cae de vuelta al nombre para
+   órdenes creadas antes de ese cambio. Un producto que no exista en
+   PRODUCTOS_CATALOGO no se cuenta.
+   ═══════════════════════════════════════════ */
+const STOCK_MINIMO_DEFAULT = 5;
+
+app.get('/inventario', requireAuth, (req, res) => {
+  const { fecha } = req.query;
+  const fechaConsulta =
+    fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : new Date().toISOString().slice(0, 10);
+
+  try {
+    // Arranca con todos los productos del catálogo en cero, para que se
+    // vean incluso los que no tuvieron ningún movimiento ese día. También
+    // se indexa por id, para cruzar por productoId cuando esté disponible.
+    const porProducto = new Map();
+    const porProductoId = new Map();
+    for (const [id, nombre] of Object.entries(PRODUCTOS_CATALOGO)) {
+      const entry = {
+        productoId: String(id),
+        productoNombre: nombre,
+        horneado: 0,
+        preparado: 0,
+        vendido: 0,
+        ajustes: 0,
+      };
+      porProducto.set(nombre, entry);
+      porProductoId.set(String(id), entry);
+    }
+
+    const horneadoRows = db
+      .prepare(
+        'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM horneadas WHERE fecha = ? GROUP BY producto_id',
+      )
+      .all(fechaConsulta);
+    for (const row of horneadoRows) {
+      const entry = porProducto.get(row.producto_nombre);
+      if (entry) entry.horneado = row.total;
+    }
+
+    const ordenesRows = db
+      .prepare(
+        "SELECT items_json, estado FROM ordenes WHERE fecha_iso LIKE ? AND estado IN ('preparada', 'entregada')",
+      )
+      .all(`${fechaConsulta}%`);
+    for (const row of ordenesRows) {
+      let items;
+      try {
+        items = JSON.parse(row.items_json);
+      } catch {
+        items = [];
+      }
+      for (const item of items) {
+        // Preferimos cruzar por productoId (exacto, no se rompe si el
+        // nombre del producto cambia en el catálogo). Las órdenes creadas
+        // antes de este cambio no tienen productoId: para esas, caemos de
+        // vuelta al cruce por nombre.
+        const entry = item.productoId
+          ? porProductoId.get(String(item.productoId))
+          : porProducto.get(item.nombre);
+        if (!entry) continue; // producto fuera del catálogo actual: no se cruza
+        if (row.estado === 'preparada') entry.preparado += item.cantidad;
+        if (row.estado === 'entregada') entry.vendido += item.cantidad;
+      }
+    }
+
+    const ajustesRows = db
+      .prepare(
+        'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM ajustes_inventario WHERE fecha = ? GROUP BY producto_id',
+      )
+      .all(fechaConsulta);
+    for (const row of ajustesRows) {
+      const entry = porProducto.get(row.producto_nombre);
+      if (entry) entry.ajustes = row.total;
+    }
+
+    const stockMinimoRows = db
+      .prepare('SELECT producto_id, stock_minimo FROM producto_stock_minimo')
+      .all();
+    const stockMinimoPorId = new Map(stockMinimoRows.map((r) => [r.producto_id, r.stock_minimo]));
+
+    const productos = [...porProducto.values()].map((e) => {
+      const disponible = e.horneado - e.vendido - e.preparado - e.ajustes;
+      return {
+        ...e,
+        disponible,
+        stockMinimo: stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT,
+        bajoStock: disponible < (stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT),
+      };
+    });
+
+    res.json({ fecha: fechaConsulta, productos });
+  } catch (err) {
+    console.error('[GET /inventario]', err.message);
+    res.status(500).json({ error: 'Error al calcular el inventario.' });
   }
 });
 

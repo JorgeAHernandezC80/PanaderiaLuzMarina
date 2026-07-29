@@ -477,6 +477,18 @@ button {
   text-decoration: line-through;
 }
 
+/* Fila de pedido en preparación: resalte suave, sin tachar nada todavía */
+.order-row--in-progress {
+  background: var(--color-accent-bg);
+}
+
+.order-table__estado {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .order-status {
   display: inline-flex;
   align-items: center;
@@ -486,6 +498,15 @@ button {
 }
 .order-status--done {
   color: var(--color-accent);
+}
+.order-status--pendiente {
+  color: var(--color-text-muted);
+}
+.order-status--en-preparacion {
+  color: var(--color-accent);
+}
+.order-status--preparada {
+  color: var(--color-success);
 }
 
 /* ═══════════════════════════════════════════

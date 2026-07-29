@@ -144,6 +144,40 @@ try {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_fecha ON horneadas(fecha)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_producto ON horneadas(producto_id)');
+
+  /* Ajustes de inventario: mermas, errores de conteo, consumo interno, etc.
+     Se restan del disponible junto con lo preparado/vendido del día. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ajustes_inventario (
+      id               TEXT PRIMARY KEY,
+      producto_id      TEXT NOT NULL,
+      producto_nombre  TEXT NOT NULL,
+      cantidad         INTEGER NOT NULL,
+      motivo           TEXT NOT NULL DEFAULT 'merma',
+      fecha            TEXT NOT NULL,
+      hora             TEXT NOT NULL,
+      registrado_por   TEXT,
+      notas            TEXT,
+      creado_en        TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en   TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_ajustes_inventario_fecha ON ajustes_inventario(fecha)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_ajustes_inventario_producto ON ajustes_inventario(producto_id)',
+  );
+
+  /* Stock mínimo configurable por producto, para las alertas de "quiebre de
+     stock" en la pestaña Inventario. Una fila por producto; si no existe,
+     el backend aplica un default razonable al calcular el inventario. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS producto_stock_minimo (
+      producto_id     TEXT PRIMARY KEY,
+      stock_minimo    INTEGER NOT NULL DEFAULT 5,
+      actualizado_en  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */
