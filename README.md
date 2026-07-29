@@ -1,19 +1,20 @@
 # 🍞 Panadería Luz Marina
 
-Sistema de e-commerce para una panadería artesanal: catálogo de productos, carrito
-de compras, checkout con envío del pedido por WhatsApp y un panel de administración
-en tiempo real (WebSocket) para gestionar las órdenes entrantes.
+Tienda en línea para una panadería artesanal: catálogo de productos, carrito de compras,
+checkout que arma el pedido y lo manda por WhatsApp, y un panel de administración en
+tiempo real para llevar el negocio del día a día — desde las órdenes hasta la producción
+y el inventario.
 
 El proyecto tiene dos partes:
 
-- **Frontend** — páginas HTML estáticas + módulos ES (JavaScript) y CSS modular.
-  Pensado para desplegarse como sitio estático (Netlify).
-- **Backend** — API REST con Express + SQLite (`better-sqlite3`) y notificaciones en
-  tiempo real vía WebSocket. Pensado para desplegarse en un servidor Node (Render).
+- **Frontend** — páginas HTML estáticas con JavaScript modular (ES Modules) y CSS por
+  componentes. Se despliega como sitio estático (Netlify).
+- **Backend** — una API en Express con SQLite (`better-sqlite3`) y notificaciones en
+  tiempo real por WebSocket. Se despliega como servicio Node (Render).
 
 ## 📋 Tabla de contenidos
 
-- [Características](#-características)
+- [Qué hace](#-qué-hace)
 - [Tecnologías](#-tecnologías)
 - [Estructura del proyecto](#-estructura-del-proyecto)
 - [Módulos de interfaz](#-módulos-de-interfaz)
@@ -21,6 +22,8 @@ El proyecto tiene dos partes:
 - [Instalación](#-instalación)
 - [Variables de entorno](#-variables-de-entorno)
 - [Ejecución](#-ejecución)
+- [El ciclo de una orden](#-el-ciclo-de-una-orden)
+- [Cómo se calcula el disponible](#-cómo-se-calcula-el-disponible)
 - [API del backend](#-api-del-backend)
 - [Pruebas](#-pruebas)
 - [Despliegue](#-despliegue)
@@ -28,20 +31,39 @@ El proyecto tiene dos partes:
 - [Contribución](#-contribución)
 - [Licencia](#-licencia)
 
-## ✨ Características
+## ✨ Qué hace
 
-- 🛒 **Carrito reactivo** — persiste en `localStorage` y sincroniza los badges entre pestañas.
-- 📱 **Pedido por WhatsApp** — el checkout arma el mensaje y abre WhatsApp con la orden.
-- 🧾 **Panel de administración** — vista en tiempo real de las órdenes, protegida por token.
-- 🔴 **Tiempo real** — el backend emite eventos WebSocket al crear/actualizar órdenes.
-- 🌙 **Modo oscuro** — preferencia recordada por el usuario.
-- 🌍 **Bilingüe (ES/EN)** — internacionalización ligera sin dependencias.
-- 🧭 **Compra guiada** — módulos que explican el flujo antes de pedir: ganchos en la
-  portada e instructivo de tres pasos sobre el catálogo.
-- ♿ **Accesibilidad** — landmarks semánticos, `aria-label` en bloques y acciones,
-  foco visible y `prefers-reduced-motion` respetado.
-- 🛡️ **Backend endurecido** — validación de entrada, rate limiting, CORS restringido y
-  comparación de contraseña en tiempo constante.
+**Para quien compra**
+
+- Catálogo de productos con carrito que persiste entre visitas y se mantiene
+  sincronizado si el cliente tiene varias pestañas abiertas.
+- Checkout que arma el pedido y lo envía por WhatsApp — sin pasarela de pagos,
+  igual que funciona un negocio de barrio.
+- Modo oscuro y sitio bilingüe (español/inglés), con foco en verse bien desde el
+  celular.
+
+**Para el negocio (panel de administración)**
+
+- Las órdenes aparecen en el panel apenas llegan, en tiempo real, sin recargar la
+  página.
+- Cada orden avanza por un ciclo de 4 pasos: Recibida → En preparación → Preparada →
+  Entregada (más detalle en [El ciclo de una orden](#-el-ciclo-de-una-orden)).
+- **Insumos**: control de materia prima, con alerta cuando algo cae por debajo del
+  mínimo.
+- **Proveedores**: ficha completa por proveedor — contacto, condiciones de pago,
+  tiempos de entrega.
+- **Horneadas**: registro diario de producción (qué se horneó, cuánto, a qué hora y
+  quién lo hizo), con historial consultable de cualquier fecha.
+- **Inventario**: cuánto pan queda disponible ahora mismo, calculado automáticamente
+  a partir de lo horneado, lo vendido y las mermas del día.
+- Acceso protegido por token, con sesión que expira y protección contra intentos de
+  fuerza bruta.
+
+**Por debajo**
+
+- Validación estricta de todo lo que llega por la API.
+- Límite de peticiones por IP, CORS restringido y cabeceras de seguridad (CSP, HSTS).
+- Consultas SQL siempre parametrizadas — nunca se arma una consulta pegando texto.
 
 ## 🛠️ Tecnologías
 
@@ -61,7 +83,7 @@ El proyecto tiene dos partes:
 
 **Tooling**
 
-- Jest + Testing (jsdom / node) + Supertest
+- Jest + Supertest (entornos `jsdom` y `node`)
 - ESLint + Prettier
 - GitHub Actions (CI)
 
@@ -71,42 +93,42 @@ El proyecto tiene dos partes:
 PanaderiaLuzMarina/
 ├── index.html              # Página principal
 ├── catalogo.html           # Catálogo de productos
-├── carrito.html            # Carrito de compras
-├── checkout.html           # Checkout / envío por WhatsApp
-├── contacto.html           # Contacto
-├── nosotros.html           # Información del negocio
-├── admin.html              # Panel de administración
+├── carrito.html             # Carrito de compras
+├── checkout.html            # Checkout / envío por WhatsApp
+├── contacto.html             # Contacto
+├── nosotros.html             # Información del negocio
+├── admin.html                # Panel de administración
 │
 ├── CSS/
-│   ├── base/               # Reset, variables y utilidades
-│   ├── components/         # Bloques reutilizables entre páginas
+│   ├── base/                 # Reset, variables y utilidades
+│   ├── components/           # Bloques reutilizables entre páginas
 │   │   ├── _buttons.css
 │   │   ├── _cards.css
-│   │   ├── _features.css   #   Módulo de ganchos (.features-grid)
+│   │   ├── _features.css     #   Módulo de ganchos (.features-grid)
 │   │   ├── _footer.css
 │   │   ├── _forms.css
 │   │   ├── _header.css
-│   │   ├── _hero.css       #   Hero y acción dual (.hero-actions)
-│   │   └── _steps.css      #   Módulo instructivo (.steps-section)
-│   └── pages/              # Estilos por página
+│   │   ├── _hero.css         #   Hero y acción dual (.hero-actions)
+│   │   └── _steps.css        #   Módulo instructivo (.steps-section)
+│   └── pages/                 # Estilos por página (incluye admin.css)
 │
 ├── JS/
-│   ├── core/               # Lógica compartida
-│   │   ├── api.js          #   Cliente HTTP contra el backend
-│   │   ├── cart.js         #   Estado del carrito (localStorage)
-│   │   ├── format.js       #   Formateo de precios/valores
-│   │   ├── i18n.js         #   Internacionalización
-│   │   ├── theme.js        #   Modo claro/oscuro
-│   │   └── ui.js           #   Comportamiento común de UI
-│   └── pages/              # Punto de entrada por página
+│   ├── core/                  # Lógica compartida
+│   │   ├── api.js             #   Cliente HTTP contra el backend
+│   │   ├── cart.js            #   Estado del carrito (localStorage)
+│   │   ├── format.js          #   Formateo de precios/valores
+│   │   ├── i18n.js            #   Internacionalización
+│   │   ├── theme.js           #   Modo claro/oscuro
+│   │   └── ui.js              #   Comportamiento común de UI
+│   └── pages/                  # Punto de entrada por página (incluye admin.js)
 │
-├── IMG/                    # Imágenes de productos
+├── IMG/                        # Imágenes de productos
 │
-├── server.js               # Servidor Express + WebSocket (backend)
-├── db.js                   # Inicialización de SQLite
-├── validation.js           # Validación/saneamiento de órdenes
+├── server.js                   # Servidor Express + WebSocket (backend)
+├── db.js                       # Esquema e inicialización de SQLite
+├── validation.js                # Validación/saneamiento de todo lo que entra por la API
 │
-├── tests/                  # Suite de pruebas (Jest)
+├── tests/                       # Suite de pruebas (Jest)
 ├── jest.config.js
 ├── babel.config.js
 └── package.json
@@ -137,7 +159,8 @@ Convenciones al tocar o añadir módulos:
 
 ## ✅ Requisitos
 
-- [Node.js](https://nodejs.org/) **20.x**
+- [Node.js](https://nodejs.org/) **20.x** — versiones más nuevas pueden fallar al
+  compilar `better-sqlite3` si no hay un binario precompilado disponible.
 - npm 10+
 
 ## 📦 Instalación
@@ -156,16 +179,16 @@ El backend se configura mediante variables de entorno. Copia el ejemplo y ajúst
 cp .env.example .env
 ```
 
-| Variable                | Requerida   | Descripción                                                                                                 |
-| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `PORT`                  | No          | Puerto del backend. Por defecto `3001`.                                                                     |
-| `FRONTEND_ORIGIN`       | Sí (prod)   | Orígenes permitidos para CORS, separados por coma (p. ej. `https://tu-sitio.netlify.app`). Sin barra final. |
-| `ADMIN_TOKEN`           | Sí (prod)   | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                           |
-| `SESSION_SECRET`        | Recomendada | Secreto para firmar los tokens de sesión del panel (HMAC). Si se omite, se deriva del `ADMIN_TOKEN`.        |
-| `SESSION_TTL_MS`        | No          | Duración de la sesión admin en ms. Por defecto `28800000` (8 h).                                            |
-| `AUTH_MAX_ATTEMPTS`     | No          | Intentos de login por IP cada 15 min antes de responder `429`. Por defecto `10`.                            |
-| `ORDERS_MAX_PER_WINDOW` | No          | Creaciones de orden por IP cada 15 min. Por defecto `20`.                                                   |
-| `DB_PATH`               | No          | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                      |
+| Variable                | Requerida   | Descripción                                                                                                   |
+| ----------------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `PORT`                  | No          | Puerto del backend. Por defecto `3001`.                                                                       |
+| `FRONTEND_ORIGIN`       | Sí (prod)   | Orígenes permitidos para CORS, separados por coma (p. ej. `https://tu-sitio.netlify.app`). Sin barra final.   |
+| `ADMIN_TOKEN`           | Sí (prod)   | Contraseña/token del panel de administración. Sin él, el panel queda inaccesible.                             |
+| `SESSION_SECRET`        | Recomendada | Secreto para firmar los tokens de sesión del panel (HMAC). Si se omite, se deriva del `ADMIN_TOKEN`.          |
+| `SESSION_TTL_MS`        | No          | Duración de la sesión admin en ms. Por defecto `28800000` (8 h).                                              |
+| `AUTH_MAX_ATTEMPTS`     | No          | Intentos de login por IP cada 15 min antes de responder `429`. Por defecto `10`.                              |
+| `ORDERS_MAX_PER_WINDOW` | No          | Peticiones de escritura por IP cada 15 min (crear órdenes, insumos, horneadas, ajustes...). Por defecto `20`. |
+| `DB_PATH`               | No          | Ruta del archivo SQLite. Por defecto `./luzmarina.db`.                                                        |
 
 > ⚠️ La base de datos (`*.db`) contiene datos de clientes (PII) y **no** se versiona.
 > El archivo `.env` tampoco: nunca subas secretos al repositorio.
@@ -188,23 +211,102 @@ npx serve .        # o la extensión "Live Server" de VS Code
 
 Ajusta `API_BASE` en `JS/core/api.js` si tu backend no corre en la URL por defecto.
 
+## 🔄 El ciclo de una orden
+
+Una orden nace cuando el cliente hace checkout y va pasando por cuatro estados, en
+este orden:
+
+1. **Recibida** (`pendiente`) — acaba de llegar, todavía no se ha tocado.
+2. **En preparación** (`en_preparacion`) — alguien ya empezó a armarla.
+3. **Preparada** (`preparada`) — está lista y separada, pero el cliente aún no la
+   retira. Desde este punto ya se resta del disponible en Inventario, porque ese pan
+   está reservado aunque no haya salido físicamente.
+4. **Entregada** (`entregada`) — el cliente ya se la llevó. Estado final.
+
+El panel admin muestra un botón para avanzar cada orden al siguiente paso; no se
+puede saltar pasos ni retroceder desde la interfaz.
+
+## 📊 Cómo se calcula el disponible
+
+La pestaña Inventario no guarda un número de "stock" que haya que actualizar a mano
+— lo calcula al vuelo, cada vez que se consulta, con esta fórmula por producto y por
+día:
+
+```
+Disponible = Horneado (hoy) − Vendido (hoy) − Preparado (hoy) − Ajustes (mermas)
+```
+
+- **Horneado** sale del registro de la pestaña Horneadas.
+- **Vendido** son las órdenes que ya llegaron a estado Entregada.
+- **Preparado** son las órdenes en estado Preparada — ya están separadas para un
+  cliente, aunque técnicamente no hayan salido de la panadería.
+- **Ajustes** son mermas, errores de conteo u otras pérdidas que se registran a
+  mano en la pestaña Inventario.
+
+El cruce entre una orden y un producto del catálogo se hace por el id del producto
+(no por su nombre), así que renombrar un producto en el catálogo no rompe el cálculo.
+
 ## 🔌 API del backend
 
-| Método  | Ruta               | Auth  | Descripción                                      |
-| ------- | ------------------ | ----- | ------------------------------------------------ |
-| `GET`   | `/health`          | No    | Healthcheck (`{ status: "ok" }`).                |
-| `POST`  | `/auth`            | No    | Valida la contraseña del panel admin.            |
-| `POST`  | `/ordenes`         | No\*  | Crea una orden (con validación y rate limiting). |
-| `GET`   | `/ordenes`         | Admin | Lista órdenes (filtros `fecha`, `estado`).       |
-| `PATCH` | `/ordenes/:numero` | Admin | Actualiza el estado de una orden.                |
+Los endpoints marcados **Admin** requieren la cabecera `Authorization: Bearer <token>`,
+donde `<token>` es el **token de sesión firmado** que devuelve `POST /auth` (no el
+`ADMIN_TOKEN` en sí). El token caduca según `SESSION_TTL_MS`, y `/auth` está protegido
+contra fuerza bruta.
 
-\* Protegido por rate limiting (20 peticiones por IP cada 15 min).
-Los endpoints **Admin** requieren la cabecera `Authorization: Bearer <token>`, donde
-`<token>` es el **token de sesión firmado** que devuelve `POST /auth` (no el `ADMIN_TOKEN`).
-El token caduca (`SESSION_TTL_MS`) y `/auth` está protegido contra fuerza bruta.
+**Órdenes**
+
+| Método  | Ruta               | Auth  | Descripción                                  |
+| ------- | ------------------ | ----- | -------------------------------------------- |
+| `GET`   | `/health`          | No    | Healthcheck (`{ status: "ok" }`).            |
+| `POST`  | `/auth`            | No    | Valida la contraseña del panel admin.        |
+| `POST`  | `/ordenes`         | No\*  | Crea una orden (validación + rate limiting). |
+| `GET`   | `/ordenes`         | Admin | Lista órdenes (filtros `fecha`, `estado`).   |
+| `PATCH` | `/ordenes/:numero` | Admin | Avanza el estado de una orden.               |
+
+**Insumos**
+
+| Método   | Ruta           | Auth  | Descripción          |
+| -------- | -------------- | ----- | -------------------- |
+| `GET`    | `/insumos`     | Admin | Lista insumos.       |
+| `POST`   | `/insumos`     | Admin | Crea un insumo.      |
+| `PUT`    | `/insumos/:id` | Admin | Actualiza un insumo. |
+| `DELETE` | `/insumos/:id` | Admin | Elimina un insumo.   |
+
+**Proveedores**
+
+| Método   | Ruta               | Auth  | Descripción             |
+| -------- | ------------------ | ----- | ----------------------- |
+| `GET`    | `/proveedores`     | Admin | Lista proveedores.      |
+| `POST`   | `/proveedores`     | Admin | Crea un proveedor.      |
+| `PUT`    | `/proveedores/:id` | Admin | Actualiza un proveedor. |
+| `DELETE` | `/proveedores/:id` | Admin | Elimina un proveedor.   |
+
+**Horneadas**
+
+| Método   | Ruta             | Auth  | Descripción                                    |
+| -------- | ---------------- | ----- | ---------------------------------------------- |
+| `GET`    | `/horneadas`     | Admin | Lista horneadas (filtro `fecha`, default hoy). |
+| `POST`   | `/horneadas`     | Admin | Registra una horneada.                         |
+| `PUT`    | `/horneadas/:id` | Admin | Corrige una horneada ya registrada.            |
+| `DELETE` | `/horneadas/:id` | Admin | Elimina un registro de horneada.               |
+
+**Inventario**
+
+| Método   | Ruta                          | Auth  | Descripción                                                  |
+| -------- | ----------------------------- | ----- | ------------------------------------------------------------ |
+| `GET`    | `/inventario`                 | Admin | Disponible por producto para una fecha (ver fórmula arriba). |
+| `GET`    | `/ajustes-inventario`         | Admin | Lista ajustes/mermas (filtro `fecha`).                       |
+| `POST`   | `/ajustes-inventario`         | Admin | Registra un ajuste (merma, error de conteo, etc.).           |
+| `PUT`    | `/ajustes-inventario/:id`     | Admin | Corrige un ajuste ya registrado.                             |
+| `DELETE` | `/ajustes-inventario/:id`     | Admin | Elimina un ajuste.                                           |
+| `PUT`    | `/productos/:id/stock-minimo` | Admin | Configura el umbral de alerta de stock bajo de un producto.  |
+
+\* Protegido por rate limiting (`ORDERS_MAX_PER_WINDOW` peticiones por IP cada 15 min).
 
 Al crear o actualizar una orden, el servidor emite un evento por WebSocket
-(`orden:nueva` / `orden:actualizada`) para que el panel se actualice en vivo.
+(`orden:nueva` / `orden:actualizada`) para que el panel se actualice en vivo. Horneadas
+y Ajustes de inventario emiten sus propios eventos (`horneada:nueva`, `ajuste:nuevo`,
+etc.) con el mismo propósito.
 
 ## 🧪 Pruebas
 
