@@ -18,6 +18,8 @@ const {
   INSUMO_ID_RE,
   validarProveedor,
   PROVEEDOR_ID_RE,
+  validarHorneada,
+  HORNEADA_ID_RE,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -220,6 +222,10 @@ app.get('/', (req, res) => {
       crearProveedor: 'POST /proveedores (Authorization: Bearer token)',
       actualizarProveedor: 'PUT /proveedores/:id (Authorization: Bearer token)',
       eliminarProveedor: 'DELETE /proveedores/:id (Authorization: Bearer token)',
+      listarHorneadas: 'GET /horneadas?fecha=YYYY-MM-DD (Authorization: Bearer token)',
+      crearHorneada: 'POST /horneadas (Authorization: Bearer token)',
+      actualizarHorneada: 'PUT /horneadas/:id (Authorization: Bearer token)',
+      eliminarHorneada: 'DELETE /horneadas/:id (Authorization: Bearer token)',
     },
   });
 });
@@ -653,6 +659,147 @@ app.delete('/proveedores/:id', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[DELETE /proveedores/:id]', err.message);
     res.status(500).json({ error: 'Error al eliminar el proveedor.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   HORNEADAS — CRUD protegido (solo panel admin)
+   Registro manual de producción: qué se horneó, cuánto y a qué hora.
+   Es la base de datos que luego alimentará Inventario/Stock y
+   Analítica de Productos/Ventas.
+   ═══════════════════════════════════════════ */
+function serializeHorneada(row) {
+  return {
+    id: row.id,
+    productoId: row.producto_id,
+    productoNombre: row.producto_nombre,
+    cantidad: row.cantidad,
+    fecha: row.fecha,
+    hora: row.hora,
+    registradoPor: row.registrado_por,
+    notas: row.notas,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+app.get('/horneadas', requireAuth, (req, res) => {
+  const { fecha } = req.query;
+
+  let sql = 'SELECT * FROM horneadas WHERE 1=1';
+  const params = [];
+
+  if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    sql += ' AND fecha = ?';
+    params.push(fecha);
+  }
+  sql += ' ORDER BY fecha DESC, hora ASC';
+
+  try {
+    const rows = db.prepare(sql).all(...params);
+    res.json(rows.map(serializeHorneada));
+  } catch (err) {
+    console.error('[GET /horneadas]', err.message);
+    res.status(500).json({ error: 'Error al consultar horneadas.' });
+  }
+});
+
+app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarHorneada(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const id = crypto.randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO horneadas (id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      datos.productoId,
+      datos.productoNombre,
+      datos.cantidad,
+      datos.fecha,
+      datos.hora,
+      datos.registradoPor,
+      datos.notas,
+    );
+    const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
+    broadcast({ tipo: 'horneada:nueva', horneada: serializeHorneada(fila) });
+    res.status(201).json(serializeHorneada(fila));
+  } catch (err) {
+    console.error('[POST /horneadas]', err.message);
+    res.status(500).json({ error: 'Error al guardar la horneada.' });
+  }
+});
+
+app.put('/horneadas/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!HORNEADA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de horneada inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarHorneada(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const info = db
+      .prepare(
+        `UPDATE horneadas
+         SET producto_id = ?, producto_nombre = ?, cantidad = ?, fecha = ?, hora = ?,
+             registrado_por = ?, notas = ?, actualizado_en = datetime('now')
+         WHERE id = ?`,
+      )
+      .run(
+        datos.productoId,
+        datos.productoNombre,
+        datos.cantidad,
+        datos.fecha,
+        datos.hora,
+        datos.registradoPor,
+        datos.notas,
+        id,
+      );
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Horneada no encontrada.' });
+    }
+    const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
+    broadcast({ tipo: 'horneada:actualizada', horneada: serializeHorneada(fila) });
+    res.json(serializeHorneada(fila));
+  } catch (err) {
+    console.error('[PUT /horneadas/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar la horneada.' });
+  }
+});
+
+app.delete('/horneadas/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!HORNEADA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de horneada inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM horneadas WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Horneada no encontrada.' });
+    }
+    broadcast({ tipo: 'horneada:eliminada', id });
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /horneadas/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar la horneada.' });
   }
 });
 

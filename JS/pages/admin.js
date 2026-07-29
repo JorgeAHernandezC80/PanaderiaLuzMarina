@@ -65,6 +65,28 @@ const CONFIG = Object.freeze({
     proveedorErrorMsg: '#proveedor-error [data-proveedor-error-msg]',
     proveedorSubmitBtn: '#btn-proveedor-submit',
     proveedorCancelEditBtn: '#btn-proveedor-cancel-edit',
+
+    // Horneadas
+    horneadasView: '#horneadas-view',
+    horneadasCount: '#horneadas-count',
+    horneadasContainer: '#horneadas-container',
+    horneadasResumen: '#horneadas-resumen',
+    tplHorneadaRow: '#tpl-horneada-row',
+    horneadaForm: '#horneada-form',
+    horneadaId: '#horneada-id',
+    horneadaProducto: '#horneada-producto',
+    horneadaCantidad: '#horneada-cantidad',
+    horneadaFecha: '#horneada-fecha',
+    horneadaHora: '#horneada-hora',
+    horneadaRegistradoPor: '#horneada-registrado-por',
+    horneadaNotas: '#horneada-notas',
+    horneadaError: '#horneada-error',
+    horneadaErrorMsg: '#horneada-error [data-horneada-error-msg]',
+    horneadaSubmitBtn: '#btn-horneada-submit',
+    horneadaCancelEditBtn: '#btn-horneada-cancel-edit',
+    horneadaFiltroFecha: '#horneada-filtro-fecha',
+    btnHorneadaFiltrar: '#btn-horneada-filtrar',
+    btnHorneadaHoy: '#btn-horneada-hoy',
   },
   /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
      leer el formulario sea una sola iteración en lugar de 24 querySelector. */
@@ -430,6 +452,94 @@ const Proveedores = {
       return { ok: true };
     } catch (err) {
       console.error('[Proveedores] Error eliminando proveedor:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6b. MÓDULO: HORNEADAS (backend real)
+   ═══════════════════════════════════════════
+   Mismo contrato que Insumos/Proveedores: CRUD contra /horneadas con el
+   token de sesión, 401 => sesión expirada, fallos de red devuelven
+   null / ok:false. listar() siempre pide la fecha de hoy — es la vista
+   operativa del día por defecto, pero acepta una fecha explícita para poder
+   revisar la trazabilidad de cualquier día pasado. */
+const Horneadas = {
+  async listar(fecha) {
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    try {
+      const res = await apiFetch(`/horneadas?fecha=${fechaConsulta}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('[Horneadas] Timeout obteniendo horneadas.');
+      } else {
+        console.error('[Horneadas] Error obteniendo horneadas:', err.message);
+      }
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/horneadas', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/horneadas/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, horneada: await res.json() };
+    } catch (err) {
+      console.error(`[Horneadas] Error en ${method} ${path}:`, err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/horneadas/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        return { ok: false, reason: 'error' };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[Horneadas] Error eliminando horneada:', err.message);
       return { ok: false, reason: 'network' };
     }
   },
@@ -815,6 +925,154 @@ const Render = {
 
     return tr;
   },
+
+  updateHorneadasCount(lista) {
+    const el = document.querySelector(CONFIG.SELECTORS.horneadasCount);
+    if (el) el.textContent = lista.length;
+  },
+
+  /** Tarjetas de resumen: total de panes horneados en la fecha consultada y
+   *  desglose por producto, para leer de un vistazo la producción del día
+   *  sin tener que sumar filas de la tabla a mano. */
+  renderHorneadaResumen(lista, fecha) {
+    const container = document.querySelector(CONFIG.SELECTORS.horneadasResumen);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!Array.isArray(lista) || lista.length === 0) return;
+
+    const totalPanes = lista.reduce((sum, h) => sum + Number(h.cantidad || 0), 0);
+    const porProducto = new Map();
+    lista.forEach((h) => {
+      porProducto.set(h.productoNombre, (porProducto.get(h.productoNombre) || 0) + h.cantidad);
+    });
+
+    const fechaLabel = document.createElement('h2');
+    fechaLabel.className = 'sr-only';
+    fechaLabel.textContent = `Resumen de producción — ${fecha}`;
+    container.appendChild(fechaLabel);
+
+    const cardTotal = document.createElement('article');
+    cardTotal.className = 'stat-card stat-card--accent';
+    cardTotal.innerHTML = `
+      <span class="stat-card__label">Total horneado (${fecha})</span>
+      <data class="stat-card__value" value="${totalPanes}">${totalPanes}</data>
+    `;
+    container.appendChild(cardTotal);
+
+    [...porProducto.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([producto, cantidad]) => {
+        const card = document.createElement('article');
+        card.className = 'stat-card';
+        card.innerHTML = `
+          <span class="stat-card__label">${escapeHTML(producto)}</span>
+          <data class="stat-card__value" value="${cantidad}">${cantidad}</data>
+        `;
+        container.appendChild(card);
+      });
+  },
+
+  renderHorneadas(lista, huboErrorConexion, fecha) {
+    const container = document.querySelector(CONFIG.SELECTORS.horneadasContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (lista.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">🍞</span>
+        <h2 class="empty-state__title">Sin horneadas registradas para ${escapeHTML(fecha || 'esta fecha')}</h2>
+        <p class="empty-state__text">Usa el formulario de arriba para registrar una horneada de ese día.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Detalle de horneadas registradas el ${fecha || ''}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Producto</th>
+          <th scope="col">Cantidad</th>
+          <th scope="col">Hora</th>
+          <th scope="col">Registrado por</th>
+          <th scope="col">Notas</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    lista.forEach((horneada) => tbody.appendChild(this._renderHorneadaRow(horneada)));
+
+    container.appendChild(table);
+  },
+
+  _renderHorneadaRow(horneada) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplHorneadaRow);
+    const row = tpl.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+
+    row.querySelector('.insumo-table__nombre').textContent = horneada.productoNombre;
+    row.querySelector('.horneada-table__cantidad').textContent =
+      `${Format.cantidad(horneada.cantidad)} pan(es)`;
+
+    const horaCell = row.querySelector('.horneada-table__hora');
+    horaCell.textContent = horneada.hora;
+    // Trazabilidad: si actualizadoEn difiere de creadoEn, el registro se
+    // corrigió después de creado — se marca para que quede claro que no es
+    // el dato original de cuando se horneó.
+    if (horneada.actualizadoEn && horneada.actualizadoEn !== horneada.creadoEn) {
+      const badge = document.createElement('span');
+      badge.className = 'insumo-badge insumo-badge--info';
+      badge.title = `Editado por última vez: ${horneada.actualizadoEn}`;
+      badge.textContent = 'Editado';
+      horaCell.appendChild(document.createElement('br'));
+      horaCell.appendChild(badge);
+    }
+
+    row.querySelector('.horneada-table__registrado-por').textContent =
+      horneada.registradoPor || '—';
+    row.querySelector('.horneada-table__notas').textContent = horneada.notas || '—';
+
+    const acciones = row.querySelector('.insumo-table__acciones');
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'btn btn--action';
+    btnEditar.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i> Editar';
+    btnEditar.addEventListener('click', () => App.startEditHorneada(horneada.id));
+
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'btn btn--ghost btn--danger';
+    btnEliminar.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Eliminar';
+    btnEliminar.addEventListener('click', () =>
+      App.deleteHorneada(horneada.id, horneada.productoNombre),
+    );
+
+    acciones.appendChild(btnEditar);
+    acciones.appendChild(btnEliminar);
+
+    return tr;
+  },
 };
 
 /* ═══════════════════════════════════════════
@@ -824,6 +1082,11 @@ const App = {
   _liveConnected: false,
   _insumosCache: [],
   _proveedoresCache: [],
+  _horneadasCache: [],
+  // Fecha que se está consultando en la pestaña Horneadas — por defecto hoy,
+  // pero el toolbar de la vista permite cambiarla para revisar trazabilidad
+  // de días anteriores.
+  _horneadaFechaConsulta: new Date().toISOString().slice(0, 10),
 
   init() {
     this._bindEvents();
@@ -875,6 +1138,41 @@ const App = {
     this._proveedoresCache = Array.isArray(lista) ? lista : [];
     Render.updateProveedoresCount(this._proveedoresCache);
     Render.renderProveedores(this._proveedoresCache, lista === null);
+  },
+
+  async refreshHorneadas() {
+    const fecha = this._horneadaFechaConsulta;
+    const lista = await Horneadas.listar(fecha);
+
+    if (lista === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._horneadasCache = Array.isArray(lista) ? lista : [];
+    Render.updateHorneadasCount(this._horneadasCache);
+    Render.renderHorneadaResumen(this._horneadasCache, fecha);
+    Render.renderHorneadas(this._horneadasCache, lista === null, fecha);
+  },
+
+  /** Cambia la fecha consultada en la pestaña Horneadas y vuelve a cargar.
+   *  Es la puerta de entrada a la trazabilidad histórica: sin esto, el panel
+   *  solo podía ver el día actual. */
+  verFechaHorneadas(fecha) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
+    this._horneadaFechaConsulta = fecha;
+    const btnHoy = document.querySelector(CONFIG.SELECTORS.btnHorneadaHoy);
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (btnHoy) btnHoy.hidden = fecha === hoy;
+    this.refreshHorneadas();
+  },
+
+  volverAHoyHorneadas() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
+    if (filtroEl) filtroEl.value = hoy;
+    this.verFechaHorneadas(hoy);
   },
 
   startEditProveedor(id) {
@@ -977,6 +1275,135 @@ const App = {
 
     this._resetProveedorForm();
     this.refreshProveedores();
+  },
+
+  startEditHorneada(id) {
+    const horneada = this._horneadasCache.find((h) => h.id === id);
+    if (!horneada) return;
+
+    document.querySelector(CONFIG.SELECTORS.horneadaId).value = horneada.id;
+    document.querySelector(CONFIG.SELECTORS.horneadaProducto).value = horneada.productoId;
+    document.querySelector(CONFIG.SELECTORS.horneadaCantidad).value = horneada.cantidad ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaFecha).value = horneada.fecha || '';
+    document.querySelector(CONFIG.SELECTORS.horneadaHora).value = horneada.hora || '';
+    document.querySelector(CONFIG.SELECTORS.horneadaRegistradoPor).value =
+      horneada.registradoPor || '';
+    document.querySelector(CONFIG.SELECTORS.horneadaNotas).value = horneada.notas || '';
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
+    submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.horneadaCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(CONFIG.SELECTORS.horneadaProducto).focus();
+  },
+
+  cancelEditHorneada() {
+    this._resetHorneadaForm();
+  },
+
+  async deleteHorneada(id, productoNombre) {
+    const confirmado = window.confirm(
+      `¿Eliminar el registro de horneada de "${productoNombre}"?`,
+    );
+    if (!confirmado) return;
+
+    const resultado = await Horneadas.eliminar(id);
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar la horneada. Intenta de nuevo en unos segundos.');
+      return;
+    }
+
+    this.refreshHorneadas();
+  },
+
+  _resetHorneadaForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.horneadaForm);
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.horneadaId).value = '';
+    document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Registrar horneada';
+    document.querySelector(CONFIG.SELECTORS.horneadaCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.horneadaError).hidden = true;
+    this._prefillHorneadaFechaHora();
+  },
+
+  /** Prellena fecha (hoy) y hora (ahora) del formulario, como punto de partida
+   *  cómodo — el usuario puede ajustarlas si registra la horneada tarde. */
+  _prefillHorneadaFechaHora() {
+    const ahora = new Date();
+    const fechaEl = document.querySelector(CONFIG.SELECTORS.horneadaFecha);
+    const horaEl = document.querySelector(CONFIG.SELECTORS.horneadaHora);
+    if (fechaEl && !fechaEl.value) fechaEl.value = ahora.toISOString().slice(0, 10);
+    if (horaEl && !horaEl.value) {
+      horaEl.value = `${String(ahora.getHours()).padStart(2, '0')}:${String(
+        ahora.getMinutes(),
+      ).padStart(2, '0')}`;
+    }
+  },
+
+  async _handleHorneadaSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.horneadaError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.horneadaErrorMsg);
+
+    const productoId = document.querySelector(CONFIG.SELECTORS.horneadaProducto).value;
+    const cantidadRaw = document.querySelector(CONFIG.SELECTORS.horneadaCantidad).value;
+    const fecha = document.querySelector(CONFIG.SELECTORS.horneadaFecha).value;
+    const hora = document.querySelector(CONFIG.SELECTORS.horneadaHora).value;
+
+    if (!productoId || cantidadRaw === '' || Number(cantidadRaw) <= 0 || !fecha || !hora) {
+      errorMsgEl.textContent =
+        'Completa producto, cantidad (mayor a 0), fecha y hora de la horneada.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.horneadaId).value || null;
+
+    const datos = {
+      productoId,
+      cantidad: Number(cantidadRaw),
+      fecha,
+      hora,
+      registradoPor: document.querySelector(CONFIG.SELECTORS.horneadaRegistradoPor).value.trim(),
+      notas: document.querySelector(CONFIG.SELECTORS.horneadaNotas).value.trim(),
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
+    const textoOriginal = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Guardando…';
+
+    const resultado = idExistente
+      ? await Horneadas.actualizar(idExistente, datos)
+      : await Horneadas.crear(datos);
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = textoOriginal;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar la horneada. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetHorneadaForm();
+    this.refreshHorneadas();
   },
 
   startEditInsumo(id) {
@@ -1097,6 +1524,26 @@ const App = {
     document
       .querySelector(CONFIG.SELECTORS.proveedorCancelEditBtn)
       ?.addEventListener('click', () => this.cancelEditProveedor());
+
+    // Formulario de horneadas: alta y edición
+    document.querySelector(CONFIG.SELECTORS.horneadaForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleHorneadaSubmit();
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaCancelEditBtn)
+      ?.addEventListener('click', () => this.cancelEditHorneada());
+
+    // Toolbar de trazabilidad: consultar horneadas de otra fecha
+    document.querySelector(CONFIG.SELECTORS.btnHorneadaFiltrar)?.addEventListener('click', () => {
+      const valor = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha)?.value;
+      this.verFechaHorneadas(valor);
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.btnHorneadaHoy)
+      ?.addEventListener('click', () => this.volverAHoyHorneadas());
   },
 
   async _handleInsumoSubmit() {
@@ -1163,6 +1610,7 @@ const App = {
       CONFIG.SELECTORS.dashboardView,
       CONFIG.SELECTORS.insumosView,
       CONFIG.SELECTORS.proveedoresView,
+      CONFIG.SELECTORS.horneadasView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -1181,6 +1629,12 @@ const App = {
     if (targetId === CONFIG.SELECTORS.proveedoresView.slice(1)) {
       this.refreshProveedores();
     }
+    if (targetId === CONFIG.SELECTORS.horneadasView.slice(1)) {
+      this._prefillHorneadaFechaHora();
+      const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
+      if (filtroEl && !filtroEl.value) filtroEl.value = this._horneadaFechaConsulta;
+      this.refreshHorneadas();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -1196,6 +1650,7 @@ const App = {
     const dashView = document.querySelector(CONFIG.SELECTORS.dashboardView);
     const insumosView = document.querySelector(CONFIG.SELECTORS.insumosView);
     const proveedoresView = document.querySelector(CONFIG.SELECTORS.proveedoresView);
+    const horneadasView = document.querySelector(CONFIG.SELECTORS.horneadasView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
@@ -1204,6 +1659,7 @@ const App = {
       if (dashView) dashView.hidden = false;
       if (insumosView) insumosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
+      if (horneadasView) horneadasView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -1219,6 +1675,7 @@ const App = {
       if (dashView) dashView.hidden = true;
       if (insumosView) insumosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
+      if (horneadasView) horneadasView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';
     }

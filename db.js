@@ -127,6 +127,23 @@ try {
       '[db] Migración completada. Respaldo conservado en la tabla proveedores_legacy_backup.',
     );
   }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS horneadas (
+      id               TEXT PRIMARY KEY,
+      producto_id      TEXT NOT NULL,
+      producto_nombre  TEXT NOT NULL,
+      cantidad         INTEGER NOT NULL,
+      fecha            TEXT NOT NULL,
+      hora             TEXT NOT NULL,
+      registrado_por   TEXT,
+      notas            TEXT,
+      creado_en        TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en   TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_fecha ON horneadas(fecha)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_producto ON horneadas(producto_id)');
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */

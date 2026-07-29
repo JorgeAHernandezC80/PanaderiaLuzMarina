@@ -40,6 +40,29 @@ const CONDICIONES_PAGO = ['contado', 'credito_30', 'credito_60', 'credito_90'];
 const MONEDAS_PROVEEDOR = ['COP', 'MXN', 'USD', 'EUR', 'CLP', 'ARS'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+const HORNEADA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const MAX_HORNEADA_CANTIDAD = 9999;
+const MAX_HORNEADA_NOTAS_LEN = 280;
+const MAX_HORNEADA_REGISTRADO_POR_LEN = 80;
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HORA_RE = /^\d{1,2}:\d{2}$/;
+
+/* Catálogo de productos: vive como constantes estáticas en el HTML del
+   catálogo (catalogo.html), no en la base de datos. Se replica aquí como
+   whitelist para no confiar en el nombre/id de producto que mande el
+   cliente al registrar una horneada. Si se agrega un producto nuevo al
+   catálogo, hay que agregarlo también aquí (y en JS/pages/admin.js). */
+const PRODUCTOS_CATALOGO = {
+  1: 'Donuts Glaseadas',
+  2: 'Buñuelos',
+  3: 'Roscón de Arequipe',
+  4: 'Croissant',
+  5: 'Almojábanas',
+  6: 'Pandebono',
+  7: 'Pan de Yuca',
+  8: 'Conchas',
+};
+
 class ValidationError extends Error {
   constructor(message) {
     super(message);
@@ -276,6 +299,57 @@ function validarProveedor(datos) {
   };
 }
 
+/**
+ * Valida y sanea el registro de una horneada tal como lo envía admin.js.
+ * El producto se valida contra el catálogo whitelist (no se confía en el
+ * nombre que mande el cliente); cantidad debe ser un entero positivo
+ * (número de panes horneados); fecha y hora se validan por formato, igual
+ * que fechaISO/retiro en validarOrden.
+ * @param {*} datos
+ * @returns {object} horneada saneada
+ */
+function validarHorneada(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const { productoId, cantidad, fecha, hora } = datos;
+
+  const productoNombre = PRODUCTOS_CATALOGO[Number(productoId)];
+  if (!productoNombre) {
+    throw new ValidationError('Producto inválido.');
+  }
+
+  const cantidadNum = Number(cantidad);
+  if (!Number.isInteger(cantidadNum) || cantidadNum <= 0 || cantidadNum > MAX_HORNEADA_CANTIDAD) {
+    throw new ValidationError('Cantidad horneada inválida.');
+  }
+
+  if (typeof fecha !== 'string' || !FECHA_RE.test(fecha)) {
+    throw new ValidationError('Fecha de horneada inválida.');
+  }
+  if (typeof hora !== 'string' || !HORA_RE.test(hora)) {
+    throw new ValidationError('Hora de horneada inválida.');
+  }
+
+  const notasFinal =
+    typeof datos.notas === 'string' ? datos.notas.trim().slice(0, MAX_HORNEADA_NOTAS_LEN) : '';
+  const registradoPorFinal =
+    typeof datos.registradoPor === 'string'
+      ? datos.registradoPor.trim().slice(0, MAX_HORNEADA_REGISTRADO_POR_LEN)
+      : '';
+
+  return {
+    productoId: String(Number(productoId)),
+    productoNombre,
+    cantidad: cantidadNum,
+    fecha,
+    hora,
+    registradoPor: registradoPorFinal,
+    notas: notasFinal,
+  };
+}
+
 module.exports = {
   validarOrden,
   ValidationError,
@@ -289,4 +363,7 @@ module.exports = {
   PROVEEDOR_ID_RE,
   CONDICIONES_PAGO,
   MONEDAS_PROVEEDOR,
+  validarHorneada,
+  HORNEADA_ID_RE,
+  PRODUCTOS_CATALOGO,
 };
