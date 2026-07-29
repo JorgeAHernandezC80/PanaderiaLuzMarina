@@ -676,6 +676,23 @@ button {
   color: var(--color-danger);
 }
 
+.insumo-badge--info {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.horneadas-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.horneadas-toolbar .form-field {
+  margin-bottom: 0;
+}
+
 .btn--danger {
   color: var(--color-danger);
   border-color: var(--color-danger);
