@@ -1190,7 +1190,7 @@ function serializeReceta(row, ingredientes) {
       id: i.id,
       insumoId: i.insumo_id,
       insumoNombre: i.insumo_nombre,
-      porcentajePanadero: i.porcentaje_panadero,
+      gramos: i.gramos,
       orden: i.orden,
     })),
     creadoEn: row.creado_en,
@@ -1274,9 +1274,9 @@ app.post('/recetas', requireAuth, rateLimit, (req, res) => {
 
       datos.ingredientes.forEach((ing, idx) => {
         db.prepare(
-          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, porcentaje_panadero, orden)
+          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, gramos, orden)
            VALUES (?, ?, ?, ?, ?, ?)`,
-        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.porcentajePanadero, idx);
+        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.gramos, idx);
       });
     });
     crear();
@@ -1335,9 +1335,9 @@ app.put('/recetas/:id', requireAuth, (req, res) => {
       db.prepare('DELETE FROM receta_ingredientes WHERE receta_id = ?').run(id);
       datos.ingredientes.forEach((ing, idx) => {
         db.prepare(
-          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, porcentaje_panadero, orden)
+          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, gramos, orden)
            VALUES (?, ?, ?, ?, ?, ?)`,
-        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.porcentajePanadero, idx);
+        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.gramos, idx);
       });
       return true;
     });

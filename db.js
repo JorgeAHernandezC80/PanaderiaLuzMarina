@@ -208,7 +208,7 @@ try {
       receta_id             TEXT NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
       insumo_id             TEXT NOT NULL,
       insumo_nombre         TEXT NOT NULL,
-      porcentaje_panadero   REAL NOT NULL,
+      gramos                 REAL NOT NULL,
       orden                 INTEGER NOT NULL DEFAULT 0
     )
   `);

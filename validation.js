@@ -29,7 +29,7 @@ const CATEGORIAS_INSUMO = [
   'empaque',
   'otros',
 ];
-const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'unidad', 'paquete', 'caja'];
+const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'lb', 'gal', 'unidad', 'paquete', 'caja'];
 
 const MAX_PROVEEDOR_TEXTO_LEN = 120;
 const MAX_PROVEEDOR_LARGO_LEN = 500;
@@ -460,7 +460,6 @@ const RECETA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const PRODUCCION_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const ETAPA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const MAX_PESO_G = 100000; // 100kg: tope generoso para una sola tanda de masa
-const MAX_PORCENTAJE_PANADERO = 1000;
 const MAX_INGREDIENTES = 30;
 const MAX_TIEMPO_FERMENTACION_MIN = 1440; // 24h, tope defensivo
 
@@ -478,7 +477,7 @@ const ETAPAS_PRODUCCION = [
   'segunda_fermentacion',
 ];
 
-function validarIngredienteLista(ingredientes, campoGramosOPorcentaje) {
+function validarIngredienteLista(ingredientes) {
   if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
     throw new ValidationError('La receta debe tener al menos un ingrediente.');
   }
@@ -494,21 +493,20 @@ function validarIngredienteLista(ingredientes, campoGramosOPorcentaje) {
     if (!insumoId) {
       throw new ValidationError(`Ingrediente #${idx}: falta el insumo.`);
     }
-    const valor = Number(ing[campoGramosOPorcentaje]);
-    if (!Number.isFinite(valor) || valor <= 0) {
-      throw new ValidationError(`Ingrediente #${idx}: ${campoGramosOPorcentaje} inválido.`);
+    const gramos = Number(ing.gramos);
+    if (!Number.isFinite(gramos) || gramos <= 0) {
+      throw new ValidationError(`Ingrediente #${idx}: gramos inválido.`);
     }
-    const tope = campoGramosOPorcentaje === 'gramos' ? MAX_PESO_G : MAX_PORCENTAJE_PANADERO;
-    if (valor > tope) {
-      throw new ValidationError(`Ingrediente #${idx}: ${campoGramosOPorcentaje} fuera de rango.`);
+    if (gramos > MAX_PESO_G) {
+      throw new ValidationError(`Ingrediente #${idx}: gramos fuera de rango.`);
     }
-    return { insumoId, [campoGramosOPorcentaje]: valor };
+    return { insumoId, gramos };
   });
 }
 
 /**
  * Valida la ficha técnica (receta) de un producto: peso de masa por unidad
- * y la lista de ingredientes con su porcentaje panadero. No valida que
+ * y la lista de ingredientes con el peso en gramos de cada uno. No valida que
  * cada insumoId exista de verdad en el catálogo de Insumos — eso requiere
  * la base de datos, así que lo hace server.js al momento de guardar.
  * @param {*} datos
@@ -546,7 +544,7 @@ function validarReceta(datos) {
     tiempoFermentacionMin = val;
   }
 
-  const ingredientes = validarIngredienteLista(datos.ingredientes, 'porcentajePanadero');
+  const ingredientes = validarIngredienteLista(datos.ingredientes);
 
   const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
 
@@ -586,7 +584,7 @@ function validarProduccion(datos) {
     throw new ValidationError('Hora de inicio inválida.');
   }
 
-  const ingredientes = validarIngredienteLista(datos.ingredientes, 'gramos');
+  const ingredientes = validarIngredienteLista(datos.ingredientes);
 
   const registradoPor =
     typeof datos.registradoPor === 'string' ? datos.registradoPor.trim().slice(0, 80) : '';

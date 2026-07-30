@@ -81,7 +81,7 @@ function recetaValida(insumoId, overrides = {}) {
     pesoMasaPorUnidadG: 50,
     tiempoFermentacionMin: 90,
     notas: 'Receta base',
-    ingredientes: [{ insumoId, porcentajePanadero: 100 }],
+    ingredientes: [{ insumoId, gramos: 500 }],
     ...overrides,
   };
 }
@@ -134,7 +134,7 @@ describe('POST /recetas', () => {
     expect(res.body.ingredientes[0]).toMatchObject({
       insumoId: insumo.id,
       insumoNombre: 'Harina de trigo',
-      porcentajePanadero: 100,
+      gramos: 500,
     });
   });
 
@@ -192,8 +192,8 @@ describe('PUT /recetas/:id', () => {
       .send(
         recetaValida(insumo1.id, {
           ingredientes: [
-            { insumoId: insumo1.id, porcentajePanadero: 100 },
-            { insumoId: insumo2.id, porcentajePanadero: 14 },
+            { insumoId: insumo1.id, gramos: 500 },
+            { insumoId: insumo2.id, gramos: 70 },
           ],
         }),
       );

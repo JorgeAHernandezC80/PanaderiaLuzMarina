@@ -325,6 +325,8 @@
               <option value="g">g</option>
               <option value="l">l</option>
               <option value="ml">ml</option>
+              <option value="lb">lb</option>
+              <option value="gal">Gal</option>
               <option value="unidad">unidad</option>
               <option value="paquete">paquete</option>
               <option value="caja">caja</option>
@@ -1158,7 +1160,7 @@
               class="form-field__input"
               min="1"
               step="0.1"
-              placeholder="50"
+              placeholder="Ingresa el peso por unidad"
               required
             />
           </div>
@@ -1180,7 +1182,7 @@
 
           <div class="form-field insumo-form__wide">
             <div class="receta-form__ingredientes-header">
-              <span class="form-field__label">Ingredientes (porcentaje panadero)</span>
+              <span class="form-field__label">Ingredientes (peso en gramos)</span>
               <button
                 type="button"
                 id="btn-receta-agregar-ingrediente"
@@ -1501,7 +1503,7 @@
       </tr>
     </template>
 
-    <!-- Plantilla: fila de ingrediente en el formulario de Receta (select de insumo + % panadero) -->
+    <!-- Plantilla: fila de ingrediente en el formulario de Receta (select de insumo + gramos) -->
     <template id="tpl-receta-ingrediente-row">
       <div class="receta-ingrediente-row" data-component="receta-ingrediente-row">
         <select class="form-field__input receta-ingrediente-row__insumo" required>
@@ -1509,10 +1511,10 @@
         </select>
         <input
           type="number"
-          class="form-field__input receta-ingrediente-row__porcentaje"
-          min="0.01"
-          step="0.01"
-          placeholder="% panadero"
+          class="form-field__input receta-ingrediente-row__gramos"
+          min="0.1"
+          step="0.1"
+          placeholder="gramos"
           required
         />
         <button

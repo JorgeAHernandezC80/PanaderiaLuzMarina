@@ -2111,13 +2111,13 @@ const App = {
   },
 
   /** Agrega una fila de ingrediente al formulario de Receta (select de
-   *  insumo + % panadero + botón quitar). Si se pasan valores, precarga
+   *  insumo + peso en gramos + botón quitar). Si se pasan valores, precarga
    *  esa fila (modo edición); si no, queda vacía para que el usuario elija. */
   agregarFilaIngredienteReceta(valores) {
     const tpl = document.querySelector(CONFIG.SELECTORS.tplRecetaIngredienteRow);
     const row = tpl.content.cloneNode(true);
     const select = row.querySelector('.receta-ingrediente-row__insumo');
-    const inputPorcentaje = row.querySelector('.receta-ingrediente-row__porcentaje');
+    const inputGramos = row.querySelector('.receta-ingrediente-row__gramos');
     const btnQuitar = row.querySelector('.receta-ingrediente-row__quitar');
 
     this._insumosCacheGeneral.forEach((insumo) => {
@@ -2129,7 +2129,7 @@ const App = {
 
     if (valores) {
       select.value = valores.insumoId;
-      inputPorcentaje.value = valores.porcentajePanadero;
+      inputGramos.value = valores.gramos;
     }
 
     btnQuitar.addEventListener('click', () => {
@@ -2145,7 +2145,7 @@ const App = {
     );
     return [...filas].map((fila) => ({
       insumoId: fila.querySelector('.receta-ingrediente-row__insumo').value,
-      porcentajePanadero: Number(fila.querySelector('.receta-ingrediente-row__porcentaje').value),
+      gramos: Number(fila.querySelector('.receta-ingrediente-row__gramos').value),
     }));
   },
 
@@ -2214,20 +2214,24 @@ const App = {
     const pesoMasaPorUnidadG = document.querySelector(CONFIG.SELECTORS.recetaPesoUnidad).value;
     const ingredientes = this._leerIngredientesReceta();
 
-    if (
-      !productoId ||
-      !pesoMasaPorUnidadG ||
-      Number(pesoMasaPorUnidadG) <= 0 ||
-      ingredientes.length === 0
-    ) {
-      errorMsgEl.textContent = 'Completa producto, peso por unidad, y al menos un ingrediente.';
+    if (!productoId) {
+      errorMsgEl.textContent = 'Selecciona un producto.';
       errorEl.hidden = false;
       return;
     }
-    if (
-      ingredientes.some((i) => !i.insumoId || !i.porcentajePanadero || i.porcentajePanadero <= 0)
-    ) {
-      errorMsgEl.textContent = 'Cada ingrediente necesita un insumo y un % panadero mayor a 0.';
+    if (!pesoMasaPorUnidadG || Number(pesoMasaPorUnidadG) <= 0) {
+      errorMsgEl.textContent = 'Escribe el peso de masa por unidad, en gramos (ej: 50).';
+      errorEl.hidden = false;
+      return;
+    }
+    if (ingredientes.length === 0) {
+      errorMsgEl.textContent = 'Agrega al menos un ingrediente con "+ Agregar ingrediente".';
+      errorEl.hidden = false;
+      return;
+    }
+    if (ingredientes.some((i) => !i.insumoId || !i.gramos || i.gramos <= 0)) {
+      errorMsgEl.textContent =
+        'Cada ingrediente necesita un insumo seleccionado y un peso en gramos mayor a 0.';
       errorEl.hidden = false;
       return;
     }
@@ -2334,6 +2338,9 @@ const App = {
       const wrapper = row.querySelector('.receta-ingrediente-row');
       wrapper.dataset.insumoId = ing.insumoId;
       row.querySelector('.produccion-ingrediente-row__nombre').textContent = ing.insumoNombre;
+      // Se prellena con el gramaje de referencia de la receta; el panadero
+      // lo ajusta si esta tanda usó una cantidad distinta.
+      row.querySelector('.produccion-ingrediente-row__gramos').value = ing.gramos;
       lista.appendChild(row);
     });
   },
@@ -2410,9 +2417,19 @@ const App = {
     const horaInicio = document.querySelector(CONFIG.SELECTORS.produccionHoraInicio).value;
     const ingredientes = this._leerIngredientesProduccion();
 
-    if (!productoId || !fecha || !horaInicio || ingredientes.length === 0) {
+    if (!productoId) {
+      errorMsgEl.textContent = 'Selecciona un producto.';
+      errorEl.hidden = false;
+      return;
+    }
+    if (ingredientes.length === 0) {
       errorMsgEl.textContent =
-        'Completa producto, fecha, hora de inicio, y los gramos de cada ingrediente (necesita una receta).';
+        'Este producto no tiene ingredientes cargados — probablemente no tiene receta todavía. Créala en la pestaña Recetas.';
+      errorEl.hidden = false;
+      return;
+    }
+    if (!fecha || !horaInicio) {
+      errorMsgEl.textContent = 'Completa la fecha y la hora de inicio.';
       errorEl.hidden = false;
       return;
     }
