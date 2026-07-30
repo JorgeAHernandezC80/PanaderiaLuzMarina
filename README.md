@@ -1,5 +1,19 @@
 # 🍞 Panadería Luz Marina
 
+> **Copyright (c) 2026 Jorge A. Hernández C. Todos los derechos reservados.**
+> Este software y su código fuente son propiedad de Jorge A. Hernández C. No se
+> concede ningún permiso para usar, copiar, modificar, fusionar, publicar,
+> distribuir, sublicenciar y/o vender copias de este software, ni para permitir
+> que terceros lo hagan, sin el consentimiento previo y por escrito del autor.
+> Todos los derechos no otorgados expresamente quedan reservados. Ver [LICENSE](LICENSE).
+>
+> **Copyright (c) 2026 Jorge A. Hernández C. All rights reserved.**
+> This software and its source code are the property of Jorge A. Hernández C.
+> No permission is granted to use, copy, modify, merge, publish, distribute,
+> sublicense, and/or sell copies of this software, or to permit persons to whom
+> it is furnished to do so, without the prior written consent of the author.
+> All rights not expressly granted are reserved.
+
 Tienda en línea para una panadería artesanal: catálogo de productos, carrito de compras,
 checkout que arma el pedido y lo manda por WhatsApp, y un panel de administración en
 tiempo real para llevar el negocio del día a día — desde las órdenes hasta la producción
@@ -91,47 +105,55 @@ El proyecto tiene dos partes:
 
 ```
 PanaderiaLuzMarina/
-├── index.html              # Página principal
-├── catalogo.html           # Catálogo de productos
-├── carrito.html             # Carrito de compras
-├── checkout.html            # Checkout / envío por WhatsApp
-├── contacto.html             # Contacto
-├── nosotros.html             # Información del negocio
-├── admin.html                # Panel de administración
+├── index.html               # Página principal
+├── catalogo.html            # Catálogo de productos
+├── carrito.html              # Carrito de compras
+├── checkout.html             # Checkout / envío por WhatsApp
+├── contacto.html              # Contacto
+├── nosotros.html              # Información del negocio
+├── admin.html                 # Panel de administración
 │
 ├── CSS/
-│   ├── base/                 # Reset, variables y utilidades
-│   ├── components/           # Bloques reutilizables entre páginas
+│   ├── base/                  # Reset, variables y utilidades
+│   ├── components/            # Bloques reutilizables entre páginas
 │   │   ├── _buttons.css
 │   │   ├── _cards.css
-│   │   ├── _features.css     #   Módulo de ganchos (.features-grid)
+│   │   ├── _features.css      #   Módulo de ganchos (.features-grid)
 │   │   ├── _footer.css
 │   │   ├── _forms.css
 │   │   ├── _header.css
-│   │   ├── _hero.css         #   Hero y acción dual (.hero-actions)
-│   │   └── _steps.css        #   Módulo instructivo (.steps-section)
-│   └── pages/                 # Estilos por página (incluye admin.css)
+│   │   ├── _hero.css          #   Hero y acción dual (.hero-actions)
+│   │   └── _steps.css         #   Módulo instructivo (.steps-section)
+│   └── pages/                  # Estilos por página (incluye admin.css)
 │
 ├── JS/
-│   ├── core/                  # Lógica compartida
-│   │   ├── api.js             #   Cliente HTTP contra el backend
-│   │   ├── cart.js            #   Estado del carrito (localStorage)
-│   │   ├── format.js          #   Formateo de precios/valores
-│   │   ├── i18n.js            #   Internacionalización
-│   │   ├── theme.js           #   Modo claro/oscuro
-│   │   └── ui.js              #   Comportamiento común de UI
-│   └── pages/                  # Punto de entrada por página (incluye admin.js)
+│   ├── core/                   # Lógica compartida
+│   │   ├── api.js              #   Cliente HTTP contra el backend
+│   │   ├── cart.js             #   Estado del carrito (localStorage)
+│   │   ├── format.js           #   Formateo de precios/valores
+│   │   ├── i18n.js             #   Internacionalización
+│   │   ├── theme.js            #   Modo claro/oscuro
+│   │   └── ui.js               #   Comportamiento común de UI
+│   └── pages/                   # Punto de entrada por página (incluye admin.js)
 │
-├── IMG/                        # Imágenes de productos
+├── IMG/                         # Imágenes de productos
 │
-├── server.js                   # Servidor Express + WebSocket (backend)
-├── db.js                       # Esquema e inicialización de SQLite
-├── validation.js                # Validación/saneamiento de todo lo que entra por la API
+├── server.js                    # Servidor Express + WebSocket (backend)
+├── db.js                        # Esquema e inicialización de SQLite
+├── validation.js                 # Validación/saneamiento de todo lo que entra por la API
 │
-├── tests/                       # Suite de pruebas (Jest)
+├── tests/                        # Suite de pruebas (Jest) — 14 archivos
+├── docs/                         # Documentación adicional (auditoría de seguridad, etc.)
+│
+├── vercel.json                   # Config de Vercel: URLs limpias (cleanUrls)
+├── _headers                      # Cabeceras de seguridad para Netlify (CSP, HSTS...)
+├── .env.example                  # Plantilla de variables de entorno
 ├── jest.config.js
 ├── babel.config.js
-└── package.json
+├── package.json
+├── LICENSE
+├── SECURITY.md                   # Política de reporte de vulnerabilidades
+└── CONTRIBUTING.md               # Flujo de trabajo y convenciones de commits
 ```
 
 ## 🧩 Módulos de interfaz
