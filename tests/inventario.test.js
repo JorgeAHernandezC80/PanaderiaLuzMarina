@@ -243,3 +243,44 @@ describe('PUT /productos/:id/stock-minimo', () => {
     },
   );
 });
+
+describe('GET /inventario/disponible (público, sin auth)', () => {
+  // Este endpoint siempre calcula sobre HOY (la fecha real del reloj), a
+  // diferencia del resto de los tests de este archivo que usan la fecha
+  // fija FECHA — por eso necesita su propia fecha "de hoy" para sembrar datos.
+  const HOY = new Date().toISOString().slice(0, 10);
+
+  test('no exige token de sesión', async () => {
+    const res = await request(app).get('/inventario/disponible');
+    expect(res.status).toBe(200);
+  });
+
+  test('devuelve solo productoId y disponible, sin desglose ni stock mínimo', async () => {
+    const res = await request(app).get('/inventario/disponible');
+    expect(res.body.fecha).toBe(HOY);
+    expect(res.body.productos.length).toBeGreaterThan(0);
+    const producto = res.body.productos[0];
+    expect(Object.keys(producto).sort()).toEqual(['disponible', 'productoId']);
+  });
+
+  test('refleja lo horneado hoy', async () => {
+    await hornear(10, { fecha: HOY });
+    const res = await request(app).get('/inventario/disponible');
+    const pandebono = res.body.productos.find((p) => p.productoId === '6');
+    expect(pandebono.disponible).toBe(10);
+  });
+
+  test('nunca devuelve un disponible negativo (se acota a 0)', async () => {
+    // Un ajuste mayor a lo horneado dejaría el cálculo interno en negativo;
+    // de cara al cliente eso no tiene sentido, así que se acota a 0.
+    await hornear(5, { fecha: HOY });
+    await request(app)
+      .post('/ajustes-inventario')
+      .set('Authorization', auth())
+      .send({ productoId: 6, cantidad: 20, motivo: 'merma', fecha: HOY, hora: '08:00' });
+
+    const res = await request(app).get('/inventario/disponible');
+    const pandebono = res.body.productos.find((p) => p.productoId === '6');
+    expect(pandebono.disponible).toBe(0);
+  });
+});

@@ -7,6 +7,59 @@
 import { initUI, updateCartBadges } from '../core/ui.js';
 import { addToCart } from '../core/cart.js';
 import { t } from '../core/i18n.js';
+import { apiFetch } from '../core/api.js';
+
+/** Trae el disponible real de cada producto (GET /inventario/disponible,
+ *  público, sin token) y reemplaza el texto estático "Quedan N" de cada
+ *  tarjeta por el número real. Si el producto no viene en la respuesta (o
+ *  la petición falla), se deja el contenido que ya trae el HTML tal cual,
+ *  para no romper la página por un problema de red. */
+let _disponiblePorId = null;
+
+async function initStockDisponible() {
+  let productos;
+  try {
+    const res = await apiFetch('/inventario/disponible', { timeout: 8000 });
+    if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+    ({ productos } = await res.json());
+  } catch (err) {
+    console.warn('[catalogo] No se pudo obtener el disponible en tiempo real:', err.message);
+    return;
+  }
+
+  _disponiblePorId = new Map(productos.map((p) => [String(p.productoId), p.disponible]));
+  renderStockDisponible();
+}
+
+/** Aplica _disponiblePorId al DOM. Se llama al cargar y de nuevo cada vez
+ *  que cambia el idioma (evento `lang:changed`), ya que "Quedan"/"Agotado"
+ *  se arman en JS y no a través de data-i18n declarativo. */
+function renderStockDisponible() {
+  if (!_disponiblePorId) return;
+
+  document.querySelectorAll('.producto-card').forEach((card) => {
+    const btn = card.querySelector('[data-producto-id]');
+    const stockEl = card.querySelector('.producto-card__stock');
+    if (!btn || !stockEl) return;
+
+    const disponible = _disponiblePorId.get(String(btn.dataset.productoId));
+    if (disponible === undefined) return; // producto fuera del catálogo del backend
+
+    if (disponible > 0) {
+      stockEl.textContent = `🟢 ${t('stock_quedan')} ${disponible}`;
+      stockEl.classList.remove('producto-card__stock--agotado');
+      stockEl.classList.add('producto-card__stock--disponible');
+      btn.disabled = false;
+    } else {
+      stockEl.textContent = `🔴 ${t('stock_agotado')}`;
+      stockEl.classList.remove('producto-card__stock--disponible');
+      stockEl.classList.add('producto-card__stock--agotado');
+      btn.disabled = true;
+    }
+  });
+}
+
+window.addEventListener('lang:changed', renderStockDisponible);
 
 /** Maneja los filtros de categoría */
 function initFiltros() {
@@ -93,4 +146,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initUI();
   initFiltros();
   initAddToCart();
+  initStockDisponible();
 });

@@ -237,6 +237,8 @@ app.get('/', (req, res) => {
       eliminarAjusteInventario: 'DELETE /ajustes-inventario/:id (Authorization: Bearer token)',
       actualizarStockMinimo: 'PUT /productos/:id/stock-minimo (Authorization: Bearer token)',
       verInventario: 'GET /inventario?fecha=YYYY-MM-DD (Authorization: Bearer token)',
+      verDisponiblePublico:
+        'GET /inventario/disponible (público, sin token — usado por catalogo.html)',
     },
   });
 });
@@ -1005,95 +1007,123 @@ app.put('/productos/:id/stock-minimo', requireAuth, (req, res) => {
    ═══════════════════════════════════════════ */
 const STOCK_MINIMO_DEFAULT = 5;
 
+/** Calcula el disponible por producto para una fecha. Compartida por el
+ * endpoint admin (GET /inventario, detalle completo) y el público
+ * (GET /inventario/disponible, solo el número que ve el cliente) para no
+ * duplicar la lógica de cruce entre ambos. */
+function calcularInventario(fechaConsulta) {
+  // Arranca con todos los productos del catálogo en cero, para que se
+  // vean incluso los que no tuvieron ningún movimiento ese día. También
+  // se indexa por id, para cruzar por productoId cuando esté disponible.
+  const porProducto = new Map();
+  const porProductoId = new Map();
+  for (const [id, nombre] of Object.entries(PRODUCTOS_CATALOGO)) {
+    const entry = {
+      productoId: String(id),
+      productoNombre: nombre,
+      horneado: 0,
+      preparado: 0,
+      vendido: 0,
+      ajustes: 0,
+    };
+    porProducto.set(nombre, entry);
+    porProductoId.set(String(id), entry);
+  }
+
+  const horneadoRows = db
+    .prepare(
+      'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM horneadas WHERE fecha = ? GROUP BY producto_id',
+    )
+    .all(fechaConsulta);
+  for (const row of horneadoRows) {
+    const entry = porProducto.get(row.producto_nombre);
+    if (entry) entry.horneado = row.total;
+  }
+
+  const ordenesRows = db
+    .prepare(
+      "SELECT items_json, estado FROM ordenes WHERE fecha_iso LIKE ? AND estado IN ('preparada', 'entregada')",
+    )
+    .all(`${fechaConsulta}%`);
+  for (const row of ordenesRows) {
+    let items;
+    try {
+      items = JSON.parse(row.items_json);
+    } catch {
+      items = [];
+    }
+    for (const item of items) {
+      // Preferimos cruzar por productoId (exacto, no se rompe si el
+      // nombre del producto cambia en el catálogo). Las órdenes creadas
+      // antes de este cambio no tienen productoId: para esas, caemos de
+      // vuelta al cruce por nombre.
+      const entry = item.productoId
+        ? porProductoId.get(String(item.productoId))
+        : porProducto.get(item.nombre);
+      if (!entry) continue; // producto fuera del catálogo actual: no se cruza
+      if (row.estado === 'preparada') entry.preparado += item.cantidad;
+      if (row.estado === 'entregada') entry.vendido += item.cantidad;
+    }
+  }
+
+  const ajustesRows = db
+    .prepare(
+      'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM ajustes_inventario WHERE fecha = ? GROUP BY producto_id',
+    )
+    .all(fechaConsulta);
+  for (const row of ajustesRows) {
+    const entry = porProducto.get(row.producto_nombre);
+    if (entry) entry.ajustes = row.total;
+  }
+
+  const stockMinimoRows = db
+    .prepare('SELECT producto_id, stock_minimo FROM producto_stock_minimo')
+    .all();
+  const stockMinimoPorId = new Map(stockMinimoRows.map((r) => [r.producto_id, r.stock_minimo]));
+
+  return [...porProducto.values()].map((e) => {
+    const disponible = e.horneado - e.vendido - e.preparado - e.ajustes;
+    return {
+      ...e,
+      disponible,
+      stockMinimo: stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT,
+      bajoStock: disponible < (stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT),
+    };
+  });
+}
+
 app.get('/inventario', requireAuth, (req, res) => {
   const { fecha } = req.query;
   const fechaConsulta =
     fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : new Date().toISOString().slice(0, 10);
 
   try {
-    // Arranca con todos los productos del catálogo en cero, para que se
-    // vean incluso los que no tuvieron ningún movimiento ese día. También
-    // se indexa por id, para cruzar por productoId cuando esté disponible.
-    const porProducto = new Map();
-    const porProductoId = new Map();
-    for (const [id, nombre] of Object.entries(PRODUCTOS_CATALOGO)) {
-      const entry = {
-        productoId: String(id),
-        productoNombre: nombre,
-        horneado: 0,
-        preparado: 0,
-        vendido: 0,
-        ajustes: 0,
-      };
-      porProducto.set(nombre, entry);
-      porProductoId.set(String(id), entry);
-    }
-
-    const horneadoRows = db
-      .prepare(
-        'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM horneadas WHERE fecha = ? GROUP BY producto_id',
-      )
-      .all(fechaConsulta);
-    for (const row of horneadoRows) {
-      const entry = porProducto.get(row.producto_nombre);
-      if (entry) entry.horneado = row.total;
-    }
-
-    const ordenesRows = db
-      .prepare(
-        "SELECT items_json, estado FROM ordenes WHERE fecha_iso LIKE ? AND estado IN ('preparada', 'entregada')",
-      )
-      .all(`${fechaConsulta}%`);
-    for (const row of ordenesRows) {
-      let items;
-      try {
-        items = JSON.parse(row.items_json);
-      } catch {
-        items = [];
-      }
-      for (const item of items) {
-        // Preferimos cruzar por productoId (exacto, no se rompe si el
-        // nombre del producto cambia en el catálogo). Las órdenes creadas
-        // antes de este cambio no tienen productoId: para esas, caemos de
-        // vuelta al cruce por nombre.
-        const entry = item.productoId
-          ? porProductoId.get(String(item.productoId))
-          : porProducto.get(item.nombre);
-        if (!entry) continue; // producto fuera del catálogo actual: no se cruza
-        if (row.estado === 'preparada') entry.preparado += item.cantidad;
-        if (row.estado === 'entregada') entry.vendido += item.cantidad;
-      }
-    }
-
-    const ajustesRows = db
-      .prepare(
-        'SELECT producto_id, producto_nombre, SUM(cantidad) AS total FROM ajustes_inventario WHERE fecha = ? GROUP BY producto_id',
-      )
-      .all(fechaConsulta);
-    for (const row of ajustesRows) {
-      const entry = porProducto.get(row.producto_nombre);
-      if (entry) entry.ajustes = row.total;
-    }
-
-    const stockMinimoRows = db
-      .prepare('SELECT producto_id, stock_minimo FROM producto_stock_minimo')
-      .all();
-    const stockMinimoPorId = new Map(stockMinimoRows.map((r) => [r.producto_id, r.stock_minimo]));
-
-    const productos = [...porProducto.values()].map((e) => {
-      const disponible = e.horneado - e.vendido - e.preparado - e.ajustes;
-      return {
-        ...e,
-        disponible,
-        stockMinimo: stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT,
-        bajoStock: disponible < (stockMinimoPorId.get(e.productoId) ?? STOCK_MINIMO_DEFAULT),
-      };
-    });
-
+    const productos = calcularInventario(fechaConsulta);
     res.json({ fecha: fechaConsulta, productos });
   } catch (err) {
     console.error('[GET /inventario]', err.message);
     res.status(500).json({ error: 'Error al calcular el inventario.' });
+  }
+});
+
+/* Endpoint PÚBLICO (sin auth) para catalogo.html: solo expone cuánto pan
+ * disponible hay de cada producto AHORA MISMO. Nunca de otra fecha, y nunca
+ * el desglose (horneado/preparado/vendido/ajustes) ni el stock mínimo — eso
+ * es información operativa interna, no algo para mostrarle al cliente. El
+ * disponible se acota a 0 hacia abajo: un número negativo sería un detalle
+ * de contabilidad interna sin sentido para quien solo quiere saber si hay
+ * pan o no. */
+app.get('/inventario/disponible', (req, res) => {
+  const hoy = new Date().toISOString().slice(0, 10);
+  try {
+    const productos = calcularInventario(hoy).map((p) => ({
+      productoId: p.productoId,
+      disponible: Math.max(0, p.disponible),
+    }));
+    res.json({ fecha: hoy, productos });
+  } catch (err) {
+    console.error('[GET /inventario/disponible]', err.message);
+    res.status(500).json({ error: 'Error al calcular el disponible.' });
   }
 });
 

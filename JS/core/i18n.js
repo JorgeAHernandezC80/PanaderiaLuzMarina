@@ -98,6 +98,8 @@ const translations = {
     filter_sweets: 'Repostería',
     filter_fried: 'Frituras',
     add_cart: 'Añadir al carrito',
+    stock_quedan: 'Quedan',
+    stock_agotado: 'Agotado',
     catalog_empty: 'No hay productos en esta categoría.',
     prod_donuts_desc: 'Suaves por dentro, crujientes por fuera, con glaseado de vainilla.',
     prod_bunuelos_desc:
@@ -312,6 +314,8 @@ const translations = {
     filter_sweets: 'Sweets',
     filter_fried: 'Fried',
     add_cart: 'Add to cart',
+    stock_quedan: 'Left',
+    stock_agotado: 'Sold out',
     catalog_empty: 'No products in this category.',
     prod_donuts_desc: 'Soft inside, crispy outside, with vanilla glaze.',
     prod_bunuelos_desc:
