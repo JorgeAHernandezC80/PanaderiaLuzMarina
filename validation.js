@@ -448,6 +448,179 @@ function validarStockMinimo(datos) {
   return { stockMinimo: stockMinimoNum };
 }
 
+const RECETA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const PRODUCCION_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const MAX_PESO_G = 100000; // 100kg: tope generoso para una sola tanda de masa
+const MAX_PORCENTAJE_PANADERO = 1000;
+const MAX_INGREDIENTES = 30;
+const MAX_TIEMPO_FERMENTACION_MIN = 1440; // 24h, tope defensivo
+
+/* Las 8 etapas del proceso de producción (pesado → segunda fermentación).
+   La 9na etapa (horneado) la cubre la tabla horneadas, ligada por
+   produccion_id — no forma parte de este whitelist. */
+const ETAPAS_PRODUCCION = [
+  'pesado_dosificacion',
+  'amasado',
+  'primera_fermentacion',
+  'division_pesado',
+  'preformado',
+  'reposo_mesa',
+  'formado_definitivo',
+  'segunda_fermentacion',
+];
+
+function validarIngredienteLista(ingredientes, campoGramosOPorcentaje) {
+  if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
+    throw new ValidationError('La receta debe tener al menos un ingrediente.');
+  }
+  if (ingredientes.length > MAX_INGREDIENTES) {
+    throw new ValidationError(`No puede haber más de ${MAX_INGREDIENTES} ingredientes.`);
+  }
+
+  return ingredientes.map((ing, idx) => {
+    if (!ing || typeof ing !== 'object') {
+      throw new ValidationError(`Ingrediente #${idx}: se esperaba un objeto.`);
+    }
+    const insumoId = typeof ing.insumoId === 'string' ? ing.insumoId.trim() : '';
+    if (!insumoId) {
+      throw new ValidationError(`Ingrediente #${idx}: falta el insumo.`);
+    }
+    const valor = Number(ing[campoGramosOPorcentaje]);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      throw new ValidationError(`Ingrediente #${idx}: ${campoGramosOPorcentaje} inválido.`);
+    }
+    const tope = campoGramosOPorcentaje === 'gramos' ? MAX_PESO_G : MAX_PORCENTAJE_PANADERO;
+    if (valor > tope) {
+      throw new ValidationError(`Ingrediente #${idx}: ${campoGramosOPorcentaje} fuera de rango.`);
+    }
+    return { insumoId, [campoGramosOPorcentaje]: valor };
+  });
+}
+
+/**
+ * Valida la ficha técnica (receta) de un producto: peso de masa por unidad
+ * y la lista de ingredientes con su porcentaje panadero. No valida que
+ * cada insumoId exista de verdad en el catálogo de Insumos — eso requiere
+ * la base de datos, así que lo hace server.js al momento de guardar.
+ * @param {*} datos
+ * @returns {object} receta saneada
+ */
+function validarReceta(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const productoNombre = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  if (!productoNombre) {
+    throw new ValidationError('Producto inválido.');
+  }
+
+  const pesoMasaPorUnidadG = Number(datos.pesoMasaPorUnidadG);
+  if (
+    !Number.isFinite(pesoMasaPorUnidadG) ||
+    pesoMasaPorUnidadG <= 0 ||
+    pesoMasaPorUnidadG > MAX_PESO_G
+  ) {
+    throw new ValidationError('Peso de masa por unidad inválido.');
+  }
+
+  let tiempoFermentacionMin = null;
+  if (
+    datos.tiempoFermentacionMin !== undefined &&
+    datos.tiempoFermentacionMin !== null &&
+    datos.tiempoFermentacionMin !== ''
+  ) {
+    const val = Number(datos.tiempoFermentacionMin);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_TIEMPO_FERMENTACION_MIN) {
+      throw new ValidationError('Tiempo de fermentación inválido.');
+    }
+    tiempoFermentacionMin = val;
+  }
+
+  const ingredientes = validarIngredienteLista(datos.ingredientes, 'porcentajePanadero');
+
+  const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
+
+  return {
+    productoId: String(Number(datos.productoId)),
+    productoNombre,
+    pesoMasaPorUnidadG,
+    tiempoFermentacionMin,
+    ingredientes,
+    notas,
+  };
+}
+
+/**
+ * Valida el registro de una tanda de producción (Producción): producto,
+ * fecha/hora de inicio, y los gramos reales de cada ingrediente usados en
+ * esa tanda (pueden diferir de la receta base). El peso total de masa y las
+ * unidades estimadas los calcula server.js con la receta guardada, no se
+ * confía en lo que mande el cliente para esos dos números.
+ * @param {*} datos
+ * @returns {object} producción saneada
+ */
+function validarProduccion(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const productoNombre = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  if (!productoNombre) {
+    throw new ValidationError('Producto inválido.');
+  }
+
+  if (typeof datos.fecha !== 'string' || !FECHA_RE.test(datos.fecha)) {
+    throw new ValidationError('Fecha de producción inválida.');
+  }
+  if (typeof datos.horaInicio !== 'string' || !HORA_RE.test(datos.horaInicio)) {
+    throw new ValidationError('Hora de inicio inválida.');
+  }
+
+  const ingredientes = validarIngredienteLista(datos.ingredientes, 'gramos');
+
+  const registradoPor =
+    typeof datos.registradoPor === 'string' ? datos.registradoPor.trim().slice(0, 80) : '';
+  const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
+
+  return {
+    productoId: String(Number(datos.productoId)),
+    productoNombre,
+    fecha: datos.fecha,
+    horaInicio: datos.horaInicio,
+    ingredientes,
+    registradoPor,
+    notas,
+  };
+}
+
+/** Valida el inicio de una etapa del proceso (POST .../etapas). */
+function validarInicioEtapa(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+  if (!ETAPAS_PRODUCCION.includes(datos.etapa)) {
+    throw new ValidationError('Etapa inválida.');
+  }
+  if (typeof datos.horaInicio !== 'string' || !HORA_RE.test(datos.horaInicio)) {
+    throw new ValidationError('Hora de inicio inválida.');
+  }
+  const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
+  return { etapa: datos.etapa, horaInicio: datos.horaInicio, notas };
+}
+
+/** Valida el cierre de una etapa ya iniciada (PUT .../etapas/:id). */
+function validarFinEtapa(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+  if (typeof datos.horaFin !== 'string' || !HORA_RE.test(datos.horaFin)) {
+    throw new ValidationError('Hora de fin inválida.');
+  }
+  const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
+  return { horaFin: datos.horaFin, notas };
+}
+
 module.exports = {
   validarOrden,
   ValidationError,
@@ -468,4 +641,11 @@ module.exports = {
   AJUSTE_ID_RE,
   MOTIVOS_AJUSTE,
   validarStockMinimo,
+  validarReceta,
+  RECETA_ID_RE,
+  validarProduccion,
+  PRODUCCION_ID_RE,
+  validarInicioEtapa,
+  validarFinEtapa,
+  ETAPAS_PRODUCCION,
 };

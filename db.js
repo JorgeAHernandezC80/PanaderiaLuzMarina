@@ -137,6 +137,7 @@ try {
       hora             TEXT NOT NULL,
       registrado_por   TEXT,
       notas            TEXT,
+      produccion_id    TEXT,
       creado_en        TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en   TEXT NOT NULL DEFAULT (datetime('now'))
     )
@@ -144,6 +145,7 @@ try {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_fecha ON horneadas(fecha)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_producto ON horneadas(producto_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_horneadas_produccion ON horneadas(produccion_id)');
 
   /* Ajustes de inventario: mermas, errores de conteo, consumo interno, etc.
      Se restan del disponible junto con lo preparado/vendido del día. */
@@ -178,6 +180,102 @@ try {
       actualizado_en  TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  /* ═══════════════════════════════════════════
+     RECETAS — ficha técnica por producto: qué ingredientes lleva, en qué
+     proporción, y cuánto pesa cada unidad. Es la base de la que depende
+     Producción (no registra nada del día a día por sí sola).
+     ═══════════════════════════════════════════ */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS recetas (
+      id                       TEXT PRIMARY KEY,
+      producto_id              TEXT NOT NULL UNIQUE,
+      producto_nombre          TEXT NOT NULL,
+      peso_masa_por_unidad_g   REAL NOT NULL,
+      tiempo_fermentacion_min  INTEGER,
+      notas                    TEXT,
+      creado_en                TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en           TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  /* Ingredientes de una receta, referenciando el catálogo de Insumos por id
+     (no por texto libre) para que el costo y las unidades siempre crucen
+     bien — el mismo problema que ya resolvimos entre órdenes y catálogo. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS receta_ingredientes (
+      id                    TEXT PRIMARY KEY,
+      receta_id             TEXT NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
+      insumo_id             TEXT NOT NULL,
+      insumo_nombre         TEXT NOT NULL,
+      porcentaje_panadero   REAL NOT NULL,
+      orden                 INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_receta_ingredientes_receta ON receta_ingredientes(receta_id)',
+  );
+
+  /* ═══════════════════════════════════════════
+     PRODUCCIÓN — una tanda de masa: desde que se pesan los ingredientes
+     hasta que queda lista para hornear (etapas 1-8). La etapa 9 (horneado)
+     ya la cubre la tabla horneadas, ligada por produccion_id.
+     ═══════════════════════════════════════════ */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS producciones (
+      id                    TEXT PRIMARY KEY,
+      producto_id           TEXT NOT NULL,
+      producto_nombre       TEXT NOT NULL,
+      receta_id             TEXT REFERENCES recetas(id),
+      fecha                 TEXT NOT NULL,
+      hora_inicio            TEXT NOT NULL,
+      peso_total_masa_g     REAL NOT NULL,
+      unidades_estimadas    INTEGER NOT NULL,
+      registrado_por        TEXT,
+      notas                 TEXT,
+      creado_en             TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en        TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_producciones_fecha ON producciones(fecha)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_producciones_producto ON producciones(producto_id)');
+
+  /* Gramos reales usados en ESA tanda (pueden diferir de la receta base:
+     la ejecución diaria es libre aunque la fórmula sea fija). */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS produccion_ingredientes (
+      id             TEXT PRIMARY KEY,
+      produccion_id  TEXT NOT NULL REFERENCES producciones(id) ON DELETE CASCADE,
+      insumo_id      TEXT NOT NULL,
+      insumo_nombre  TEXT NOT NULL,
+      gramos         REAL NOT NULL
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_produccion_ingredientes_produccion ON produccion_ingredientes(produccion_id)',
+  );
+
+  /* Las 8 etapas del proceso (pesado → segunda fermentación), cada una con
+     hora de inicio y, cuando termina, hora de fin. Una fila por etapa por
+     producción — se van creando/actualizando a medida que el panadero
+     avanza, no todas de una vez. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS produccion_etapas (
+      id             TEXT PRIMARY KEY,
+      produccion_id  TEXT NOT NULL REFERENCES producciones(id) ON DELETE CASCADE,
+      etapa          TEXT NOT NULL,
+      hora_inicio    TEXT NOT NULL,
+      hora_fin       TEXT,
+      notas          TEXT
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_produccion_etapas_produccion ON produccion_etapas(produccion_id)',
+  );
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */

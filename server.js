@@ -24,6 +24,12 @@ const {
   validarAjusteInventario,
   AJUSTE_ID_RE,
   validarStockMinimo,
+  validarReceta,
+  RECETA_ID_RE,
+  validarProduccion,
+  PRODUCCION_ID_RE,
+  validarInicioEtapa,
+  validarFinEtapa,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -239,6 +245,15 @@ app.get('/', (req, res) => {
       verInventario: 'GET /inventario?fecha=YYYY-MM-DD (Authorization: Bearer token)',
       verDisponiblePublico:
         'GET /inventario/disponible (público, sin token — usado por catalogo.html)',
+      listarRecetas: 'GET /recetas (Authorization: Bearer token)',
+      crearReceta: 'POST /recetas (Authorization: Bearer token)',
+      actualizarReceta: 'PUT /recetas/:id (Authorization: Bearer token)',
+      eliminarReceta: 'DELETE /recetas/:id (Authorization: Bearer token)',
+      listarProducciones: 'GET /producciones?fecha=YYYY-MM-DD (Authorization: Bearer token)',
+      crearProduccion: 'POST /producciones (Authorization: Bearer token)',
+      eliminarProduccion: 'DELETE /producciones/:id (Authorization: Bearer token)',
+      iniciarEtapa: 'POST /producciones/:id/etapas (Authorization: Bearer token)',
+      finalizarEtapa: 'PUT /producciones/:id/etapas/:etapaId (Authorization: Bearer token)',
     },
   });
 });
@@ -1124,6 +1139,437 @@ app.get('/inventario/disponible', (req, res) => {
   } catch (err) {
     console.error('[GET /inventario/disponible]', err.message);
     res.status(500).json({ error: 'Error al calcular el disponible.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   RECETAS — ficha técnica por producto (ingredientes + peso por unidad).
+   Es la base de la que depende Producción.
+   ═══════════════════════════════════════════ */
+function serializeReceta(row, ingredientes) {
+  return {
+    id: row.id,
+    productoId: row.producto_id,
+    productoNombre: row.producto_nombre,
+    pesoMasaPorUnidadG: row.peso_masa_por_unidad_g,
+    tiempoFermentacionMin: row.tiempo_fermentacion_min,
+    notas: row.notas,
+    ingredientes: ingredientes.map((i) => ({
+      id: i.id,
+      insumoId: i.insumo_id,
+      insumoNombre: i.insumo_nombre,
+      porcentajePanadero: i.porcentaje_panadero,
+      orden: i.orden,
+    })),
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+/** Valida que cada insumoId de una lista exista de verdad en el catálogo de
+ *  Insumos, y devuelve un mapa id -> nombre para denormalizar. Lanza
+ *  ValidationError (400) si alguno no existe — es la única forma de
+ *  detectar esto, porque validation.js no toca la base de datos. */
+function resolverInsumos(ingredientes) {
+  const nombresPorId = new Map();
+  for (const ing of ingredientes) {
+    const insumo = db.prepare('SELECT id, nombre FROM insumos WHERE id = ?').get(ing.insumoId);
+    if (!insumo) {
+      throw new ValidationError(`El insumo "${ing.insumoId}" no existe en el catálogo de Insumos.`);
+    }
+    nombresPorId.set(ing.insumoId, insumo.nombre);
+  }
+  return nombresPorId;
+}
+
+app.get('/recetas', requireAuth, (req, res) => {
+  try {
+    const recetas = db.prepare('SELECT * FROM recetas ORDER BY producto_nombre').all();
+    const resultado = recetas.map((r) => {
+      const ingredientes = db
+        .prepare('SELECT * FROM receta_ingredientes WHERE receta_id = ? ORDER BY orden')
+        .all(r.id);
+      return serializeReceta(r, ingredientes);
+    });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[GET /recetas]', err.message);
+    res.status(500).json({ error: 'Error al consultar recetas.' });
+  }
+});
+
+app.post('/recetas', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarReceta(req.body);
+    const nombresPorId = resolverInsumos(datos.ingredientes);
+    datos.ingredientes = datos.ingredientes.map((ing) => ({
+      ...ing,
+      insumoNombre: nombresPorId.get(ing.insumoId),
+    }));
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const existente = db
+    .prepare('SELECT id FROM recetas WHERE producto_id = ?')
+    .get(datos.productoId);
+  if (existente) {
+    return res
+      .status(400)
+      .json({
+        error: `Ya existe una receta para ${datos.productoNombre}. Edítala en vez de crear otra.`,
+      });
+  }
+
+  const id = crypto.randomUUID();
+  try {
+    const crear = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO recetas (id, producto_id, producto_nombre, peso_masa_por_unidad_g, tiempo_fermentacion_min, notas)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        datos.productoId,
+        datos.productoNombre,
+        datos.pesoMasaPorUnidadG,
+        datos.tiempoFermentacionMin,
+        datos.notas,
+      );
+
+      datos.ingredientes.forEach((ing, idx) => {
+        db.prepare(
+          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, porcentaje_panadero, orden)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.porcentajePanadero, idx);
+      });
+    });
+    crear();
+
+    const fila = db.prepare('SELECT * FROM recetas WHERE id = ?').get(id);
+    const ingredientes = db
+      .prepare('SELECT * FROM receta_ingredientes WHERE receta_id = ? ORDER BY orden')
+      .all(id);
+    res.status(201).json(serializeReceta(fila, ingredientes));
+  } catch (err) {
+    console.error('[POST /recetas]', err.message);
+    res.status(500).json({ error: 'Error al guardar la receta.' });
+  }
+});
+
+app.put('/recetas/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!RECETA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de receta inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarReceta(req.body);
+    const nombresPorId = resolverInsumos(datos.ingredientes);
+    datos.ingredientes = datos.ingredientes.map((ing) => ({
+      ...ing,
+      insumoNombre: nombresPorId.get(ing.insumoId),
+    }));
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const actualizar = db.transaction(() => {
+      const info = db
+        .prepare(
+          `UPDATE recetas
+           SET producto_id = ?, producto_nombre = ?, peso_masa_por_unidad_g = ?,
+               tiempo_fermentacion_min = ?, notas = ?, actualizado_en = datetime('now')
+           WHERE id = ?`,
+        )
+        .run(
+          datos.productoId,
+          datos.productoNombre,
+          datos.pesoMasaPorUnidadG,
+          datos.tiempoFermentacionMin,
+          datos.notas,
+          id,
+        );
+      if (info.changes === 0) return false;
+
+      db.prepare('DELETE FROM receta_ingredientes WHERE receta_id = ?').run(id);
+      datos.ingredientes.forEach((ing, idx) => {
+        db.prepare(
+          `INSERT INTO receta_ingredientes (id, receta_id, insumo_id, insumo_nombre, porcentaje_panadero, orden)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.porcentajePanadero, idx);
+      });
+      return true;
+    });
+
+    if (!actualizar()) {
+      return res.status(404).json({ error: 'Receta no encontrada.' });
+    }
+
+    const fila = db.prepare('SELECT * FROM recetas WHERE id = ?').get(id);
+    const ingredientes = db
+      .prepare('SELECT * FROM receta_ingredientes WHERE receta_id = ? ORDER BY orden')
+      .all(id);
+    res.json(serializeReceta(fila, ingredientes));
+  } catch (err) {
+    console.error('[PUT /recetas/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar la receta.' });
+  }
+});
+
+app.delete('/recetas/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!RECETA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de receta inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM recetas WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Receta no encontrada.' });
+    }
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /recetas/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar la receta.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   PRODUCCIÓN — una tanda de masa: ingredientes reales usados + las 8
+   etapas del proceso (pesado → segunda fermentación). La 9na etapa
+   (horneado) la cubre horneadas.produccion_id.
+   ═══════════════════════════════════════════ */
+function serializeProduccion(row, ingredientes, etapas) {
+  return {
+    id: row.id,
+    productoId: row.producto_id,
+    productoNombre: row.producto_nombre,
+    recetaId: row.receta_id,
+    fecha: row.fecha,
+    horaInicio: row.hora_inicio,
+    pesoTotalMasaG: row.peso_total_masa_g,
+    unidadesEstimadas: row.unidades_estimadas,
+    registradoPor: row.registrado_por,
+    notas: row.notas,
+    ingredientes: ingredientes.map((i) => ({
+      id: i.id,
+      insumoId: i.insumo_id,
+      insumoNombre: i.insumo_nombre,
+      gramos: i.gramos,
+    })),
+    etapas: etapas.map((e) => ({
+      id: e.id,
+      etapa: e.etapa,
+      horaInicio: e.hora_inicio,
+      horaFin: e.hora_fin,
+      notas: e.notas,
+    })),
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+  };
+}
+
+function cargarProduccion(id) {
+  const fila = db.prepare('SELECT * FROM producciones WHERE id = ?').get(id);
+  if (!fila) return null;
+  const ingredientes = db
+    .prepare('SELECT * FROM produccion_ingredientes WHERE produccion_id = ?')
+    .all(id);
+  const etapas = db
+    .prepare('SELECT * FROM produccion_etapas WHERE produccion_id = ? ORDER BY hora_inicio')
+    .all(id);
+  return serializeProduccion(fila, ingredientes, etapas);
+}
+
+app.get('/producciones', requireAuth, (req, res) => {
+  const { fecha } = req.query;
+  try {
+    let sql = 'SELECT id FROM producciones WHERE 1=1';
+    const params = [];
+    if (fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      sql += ' AND fecha = ?';
+      params.push(fecha);
+    }
+    sql += ' ORDER BY fecha DESC, hora_inicio ASC';
+    const ids = db
+      .prepare(sql)
+      .all(...params)
+      .map((r) => r.id);
+    res.json(ids.map((id) => cargarProduccion(id)));
+  } catch (err) {
+    console.error('[GET /producciones]', err.message);
+    res.status(500).json({ error: 'Error al consultar producciones.' });
+  }
+});
+
+app.post('/producciones', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  let receta;
+  try {
+    datos = validarProduccion(req.body);
+    const nombresPorId = resolverInsumos(datos.ingredientes);
+    datos.ingredientes = datos.ingredientes.map((ing) => ({
+      ...ing,
+      insumoNombre: nombresPorId.get(ing.insumoId),
+    }));
+
+    receta = db.prepare('SELECT * FROM recetas WHERE producto_id = ?').get(datos.productoId);
+    if (!receta) {
+      throw new ValidationError(
+        `No existe una receta para ${datos.productoNombre} todavía. Créala primero en la pestaña Recetas.`,
+      );
+    }
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  // El peso total y las unidades estimadas se calculan aquí, con lo que
+  // realmente se pesó — nunca se confían al cliente.
+  const pesoTotalMasaG = datos.ingredientes.reduce((sum, i) => sum + i.gramos, 0);
+  const unidadesEstimadas = Math.round(pesoTotalMasaG / receta.peso_masa_por_unidad_g);
+
+  const id = crypto.randomUUID();
+  try {
+    const crear = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO producciones
+           (id, producto_id, producto_nombre, receta_id, fecha, hora_inicio, peso_total_masa_g, unidades_estimadas, registrado_por, notas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        datos.productoId,
+        datos.productoNombre,
+        receta.id,
+        datos.fecha,
+        datos.horaInicio,
+        pesoTotalMasaG,
+        unidadesEstimadas,
+        datos.registradoPor,
+        datos.notas,
+      );
+
+      datos.ingredientes.forEach((ing) => {
+        db.prepare(
+          `INSERT INTO produccion_ingredientes (id, produccion_id, insumo_id, insumo_nombre, gramos)
+           VALUES (?, ?, ?, ?, ?)`,
+        ).run(crypto.randomUUID(), id, ing.insumoId, ing.insumoNombre, ing.gramos);
+      });
+    });
+    crear();
+
+    const resultado = cargarProduccion(id);
+    broadcast({ tipo: 'produccion:nueva', produccion: resultado });
+    res.status(201).json(resultado);
+  } catch (err) {
+    console.error('[POST /producciones]', err.message);
+    res.status(500).json({ error: 'Error al guardar la producción.' });
+  }
+});
+
+app.delete('/producciones/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!PRODUCCION_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de producción inválido.' });
+  }
+  try {
+    const info = db.prepare('DELETE FROM producciones WHERE id = ?').run(id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Producción no encontrada.' });
+    }
+    broadcast({ tipo: 'produccion:eliminada', id });
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /producciones/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar la producción.' });
+  }
+});
+
+/* ---- Etapas de una producción (pesado → segunda fermentación) ---- */
+app.post('/producciones/:id/etapas', requireAuth, rateLimit, (req, res) => {
+  const { id } = req.params;
+  if (!PRODUCCION_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de producción inválido.' });
+  }
+  const produccion = db.prepare('SELECT id FROM producciones WHERE id = ?').get(id);
+  if (!produccion) {
+    return res.status(404).json({ error: 'Producción no encontrada.' });
+  }
+
+  let datos;
+  try {
+    datos = validarInicioEtapa(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const yaExiste = db
+    .prepare('SELECT id FROM produccion_etapas WHERE produccion_id = ? AND etapa = ?')
+    .get(id, datos.etapa);
+  if (yaExiste) {
+    return res.status(400).json({ error: 'Esa etapa ya se inició para esta producción.' });
+  }
+
+  const etapaId = crypto.randomUUID();
+  try {
+    db.prepare(
+      `INSERT INTO produccion_etapas (id, produccion_id, etapa, hora_inicio, notas)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(etapaId, id, datos.etapa, datos.horaInicio, datos.notas);
+    const resultado = cargarProduccion(id);
+    broadcast({ tipo: 'produccion:etapa-iniciada', produccion: resultado });
+    res.status(201).json(resultado);
+  } catch (err) {
+    console.error('[POST /producciones/:id/etapas]', err.message);
+    res.status(500).json({ error: 'Error al iniciar la etapa.' });
+  }
+});
+
+app.put('/producciones/:id/etapas/:etapaId', requireAuth, (req, res) => {
+  const { id, etapaId } = req.params;
+  if (!PRODUCCION_ID_RE.test(id) || !RECETA_ID_RE.test(etapaId)) {
+    return res.status(400).json({ error: 'Identificador inválido.' });
+  }
+
+  let datos;
+  try {
+    datos = validarFinEtapa(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    const info = db
+      .prepare(
+        `UPDATE produccion_etapas SET hora_fin = ?, notas = ?
+         WHERE id = ? AND produccion_id = ?`,
+      )
+      .run(datos.horaFin, datos.notas, etapaId, id);
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Etapa no encontrada.' });
+    }
+    const resultado = cargarProduccion(id);
+    broadcast({ tipo: 'produccion:etapa-finalizada', produccion: resultado });
+    res.json(resultado);
+  } catch (err) {
+    console.error('[PUT /producciones/:id/etapas/:etapaId]', err.message);
+    res.status(500).json({ error: 'Error al cerrar la etapa.' });
   }
 });
 
