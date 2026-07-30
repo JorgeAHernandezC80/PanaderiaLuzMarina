@@ -777,6 +777,152 @@ button {
   color: white;
 }
 
+.btn--small {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════
+   14. RECETAS
+   ═══════════════════════════════════════════ */
+.receta-form__ingredientes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.receta-form__ingredientes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.receta-ingrediente-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.produccion-ingrediente-row__nombre {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.produccion-form__hint {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════
+   15. PRODUCCIÓN
+   ═══════════════════════════════════════════ */
+#producciones-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-5);
+}
+
+.produccion-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.produccion-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.produccion-card__titulo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+}
+
+.produccion-card__meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.produccion-card__etapas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.etapa-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-soft-bg);
+  font-size: 0.85rem;
+}
+
+.etapa-item--completada {
+  background: var(--color-success-bg, #e8f5e9);
+}
+.etapa-item--completada .etapa-item__nombre {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.etapa-item--en-curso {
+  background: var(--color-accent-bg);
+}
+
+.etapa-item__nombre {
+  font-weight: 600;
+  flex: 1;
+}
+
+.etapa-item__horas {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.produccion-card__horneadas h4 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+.produccion-card__horneadas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.85rem;
+}
+
+.horneada-ligada-item {
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+}
+
 /* ═══════════════════════════════════════════
    14. PROVEEDORES
    ═══════════════════════════════════════════ */

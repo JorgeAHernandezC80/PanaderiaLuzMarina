@@ -156,6 +156,28 @@
             Inventario
             <span class="admin-nav__count admin-nav__count--alerta" id="inventario-count">0</span>
           </button>
+          <button
+            type="button"
+            class="admin-nav__btn"
+            data-view-target="recetas-view"
+            role="tab"
+            aria-selected="false"
+          >
+            <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+            Recetas
+            <span class="admin-nav__count" id="recetas-count">0</span>
+          </button>
+          <button
+            type="button"
+            class="admin-nav__btn"
+            data-view-target="produccion-view"
+            role="tab"
+            aria-selected="false"
+          >
+            <i class="fa-solid fa-kitchen-set" aria-hidden="true"></i>
+            Producción
+            <span class="admin-nav__count" id="produccion-count">0</span>
+          </button>
         </div>
 
         <button
@@ -851,6 +873,13 @@
             />
           </div>
 
+          <div class="form-field">
+            <label for="horneada-produccion" class="form-field__label">Producción de origen</label>
+            <select id="horneada-produccion" name="produccionId" class="form-field__input">
+              <option value="">— Ninguna (registro suelto) —</option>
+            </select>
+          </div>
+
           <div class="form-field insumo-form__wide">
             <label for="horneada-notas" class="form-field__label">Notas</label>
             <textarea
@@ -1081,6 +1110,284 @@
           <!-- Se inyecta dinámicamente por admin.js -->
         </section>
       </section>
+
+      <!-- ═══════════ RECETAS ═══════════ -->
+      <section
+        id="recetas-view"
+        class="view view--recetas"
+        hidden
+        aria-labelledby="recetas-title"
+        data-component="recetas"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="recetas-title">Recetas</h1>
+            <p class="dashboard-header__subtitle">
+              La ficha técnica de cada producto: qué ingredientes lleva y cuánto pesa cada unidad.
+              Producción usa esto para prellenar los ingredientes.
+            </p>
+          </div>
+        </header>
+
+        <form id="receta-form" class="insumo-form" novalidate data-component="receta-form">
+          <input type="hidden" id="receta-id" name="id" />
+
+          <div class="form-field">
+            <label for="receta-producto" class="form-field__label">Producto</label>
+            <select id="receta-producto" name="productoId" class="form-field__input" required>
+              <option value="" selected disabled>Selecciona un producto</option>
+              <option value="1">Donuts Glaseadas</option>
+              <option value="2">Buñuelos</option>
+              <option value="3">Roscón de Arequipe</option>
+              <option value="4">Croissant</option>
+              <option value="5">Almojábanas</option>
+              <option value="6">Pandebono</option>
+              <option value="7">Pan de Yuca</option>
+              <option value="8">Conchas</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="receta-peso-unidad" class="form-field__label"
+              >Peso de masa por unidad (g)</label
+            >
+            <input
+              type="number"
+              id="receta-peso-unidad"
+              name="pesoMasaPorUnidadG"
+              class="form-field__input"
+              min="1"
+              step="0.1"
+              placeholder="50"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="receta-fermentacion" class="form-field__label"
+              >Tiempo de fermentación (min)</label
+            >
+            <input
+              type="number"
+              id="receta-fermentacion"
+              name="tiempoFermentacionMin"
+              class="form-field__input"
+              min="1"
+              step="1"
+              placeholder="Opcional"
+            />
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <div class="receta-form__ingredientes-header">
+              <span class="form-field__label">Ingredientes (porcentaje panadero)</span>
+              <button
+                type="button"
+                id="btn-receta-agregar-ingrediente"
+                class="btn btn--ghost btn--small"
+              >
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                Agregar ingrediente
+              </button>
+            </div>
+            <div
+              id="receta-ingredientes-lista"
+              class="receta-form__ingredientes"
+              data-component="receta-ingredientes"
+            >
+              <!-- Filas de ingrediente inyectadas por admin.js -->
+            </div>
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <label for="receta-notas" class="form-field__label">Notas</label>
+            <textarea
+              id="receta-notas"
+              name="notas"
+              class="form-field__input"
+              rows="2"
+              placeholder="Opcional"
+              maxlength="280"
+            ></textarea>
+          </div>
+
+          <output
+            id="receta-error"
+            class="form-error insumo-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-receta-error-msg></span>
+          </output>
+
+          <div class="insumo-form__actions insumo-form__wide">
+            <button type="submit" id="btn-receta-submit" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Guardar receta
+            </button>
+            <button type="button" id="btn-receta-cancel-edit" class="btn btn--ghost" hidden>
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+
+        <section
+          id="recetas-container"
+          class="insumos"
+          aria-label="Listado de recetas"
+          aria-live="polite"
+          data-component="recetas-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
+
+      <!-- ═══════════ PRODUCCIÓN ═══════════ -->
+      <section
+        id="produccion-view"
+        class="view view--produccion"
+        hidden
+        aria-labelledby="produccion-title"
+        data-component="produccion"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="produccion-title">Producción</h1>
+            <p class="dashboard-header__subtitle">
+              Cada tarjeta es una tanda de masa: selección de ingredientes, mezclado, fermentación y
+              formado. Cuando esté lista, regístrala como una o varias Horneadas.
+            </p>
+          </div>
+        </header>
+
+        <section
+          class="horneadas-toolbar"
+          aria-label="Consultar producción de otra fecha"
+          data-component="produccion-toolbar"
+        >
+          <div class="form-field">
+            <label for="produccion-filtro-fecha" class="form-field__label">Consultar fecha</label>
+            <input type="date" id="produccion-filtro-fecha" class="form-field__input" />
+          </div>
+          <button type="button" id="btn-produccion-filtrar" class="btn btn--ghost">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Ver esa fecha
+          </button>
+          <button type="button" id="btn-produccion-hoy" class="btn btn--ghost" hidden>
+            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+            Volver a hoy
+          </button>
+        </section>
+
+        <h2 class="section-subtitle">Nueva tanda de masa</h2>
+
+        <form id="produccion-form" class="insumo-form" novalidate data-component="produccion-form">
+          <div class="form-field">
+            <label for="produccion-producto" class="form-field__label">Producto</label>
+            <select id="produccion-producto" name="productoId" class="form-field__input" required>
+              <option value="" selected disabled>Selecciona un producto</option>
+              <option value="1">Donuts Glaseadas</option>
+              <option value="2">Buñuelos</option>
+              <option value="3">Roscón de Arequipe</option>
+              <option value="4">Croissant</option>
+              <option value="5">Almojábanas</option>
+              <option value="6">Pandebono</option>
+              <option value="7">Pan de Yuca</option>
+              <option value="8">Conchas</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="produccion-fecha" class="form-field__label">Fecha</label>
+            <input
+              type="date"
+              id="produccion-fecha"
+              name="fecha"
+              class="form-field__input"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="produccion-hora-inicio" class="form-field__label">Hora de inicio</label>
+            <input
+              type="time"
+              id="produccion-hora-inicio"
+              name="horaInicio"
+              class="form-field__input"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="produccion-registrado-por" class="form-field__label">Registrado por</label>
+            <input
+              type="text"
+              id="produccion-registrado-por"
+              name="registradoPor"
+              class="form-field__input"
+              placeholder="Opcional · nombre de quien registra"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <span class="form-field__label">Ingredientes (gramos usados en esta tanda)</span>
+            <div
+              id="produccion-ingredientes-lista"
+              class="receta-form__ingredientes"
+              data-component="produccion-ingredientes"
+            >
+              <p class="produccion-form__hint">
+                Selecciona un producto con receta para ver sus ingredientes.
+              </p>
+            </div>
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <label for="produccion-notas" class="form-field__label">Notas</label>
+            <textarea
+              id="produccion-notas"
+              name="notas"
+              class="form-field__input"
+              rows="2"
+              placeholder="Opcional"
+              maxlength="280"
+            ></textarea>
+          </div>
+
+          <output
+            id="produccion-error"
+            class="form-error insumo-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-produccion-error-msg></span>
+          </output>
+
+          <div class="insumo-form__actions insumo-form__wide">
+            <button type="submit" id="btn-produccion-submit" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Registrar producción
+            </button>
+          </div>
+        </form>
+
+        <h2 class="section-subtitle">Tandas del día</h2>
+
+        <section
+          id="producciones-container"
+          aria-label="Producciones registradas"
+          aria-live="polite"
+          data-component="producciones-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
     </main>
 
     <!-- ═══════════ TEMPLATES ═══════════ -->
@@ -1192,6 +1499,96 @@
         <td class="horneada-table__notas" data-label="Notas"></td>
         <td class="insumo-table__acciones" data-label="Acciones"></td>
       </tr>
+    </template>
+
+    <!-- Plantilla: fila de ingrediente en el formulario de Receta (select de insumo + % panadero) -->
+    <template id="tpl-receta-ingrediente-row">
+      <div class="receta-ingrediente-row" data-component="receta-ingrediente-row">
+        <select class="form-field__input receta-ingrediente-row__insumo" required>
+          <option value="" selected disabled>Selecciona un insumo</option>
+        </select>
+        <input
+          type="number"
+          class="form-field__input receta-ingrediente-row__porcentaje"
+          min="0.01"
+          step="0.01"
+          placeholder="% panadero"
+          required
+        />
+        <button
+          type="button"
+          class="btn btn--ghost btn--danger btn--small receta-ingrediente-row__quitar"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+    </template>
+
+    <!-- Plantilla: fila de ingrediente en el formulario de Producción (insumo fijo + gramos reales) -->
+    <template id="tpl-produccion-ingrediente-row">
+      <div class="receta-ingrediente-row" data-component="produccion-ingrediente-row">
+        <span class="produccion-ingrediente-row__nombre"></span>
+        <input
+          type="number"
+          class="form-field__input produccion-ingrediente-row__gramos"
+          min="0.1"
+          step="0.1"
+          placeholder="gramos"
+          required
+        />
+      </div>
+    </template>
+
+    <!-- Plantilla: fila de receta guardada -->
+    <template id="tpl-receta-row">
+      <tr>
+        <td class="insumo-table__nombre" data-label="Producto"></td>
+        <td class="inventario-table__num" data-label="Peso/unidad (g)"></td>
+        <td class="inventario-table__num" data-label="Ingredientes"></td>
+        <td class="insumo-table__acciones" data-label="Acciones"></td>
+      </tr>
+    </template>
+
+    <!-- Plantilla: tarjeta de una tanda de Producción -->
+    <template id="tpl-produccion-card">
+      <article class="produccion-card" data-component="produccion-card">
+        <header class="produccion-card__header">
+          <div>
+            <h3 class="produccion-card__titulo"></h3>
+            <p class="produccion-card__meta"></p>
+          </div>
+          <button
+            type="button"
+            class="btn btn--ghost btn--danger btn--small produccion-card__eliminar"
+          >
+            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            Eliminar
+          </button>
+        </header>
+
+        <ol class="produccion-card__etapas" aria-label="Etapas del proceso"></ol>
+
+        <div class="produccion-card__horneadas">
+          <h4>Horneadas de esta tanda</h4>
+          <ul class="produccion-card__horneadas-lista"></ul>
+        </div>
+      </article>
+    </template>
+
+    <!-- Plantilla: una etapa dentro de la tarjeta de producción -->
+    <template id="tpl-etapa-item">
+      <li class="etapa-item" data-component="etapa-item">
+        <span class="etapa-item__nombre"></span>
+        <span class="etapa-item__horas"></span>
+        <button type="button" class="btn btn--action btn--small etapa-item__accion"></button>
+      </li>
+    </template>
+
+    <!-- Plantilla: una horneada ligada, dentro de la tarjeta de producción -->
+    <template id="tpl-horneada-ligada-item">
+      <li class="horneada-ligada-item">
+        <span class="horneada-ligada-item__texto"></span>
+      </li>
     </template>
 
     <!-- Script de página (ES module) -->

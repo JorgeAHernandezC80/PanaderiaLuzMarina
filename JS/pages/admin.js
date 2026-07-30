@@ -28,6 +28,21 @@ const MOTIVO_AJUSTE_LABELS = {
   otro: 'Otro',
 };
 
+/* Las 8 etapas de Producción (pesado → segunda fermentación), en el mismo
+   orden y con las mismas claves internas que ETAPAS_PRODUCCION en
+   validation.js. La 9na etapa (horneado) la cubre Horneadas. */
+const ETAPAS_PRODUCCION_LABELS = {
+  pesado_dosificacion: 'Pesado y Dosificación',
+  amasado: 'Amasado',
+  primera_fermentacion: 'Primera Fermentación',
+  division_pesado: 'División y Pesado',
+  preformado: 'Preformado',
+  reposo_mesa: 'Reposo en Mesa',
+  formado_definitivo: 'Formado Definitivo',
+  segunda_fermentacion: 'Segunda Fermentación',
+};
+const ETAPAS_PRODUCCION_ORDEN = Object.keys(ETAPAS_PRODUCCION_LABELS);
+
 /* ═══════════════════════════════════════════
    1. CONFIGURACIÓN
    ═══════════════════════════════════════════ */
@@ -136,6 +151,48 @@ const CONFIG = Object.freeze({
     ajusteErrorMsg: '#ajuste-error [data-ajuste-error-msg]',
     ajusteSubmitBtn: '#btn-ajuste-submit',
     ajusteCancelEditBtn: '#btn-ajuste-cancel-edit',
+    horneadaProduccion: '#horneada-produccion',
+
+    // Recetas
+    recetasView: '#recetas-view',
+    recetasCount: '#recetas-count',
+    recetasContainer: '#recetas-container',
+    tplRecetaRow: '#tpl-receta-row',
+    tplRecetaIngredienteRow: '#tpl-receta-ingrediente-row',
+    recetaForm: '#receta-form',
+    recetaId: '#receta-id',
+    recetaProducto: '#receta-producto',
+    recetaPesoUnidad: '#receta-peso-unidad',
+    recetaFermentacion: '#receta-fermentacion',
+    recetaIngredientesLista: '#receta-ingredientes-lista',
+    btnRecetaAgregarIngrediente: '#btn-receta-agregar-ingrediente',
+    recetaNotas: '#receta-notas',
+    recetaError: '#receta-error',
+    recetaErrorMsg: '#receta-error [data-receta-error-msg]',
+    recetaSubmitBtn: '#btn-receta-submit',
+    recetaCancelEditBtn: '#btn-receta-cancel-edit',
+
+    // Producción
+    produccionView: '#produccion-view',
+    produccionCount: '#produccion-count',
+    produccionesContainer: '#producciones-container',
+    tplProduccionCard: '#tpl-produccion-card',
+    tplEtapaItem: '#tpl-etapa-item',
+    tplHorneadaLigadaItem: '#tpl-horneada-ligada-item',
+    tplProduccionIngredienteRow: '#tpl-produccion-ingrediente-row',
+    produccionForm: '#produccion-form',
+    produccionProducto: '#produccion-producto',
+    produccionFecha: '#produccion-fecha',
+    produccionHoraInicio: '#produccion-hora-inicio',
+    produccionRegistradoPor: '#produccion-registrado-por',
+    produccionIngredientesLista: '#produccion-ingredientes-lista',
+    produccionNotas: '#produccion-notas',
+    produccionError: '#produccion-error',
+    produccionErrorMsg: '#produccion-error [data-produccion-error-msg]',
+    produccionSubmitBtn: '#btn-produccion-submit',
+    produccionFiltroFecha: '#produccion-filtro-fecha',
+    btnProduccionFiltrar: '#btn-produccion-filtrar',
+    btnProduccionHoy: '#btn-produccion-hoy',
   },
   /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
      leer el formulario sea una sola iteración en lugar de 24 querySelector. */
@@ -734,6 +791,210 @@ const StockMinimo = {
       return { ok: true };
     } catch (err) {
       console.error('[StockMinimo] Error actualizando stock mínimo:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6f. MÓDULO: RECETAS
+   ═══════════════════════════════════════════ */
+const Recetas = {
+  async listar() {
+    try {
+      const res = await apiFetch('/recetas', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Recetas] Error obteniendo recetas:', err.message);
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/recetas', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/recetas/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, receta: await res.json() };
+    } catch (err) {
+      console.error(`[Recetas] Error en ${method} ${path}:`, err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/recetas/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        return { ok: false, reason: 'error' };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[Recetas] Error eliminando receta:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   6g. MÓDULO: PRODUCCIÓN (tandas de masa + etapas)
+   ═══════════════════════════════════════════ */
+const Producciones = {
+  async listar(fecha) {
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    try {
+      const res = await apiFetch(`/producciones?fecha=${fechaConsulta}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Producciones] Error obteniendo producciones:', err.message);
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    try {
+      const res = await apiFetch('/producciones', {
+        method: 'POST',
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, produccion: await res.json() };
+    } catch (err) {
+      console.error('[Producciones] Error creando producción:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/producciones/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        return { ok: false, reason: 'error' };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[Producciones] Error eliminando producción:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async iniciarEtapa(produccionId, etapa, horaInicio) {
+    try {
+      const res = await apiFetch(`/producciones/${encodeURIComponent(produccionId)}/etapas`, {
+        method: 'POST',
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify({ etapa, horaInicio }),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, produccion: await res.json() };
+    } catch (err) {
+      console.error('[Producciones] Error iniciando etapa:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async finalizarEtapa(produccionId, etapaId, horaFin) {
+    try {
+      const res = await apiFetch(
+        `/producciones/${encodeURIComponent(produccionId)}/etapas/${encodeURIComponent(etapaId)}`,
+        {
+          method: 'PUT',
+          timeout: 10_000,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${Auth.getToken()}`,
+          },
+          body: JSON.stringify({ horaFin }),
+        },
+      );
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, produccion: await res.json() };
+    } catch (err) {
+      console.error('[Producciones] Error finalizando etapa:', err.message);
       return { ok: false, reason: 'network' };
     }
   },
@@ -1461,6 +1722,196 @@ const Render = {
 
     return tr;
   },
+
+  updateRecetasCount(recetas) {
+    const el = document.querySelector(CONFIG.SELECTORS.recetasCount);
+    if (el) el.textContent = recetas.length;
+  },
+
+  renderRecetas(recetas, huboErrorConexion) {
+    const container = document.querySelector(CONFIG.SELECTORS.recetasContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (!recetas || recetas.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">📋</span>
+        <h2 class="empty-state__title">Sin recetas todavía</h2>
+        <p class="empty-state__text">Usa el formulario de arriba para crear la ficha técnica de un producto.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Recetas configuradas</caption>
+      <thead>
+        <tr>
+          <th scope="col">Producto</th>
+          <th scope="col">Peso/unidad (g)</th>
+          <th scope="col">Ingredientes</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector('tbody');
+    recetas.forEach((receta) => tbody.appendChild(this._renderRecetaRow(receta)));
+    container.appendChild(table);
+  },
+
+  _renderRecetaRow(receta) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplRecetaRow);
+    const row = tpl.content.cloneNode(true);
+    const nums = row.querySelectorAll('.inventario-table__num');
+
+    row.querySelector('.insumo-table__nombre').textContent = receta.productoNombre;
+    nums[0].textContent = receta.pesoMasaPorUnidadG;
+    nums[1].textContent = receta.ingredientes.length;
+
+    const acciones = row.querySelector('.insumo-table__acciones');
+
+    const btnEditar = document.createElement('button');
+    btnEditar.type = 'button';
+    btnEditar.className = 'btn btn--action';
+    btnEditar.innerHTML = '<i class="fa-solid fa-pen" aria-hidden="true"></i> Editar';
+    btnEditar.addEventListener('click', () => App.startEditReceta(receta.id));
+
+    const btnEliminar = document.createElement('button');
+    btnEliminar.type = 'button';
+    btnEliminar.className = 'btn btn--ghost btn--danger';
+    btnEliminar.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> Eliminar';
+    btnEliminar.addEventListener('click', () => App.deleteReceta(receta.id, receta.productoNombre));
+
+    acciones.appendChild(btnEditar);
+    acciones.appendChild(btnEliminar);
+
+    return row.querySelector('tr');
+  },
+
+  updateProduccionCount(producciones) {
+    const el = document.querySelector(CONFIG.SELECTORS.produccionCount);
+    if (el) el.textContent = producciones.length;
+  },
+
+  renderProducciones(producciones, huboErrorConexion, fecha) {
+    const container = document.querySelector(CONFIG.SELECTORS.produccionesContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (!producciones || producciones.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">🥖</span>
+        <h2 class="empty-state__title">Sin tandas de masa para ${escapeHTML(fecha || 'esta fecha')}</h2>
+        <p class="empty-state__text">Usa el formulario de arriba para registrar una nueva.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    producciones.forEach((produccion) =>
+      container.appendChild(this._renderProduccionCard(produccion)),
+    );
+  },
+
+  _renderProduccionCard(produccion) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplProduccionCard);
+    const card = tpl.content.cloneNode(true);
+
+    card.querySelector('.produccion-card__titulo').textContent =
+      `${produccion.productoNombre} — ${produccion.pesoTotalMasaG} g (${produccion.unidadesEstimadas} u. est.)`;
+    card.querySelector('.produccion-card__meta').textContent =
+      `Inicio ${produccion.horaInicio} · ${produccion.fecha} · Registrado por: ${produccion.registradoPor || '—'}`;
+
+    card
+      .querySelector('.produccion-card__eliminar')
+      .addEventListener('click', () =>
+        App.deleteProduccion(produccion.id, produccion.productoNombre),
+      );
+
+    const etapasList = card.querySelector('.produccion-card__etapas');
+    ETAPAS_PRODUCCION_ORDEN.forEach((claveEtapa) => {
+      const etapaGuardada = produccion.etapas.find((e) => e.etapa === claveEtapa);
+      etapasList.appendChild(this._renderEtapaItem(produccion.id, claveEtapa, etapaGuardada));
+    });
+
+    const horneadasLista = card.querySelector('.produccion-card__horneadas-lista');
+    if (produccion.horneadas.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'horneada-ligada-item';
+      li.textContent = 'Ninguna todavía';
+      horneadasLista.appendChild(li);
+    } else {
+      produccion.horneadas.forEach((h) => {
+        const tplHorneada = document.querySelector(CONFIG.SELECTORS.tplHorneadaLigadaItem);
+        const item = tplHorneada.content.cloneNode(true);
+        item.querySelector('.horneada-ligada-item__texto').textContent =
+          `${h.cantidad} unidades — ${h.hora}`;
+        horneadasLista.appendChild(item);
+      });
+    }
+
+    return card;
+  },
+
+  _renderEtapaItem(produccionId, claveEtapa, etapaGuardada) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplEtapaItem);
+    const item = tpl.content.cloneNode(true);
+    const li = item.querySelector('li');
+
+    item.querySelector('.etapa-item__nombre').textContent = ETAPAS_PRODUCCION_LABELS[claveEtapa];
+    const horasEl = item.querySelector('.etapa-item__horas');
+    const btn = item.querySelector('.etapa-item__accion');
+
+    if (!etapaGuardada) {
+      horasEl.textContent = '';
+      btn.textContent = 'Iniciar';
+      btn.addEventListener('click', () => App.iniciarEtapaProduccion(produccionId, claveEtapa));
+    } else if (!etapaGuardada.horaFin) {
+      li.classList.add('etapa-item--en-curso');
+      horasEl.textContent = `Inicio ${etapaGuardada.horaInicio}`;
+      btn.textContent = 'Finalizar';
+      btn.addEventListener('click', () =>
+        App.finalizarEtapaProduccion(produccionId, etapaGuardada.id),
+      );
+    } else {
+      li.classList.add('etapa-item--completada');
+      horasEl.textContent = `${etapaGuardada.horaInicio} – ${etapaGuardada.horaFin}`;
+      btn.remove();
+    }
+
+    return item;
+  },
 };
 
 /* ═══════════════════════════════════════════
@@ -1479,6 +1930,10 @@ const App = {
   _ajustesCache: [],
   // Misma idea que _horneadaFechaConsulta, para la pestaña Inventario.
   _inventarioFechaConsulta: new Date().toISOString().slice(0, 10),
+  _recetasCache: [],
+  _insumosCacheGeneral: [], // insumos reales, para poblar los selects de ingredientes
+  _produccionesCache: [],
+  _produccionFechaConsulta: new Date().toISOString().slice(0, 10),
 
   init() {
     this._bindEvents();
@@ -1638,6 +2093,398 @@ const App = {
     this.refreshInventario();
   },
 
+  /* ───────────────────────── RECETAS ───────────────────────── */
+
+  async refreshRecetas() {
+    const [insumos, recetas] = await Promise.all([Insumos.listar(), Recetas.listar()]);
+
+    if (recetas === 'UNAUTHORIZED' || insumos === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._insumosCacheGeneral = Array.isArray(insumos) ? insumos : [];
+    this._recetasCache = Array.isArray(recetas) ? recetas : [];
+    Render.updateRecetasCount(this._recetasCache);
+    Render.renderRecetas(this._recetasCache, recetas === null);
+  },
+
+  /** Agrega una fila de ingrediente al formulario de Receta (select de
+   *  insumo + % panadero + botón quitar). Si se pasan valores, precarga
+   *  esa fila (modo edición); si no, queda vacía para que el usuario elija. */
+  agregarFilaIngredienteReceta(valores) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplRecetaIngredienteRow);
+    const row = tpl.content.cloneNode(true);
+    const select = row.querySelector('.receta-ingrediente-row__insumo');
+    const inputPorcentaje = row.querySelector('.receta-ingrediente-row__porcentaje');
+    const btnQuitar = row.querySelector('.receta-ingrediente-row__quitar');
+
+    this._insumosCacheGeneral.forEach((insumo) => {
+      const opt = document.createElement('option');
+      opt.value = insumo.id;
+      opt.textContent = insumo.nombre;
+      select.appendChild(opt);
+    });
+
+    if (valores) {
+      select.value = valores.insumoId;
+      inputPorcentaje.value = valores.porcentajePanadero;
+    }
+
+    btnQuitar.addEventListener('click', () => {
+      select.closest('.receta-ingrediente-row').remove();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.recetaIngredientesLista).appendChild(row);
+  },
+
+  _leerIngredientesReceta() {
+    const filas = document.querySelectorAll(
+      `${CONFIG.SELECTORS.recetaIngredientesLista} .receta-ingrediente-row`,
+    );
+    return [...filas].map((fila) => ({
+      insumoId: fila.querySelector('.receta-ingrediente-row__insumo').value,
+      porcentajePanadero: Number(fila.querySelector('.receta-ingrediente-row__porcentaje').value),
+    }));
+  },
+
+  startEditReceta(id) {
+    const receta = this._recetasCache.find((r) => r.id === id);
+    if (!receta) return;
+
+    document.querySelector(CONFIG.SELECTORS.recetaId).value = receta.id;
+    document.querySelector(CONFIG.SELECTORS.recetaProducto).value = receta.productoId;
+    document.querySelector(CONFIG.SELECTORS.recetaPesoUnidad).value = receta.pesoMasaPorUnidadG;
+    document.querySelector(CONFIG.SELECTORS.recetaFermentacion).value =
+      receta.tiempoFermentacionMin ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaNotas).value = receta.notas || '';
+
+    document.querySelector(CONFIG.SELECTORS.recetaIngredientesLista).innerHTML = '';
+    receta.ingredientes.forEach((ing) => this.agregarFilaIngredienteReceta(ing));
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.recetaSubmitBtn);
+    submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.recetaCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.recetaForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  cancelEditReceta() {
+    this._resetRecetaForm();
+  },
+
+  async deleteReceta(id, productoNombre) {
+    const confirmado = window.confirm(
+      `¿Eliminar la receta de "${productoNombre}"? Esto no afecta las producciones ya registradas.`,
+    );
+    if (!confirmado) return;
+
+    const resultado = await Recetas.eliminar(id);
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar la receta. Intenta de nuevo en unos segundos.');
+      return;
+    }
+    this.refreshRecetas();
+  },
+
+  _resetRecetaForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.recetaForm);
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.recetaId).value = '';
+    document.querySelector(CONFIG.SELECTORS.recetaIngredientesLista).innerHTML = '';
+    document.querySelector(CONFIG.SELECTORS.recetaSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-plus" aria-hidden="true"></i> Guardar receta';
+    document.querySelector(CONFIG.SELECTORS.recetaCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.recetaError).hidden = true;
+  },
+
+  async _handleRecetaSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.recetaError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.recetaErrorMsg);
+
+    const productoId = document.querySelector(CONFIG.SELECTORS.recetaProducto).value;
+    const pesoMasaPorUnidadG = document.querySelector(CONFIG.SELECTORS.recetaPesoUnidad).value;
+    const ingredientes = this._leerIngredientesReceta();
+
+    if (
+      !productoId ||
+      !pesoMasaPorUnidadG ||
+      Number(pesoMasaPorUnidadG) <= 0 ||
+      ingredientes.length === 0
+    ) {
+      errorMsgEl.textContent = 'Completa producto, peso por unidad, y al menos un ingrediente.';
+      errorEl.hidden = false;
+      return;
+    }
+    if (
+      ingredientes.some((i) => !i.insumoId || !i.porcentajePanadero || i.porcentajePanadero <= 0)
+    ) {
+      errorMsgEl.textContent = 'Cada ingrediente necesita un insumo y un % panadero mayor a 0.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.recetaId).value || null;
+    const datos = {
+      productoId,
+      pesoMasaPorUnidadG: Number(pesoMasaPorUnidadG),
+      tiempoFermentacionMin:
+        document.querySelector(CONFIG.SELECTORS.recetaFermentacion).value || null,
+      notas: document.querySelector(CONFIG.SELECTORS.recetaNotas).value.trim(),
+      ingredientes,
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.recetaSubmitBtn);
+    submitBtn.disabled = true;
+
+    const resultado = idExistente
+      ? await Recetas.actualizar(idExistente, datos)
+      : await Recetas.crear(datos);
+
+    submitBtn.disabled = false;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar la receta. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetRecetaForm();
+    this.refreshRecetas();
+  },
+
+  /* ───────────────────────── PRODUCCIÓN ───────────────────────── */
+
+  async refreshProducciones() {
+    const fecha = this._produccionFechaConsulta;
+    // Las recetas también hacen falta aquí: el select de producto necesita
+    // saber para cuáles productos ya existe receta, para prellenar ingredientes.
+    const [insumos, recetas, producciones] = await Promise.all([
+      this._insumosCacheGeneral.length ? this._insumosCacheGeneral : Insumos.listar(),
+      Recetas.listar(),
+      Producciones.listar(fecha),
+    ]);
+
+    if (producciones === 'UNAUTHORIZED' || recetas === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    if (Array.isArray(insumos)) this._insumosCacheGeneral = insumos;
+    this._recetasCache = Array.isArray(recetas) ? recetas : [];
+    this._produccionesCache = Array.isArray(producciones) ? producciones : [];
+
+    Render.updateProduccionCount(this._produccionesCache);
+    Render.renderProducciones(this._produccionesCache, producciones === null, fecha);
+  },
+
+  verFechaProduccion(fecha) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
+    this._produccionFechaConsulta = fecha;
+    const btnHoy = document.querySelector(CONFIG.SELECTORS.btnProduccionHoy);
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (btnHoy) btnHoy.hidden = fecha === hoy;
+    this.refreshProducciones();
+  },
+
+  volverAHoyProduccion() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const filtroEl = document.querySelector(CONFIG.SELECTORS.produccionFiltroFecha);
+    if (filtroEl) filtroEl.value = hoy;
+    this.verFechaProduccion(hoy);
+  },
+
+  /** Cuando cambia el producto del formulario de Producción, prellena los
+   *  ingredientes con los de la receta de ese producto (si existe). El
+   *  panadero solo tiene que escribir los gramos reales de cada uno. */
+  _onProduccionProductoChange() {
+    const productoId = document.querySelector(CONFIG.SELECTORS.produccionProducto).value;
+    const lista = document.querySelector(CONFIG.SELECTORS.produccionIngredientesLista);
+    lista.innerHTML = '';
+
+    const receta = this._recetasCache.find((r) => r.productoId === productoId);
+    if (!receta) {
+      const hint = document.createElement('p');
+      hint.className = 'produccion-form__hint';
+      hint.textContent =
+        'Este producto todavía no tiene receta — créala primero en la pestaña Recetas.';
+      lista.appendChild(hint);
+      return;
+    }
+
+    receta.ingredientes.forEach((ing) => {
+      const tpl = document.querySelector(CONFIG.SELECTORS.tplProduccionIngredienteRow);
+      const row = tpl.content.cloneNode(true);
+      const wrapper = row.querySelector('.receta-ingrediente-row');
+      wrapper.dataset.insumoId = ing.insumoId;
+      row.querySelector('.produccion-ingrediente-row__nombre').textContent = ing.insumoNombre;
+      lista.appendChild(row);
+    });
+  },
+
+  _leerIngredientesProduccion() {
+    const filas = document.querySelectorAll(
+      `${CONFIG.SELECTORS.produccionIngredientesLista} .receta-ingrediente-row`,
+    );
+    return [...filas].map((fila) => ({
+      insumoId: fila.dataset.insumoId,
+      gramos: Number(fila.querySelector('.produccion-ingrediente-row__gramos').value),
+    }));
+  },
+
+  async deleteProduccion(id, productoNombre) {
+    const confirmado = window.confirm(
+      `¿Eliminar esta producción de "${productoNombre}"? También se pierden sus etapas registradas.`,
+    );
+    if (!confirmado) return;
+
+    const resultado = await Producciones.eliminar(id);
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert('No se pudo eliminar la producción. Intenta de nuevo en unos segundos.');
+      return;
+    }
+    this.refreshProducciones();
+  },
+
+  async iniciarEtapaProduccion(produccionId, etapa) {
+    const ahora = new Date();
+    const horaInicio = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+
+    const resultado = await Producciones.iniciarEtapa(produccionId, etapa, horaInicio);
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert(resultado.message || 'No se pudo iniciar la etapa. Intenta de nuevo.');
+      return;
+    }
+    this.refreshProducciones();
+  },
+
+  async finalizarEtapaProduccion(produccionId, etapaId) {
+    const ahora = new Date();
+    const horaFin = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+
+    const resultado = await Producciones.finalizarEtapa(produccionId, etapaId, horaFin);
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert(resultado.message || 'No se pudo cerrar la etapa. Intenta de nuevo.');
+      return;
+    }
+    this.refreshProducciones();
+  },
+
+  async _handleProduccionSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.produccionError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.produccionErrorMsg);
+
+    const productoId = document.querySelector(CONFIG.SELECTORS.produccionProducto).value;
+    const fecha = document.querySelector(CONFIG.SELECTORS.produccionFecha).value;
+    const horaInicio = document.querySelector(CONFIG.SELECTORS.produccionHoraInicio).value;
+    const ingredientes = this._leerIngredientesProduccion();
+
+    if (!productoId || !fecha || !horaInicio || ingredientes.length === 0) {
+      errorMsgEl.textContent =
+        'Completa producto, fecha, hora de inicio, y los gramos de cada ingrediente (necesita una receta).';
+      errorEl.hidden = false;
+      return;
+    }
+    if (ingredientes.some((i) => !i.gramos || i.gramos <= 0)) {
+      errorMsgEl.textContent = 'Cada ingrediente necesita una cantidad en gramos mayor a 0.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const datos = {
+      productoId,
+      fecha,
+      horaInicio,
+      registradoPor: document.querySelector(CONFIG.SELECTORS.produccionRegistradoPor).value.trim(),
+      notas: document.querySelector(CONFIG.SELECTORS.produccionNotas).value.trim(),
+      ingredientes,
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.produccionSubmitBtn);
+    submitBtn.disabled = true;
+
+    const resultado = await Producciones.crear(datos);
+
+    submitBtn.disabled = false;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar la producción. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    document.querySelector(CONFIG.SELECTORS.produccionForm).reset();
+    document.querySelector(CONFIG.SELECTORS.produccionIngredientesLista).innerHTML =
+      '<p class="produccion-form__hint">Selecciona un producto con receta para ver sus ingredientes.</p>';
+    this.refreshProducciones();
+  },
+
+  /** Cuando cambia el producto en el formulario de Horneadas, refresca el
+   *  select "Producción de origen" con las tandas de ese producto en la
+   *  fecha elegida (o hoy, si no hay fecha todavía). */
+  async _actualizarSelectProduccionParaHorneada() {
+    const selectProducto = document.querySelector(CONFIG.SELECTORS.horneadaProducto);
+    const selectProduccion = document.querySelector(CONFIG.SELECTORS.horneadaProduccion);
+    if (!selectProducto || !selectProduccion) return;
+
+    const productoId = selectProducto.value;
+    selectProduccion.innerHTML = '<option value="">— Ninguna (registro suelto) —</option>';
+    if (!productoId) return;
+
+    const fechaEl = document.querySelector(CONFIG.SELECTORS.horneadaFecha);
+    const fecha = fechaEl?.value || new Date().toISOString().slice(0, 10);
+
+    const producciones = await Producciones.listar(fecha);
+    if (!Array.isArray(producciones)) return;
+
+    producciones
+      .filter((p) => p.productoId === productoId)
+      .forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.horaInicio} — ${p.pesoTotalMasaG}g (${p.unidadesEstimadas} u. est.)`;
+        selectProduccion.appendChild(opt);
+      });
+  },
+
   startEditProveedor(id) {
     const proveedor = this._proveedoresCache.find((p) => p.id === id);
     if (!proveedor) return;
@@ -1753,6 +2600,13 @@ const App = {
       horneada.registradoPor || '';
     document.querySelector(CONFIG.SELECTORS.horneadaNotas).value = horneada.notas || '';
 
+    this._actualizarSelectProduccionParaHorneada().then(() => {
+      const selectProduccion = document.querySelector(CONFIG.SELECTORS.horneadaProduccion);
+      if (selectProduccion && horneada.produccionId) {
+        selectProduccion.value = horneada.produccionId;
+      }
+    });
+
     const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
     submitBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
     document.querySelector(CONFIG.SELECTORS.horneadaCancelEditBtn).hidden = false;
@@ -1837,6 +2691,7 @@ const App = {
       hora,
       registradoPor: document.querySelector(CONFIG.SELECTORS.horneadaRegistradoPor).value.trim(),
       notas: document.querySelector(CONFIG.SELECTORS.horneadaNotas).value.trim(),
+      produccionId: document.querySelector(CONFIG.SELECTORS.horneadaProduccion)?.value || null,
     };
 
     const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
@@ -2158,6 +3013,44 @@ const App = {
     document
       .querySelector(CONFIG.SELECTORS.btnInventarioHoy)
       ?.addEventListener('click', () => this.volverAHoyInventario());
+
+    // Formulario de recetas: alta y edición
+    document.querySelector(CONFIG.SELECTORS.recetaForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleRecetaSubmit();
+    });
+    document
+      .querySelector(CONFIG.SELECTORS.recetaCancelEditBtn)
+      ?.addEventListener('click', () => this.cancelEditReceta());
+    document
+      .querySelector(CONFIG.SELECTORS.btnRecetaAgregarIngrediente)
+      ?.addEventListener('click', () => this.agregarFilaIngredienteReceta());
+
+    // Formulario de producción: alta + prellenado de ingredientes por receta
+    document.querySelector(CONFIG.SELECTORS.produccionForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleProduccionSubmit();
+    });
+    document
+      .querySelector(CONFIG.SELECTORS.produccionProducto)
+      ?.addEventListener('change', () => this._onProduccionProductoChange());
+
+    document.querySelector(CONFIG.SELECTORS.btnProduccionFiltrar)?.addEventListener('click', () => {
+      const valor = document.querySelector(CONFIG.SELECTORS.produccionFiltroFecha)?.value;
+      this.verFechaProduccion(valor);
+    });
+    document
+      .querySelector(CONFIG.SELECTORS.btnProduccionHoy)
+      ?.addEventListener('click', () => this.volverAHoyProduccion());
+
+    // Horneadas: al cambiar de producto (o de fecha), refresca qué
+    // producciones puede elegir como origen.
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaProducto)
+      ?.addEventListener('change', () => this._actualizarSelectProduccionParaHorneada());
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaFecha)
+      ?.addEventListener('change', () => this._actualizarSelectProduccionParaHorneada());
   },
 
   async _handleInsumoSubmit() {
@@ -2226,6 +3119,8 @@ const App = {
       CONFIG.SELECTORS.proveedoresView,
       CONFIG.SELECTORS.horneadasView,
       CONFIG.SELECTORS.inventarioView,
+      CONFIG.SELECTORS.recetasView,
+      CONFIG.SELECTORS.produccionView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -2256,6 +3151,16 @@ const App = {
       if (filtroEl && !filtroEl.value) filtroEl.value = this._inventarioFechaConsulta;
       this.refreshInventario();
     }
+    if (targetId === CONFIG.SELECTORS.recetasView.slice(1)) {
+      this.refreshRecetas();
+    }
+    if (targetId === CONFIG.SELECTORS.produccionView.slice(1)) {
+      const filtroEl = document.querySelector(CONFIG.SELECTORS.produccionFiltroFecha);
+      if (filtroEl && !filtroEl.value) filtroEl.value = this._produccionFechaConsulta;
+      const fechaEl = document.querySelector(CONFIG.SELECTORS.produccionFecha);
+      if (fechaEl && !fechaEl.value) fechaEl.value = new Date().toISOString().slice(0, 10);
+      this.refreshProducciones();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -2273,6 +3178,8 @@ const App = {
     const proveedoresView = document.querySelector(CONFIG.SELECTORS.proveedoresView);
     const horneadasView = document.querySelector(CONFIG.SELECTORS.horneadasView);
     const inventarioView = document.querySelector(CONFIG.SELECTORS.inventarioView);
+    const recetasView = document.querySelector(CONFIG.SELECTORS.recetasView);
+    const produccionView = document.querySelector(CONFIG.SELECTORS.produccionView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
@@ -2283,6 +3190,8 @@ const App = {
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;
+      if (recetasView) recetasView.hidden = true;
+      if (produccionView) produccionView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -2300,6 +3209,8 @@ const App = {
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;
+      if (recetasView) recetasView.hidden = true;
+      if (produccionView) produccionView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';
     }
