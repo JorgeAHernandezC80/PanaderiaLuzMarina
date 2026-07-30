@@ -36,7 +36,7 @@
     "whatsapp"
   ],
   "author": "Jorge A. Hernández C.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "engines": {
     "node": "20.x"

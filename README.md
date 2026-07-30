@@ -340,4 +340,6 @@ y convenciones de commits.
 
 ## 📄 Licencia
 
-Distribuido bajo la licencia MIT. Consulta [LICENSE](LICENSE).
+Todos los derechos reservados. Este código es propiedad de Jorge A. Hernández C.
+y no está disponible para uso, copia, modificación ni distribución por terceros
+sin autorización previa por escrito. Consulta [LICENSE](LICENSE).
