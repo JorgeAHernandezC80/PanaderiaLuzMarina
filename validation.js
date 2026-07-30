@@ -360,6 +360,13 @@ function validarHorneada(datos) {
     typeof datos.registradoPor === 'string'
       ? datos.registradoPor.trim().slice(0, MAX_HORNEADA_REGISTRADO_POR_LEN)
       : '';
+  // Opcional a propósito: una horneada puede registrarse suelta (sin venir
+  // de una Producción rastreada) o ligada a la tanda de masa de la que
+  // salió. La existencia real del id se valida en server.js (necesita DB).
+  const produccionIdFinal =
+    typeof datos.produccionId === 'string' && datos.produccionId.trim() !== ''
+      ? datos.produccionId.trim()
+      : null;
 
   return {
     productoId: String(Number(productoId)),
@@ -369,6 +376,7 @@ function validarHorneada(datos) {
     hora,
     registradoPor: registradoPorFinal,
     notas: notasFinal,
+    produccionId: produccionIdFinal,
   };
 }
 
@@ -450,6 +458,7 @@ function validarStockMinimo(datos) {
 
 const RECETA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const PRODUCCION_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const ETAPA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const MAX_PESO_G = 100000; // 100kg: tope generoso para una sola tanda de masa
 const MAX_PORCENTAJE_PANADERO = 1000;
 const MAX_INGREDIENTES = 30;
@@ -648,4 +657,5 @@ module.exports = {
   validarInicioEtapa,
   validarFinEtapa,
   ETAPAS_PRODUCCION,
+  ETAPA_ID_RE,
 };

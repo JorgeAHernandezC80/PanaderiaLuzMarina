@@ -30,6 +30,7 @@ const {
   PRODUCCION_ID_RE,
   validarInicioEtapa,
   validarFinEtapa,
+  ETAPA_ID_RE,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -706,6 +707,7 @@ function serializeHorneada(row) {
     hora: row.hora,
     registradoPor: row.registrado_por,
     notas: row.notas,
+    produccionId: row.produccion_id,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
@@ -743,11 +745,25 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
     throw err;
   }
 
+  if (datos.produccionId) {
+    const produccion = db
+      .prepare('SELECT producto_id FROM producciones WHERE id = ?')
+      .get(datos.produccionId);
+    if (!produccion) {
+      return res.status(400).json({ error: 'La producción indicada no existe.' });
+    }
+    if (produccion.producto_id !== datos.productoId) {
+      return res
+        .status(400)
+        .json({ error: 'Esta horneada no coincide con el producto de la producción indicada.' });
+    }
+  }
+
   const id = crypto.randomUUID();
   try {
     db.prepare(
-      `INSERT INTO horneadas (id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO horneadas (id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas, produccion_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       datos.productoId,
@@ -757,6 +773,7 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
       datos.hora,
       datos.registradoPor,
       datos.notas,
+      datos.produccionId,
     );
     const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
     broadcast({ tipo: 'horneada:nueva', horneada: serializeHorneada(fila) });
@@ -783,12 +800,26 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
     throw err;
   }
 
+  if (datos.produccionId) {
+    const produccion = db
+      .prepare('SELECT producto_id FROM producciones WHERE id = ?')
+      .get(datos.produccionId);
+    if (!produccion) {
+      return res.status(400).json({ error: 'La producción indicada no existe.' });
+    }
+    if (produccion.producto_id !== datos.productoId) {
+      return res
+        .status(400)
+        .json({ error: 'Esta horneada no coincide con el producto de la producción indicada.' });
+    }
+  }
+
   try {
     const info = db
       .prepare(
         `UPDATE horneadas
          SET producto_id = ?, producto_nombre = ?, cantidad = ?, fecha = ?, hora = ?,
-             registrado_por = ?, notas = ?, actualizado_en = datetime('now')
+             registrado_por = ?, notas = ?, produccion_id = ?, actualizado_en = datetime('now')
          WHERE id = ?`,
       )
       .run(
@@ -799,6 +830,7 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
         datos.hora,
         datos.registradoPor,
         datos.notas,
+        datos.produccionId,
         id,
       );
     if (info.changes === 0) {
@@ -1386,7 +1418,11 @@ function cargarProduccion(id) {
   const etapas = db
     .prepare('SELECT * FROM produccion_etapas WHERE produccion_id = ? ORDER BY hora_inicio')
     .all(id);
-  return serializeProduccion(fila, ingredientes, etapas);
+  const horneadasLigadas = db
+    .prepare('SELECT * FROM horneadas WHERE produccion_id = ? ORDER BY hora ASC')
+    .all(id)
+    .map(serializeHorneada);
+  return { ...serializeProduccion(fila, ingredientes, etapas), horneadas: horneadasLigadas };
 }
 
 app.get('/producciones', requireAuth, (req, res) => {
@@ -1540,7 +1576,7 @@ app.post('/producciones/:id/etapas', requireAuth, rateLimit, (req, res) => {
 
 app.put('/producciones/:id/etapas/:etapaId', requireAuth, (req, res) => {
   const { id, etapaId } = req.params;
-  if (!PRODUCCION_ID_RE.test(id) || !RECETA_ID_RE.test(etapaId)) {
+  if (!PRODUCCION_ID_RE.test(id) || !ETAPA_ID_RE.test(etapaId)) {
     return res.status(400).json({ error: 'Identificador inválido.' });
   }
 
