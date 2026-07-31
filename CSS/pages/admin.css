@@ -1248,7 +1248,12 @@ select.form-field__input {
   display: none;
   align-items: center;
   gap: var(--space-3);
-  padding: max(var(--space-3), env(safe-area-inset-top)) var(--space-4) var(--space-3);
+  /* Sin padding horizontal propio: el inset lateral lo da solo el padding
+     de body, igual que el resto del contenido (.dashboard-header, cards,
+     etc.). Antes tenía su propio var(--space-4) horizontal ENCIMA del de
+     body, así que el botón de menú quedaba más adentro que el título de
+     cada pestaña. */
+  padding: max(var(--space-3), env(safe-area-inset-top)) 0 var(--space-3);
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border-soft);
