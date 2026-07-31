@@ -2400,7 +2400,7 @@ const App = {
       const hint = document.createElement('p');
       hint.className = 'produccion-form__hint';
       hint.textContent =
-        'Este producto todavía no tiene receta — créala primero en la pestaña Recetas.';
+        'Este producto todavía no tiene receta, créala primero en la pestaña Recetas.';
       lista.appendChild(hint);
       return;
     }
@@ -3369,6 +3369,39 @@ const App = {
    No toca _switchView: sigue usando .admin-nav__btn + data-view-target.
    Los botones deshabilitados (.admin-nav__btn--soon) no tienen
    data-view-target, así que nunca disparan un cambio de vista. */
+// `overflow: hidden` en body NO alcanza para bloquear el scroll en Safari
+// iOS: la página igual puede "saltar" o hacer zoom al abrir/cerrar el
+// drawer porque el viewport visual sigue moviéndose por debajo. La técnica
+// robusta es fijar el body en su posición actual (position: fixed + top
+// negativo con el scrollY guardado) y restaurar el scroll exacto al cerrar.
+// Además se compensa el ancho de la scrollbar (relevante en tablets/
+// desktop angosto) para que el contenido no "salte" horizontalmente al
+// desaparecer la barra.
+let lockedScrollY = 0;
+
+function lockBodyScroll() {
+  lockedScrollY = window.scrollY || window.pageYOffset || 0;
+  const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${lockedScrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+  if (scrollbarWidth > 0) {
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
+  }
+}
+
+function unlockBodyScroll() {
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  document.body.style.paddingRight = '';
+  window.scrollTo(0, lockedScrollY);
+}
+
 function initAdminSidebarDrawer() {
   const nav = document.getElementById('admin-nav');
   const toggle = document.getElementById('admin-menu-toggle');
@@ -3386,7 +3419,7 @@ function initAdminSidebarDrawer() {
       requestAnimationFrame(() => overlay.classList.add('is-visible'));
     }
     toggle.setAttribute('aria-expanded', 'true');
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
   };
 
   const close = () => {
@@ -3398,7 +3431,7 @@ function initAdminSidebarDrawer() {
       }, 200);
     }
     toggle.setAttribute('aria-expanded', 'false');
-    document.body.style.overflow = '';
+    unlockBodyScroll();
   };
 
   const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
@@ -3442,9 +3475,120 @@ function initAdminSidebarDrawer() {
 }
 
 /* ═══════════════════════════════════════════
+   9b. BUSCADOR DE SECCIONES (nav)
+   ═══════════════════════════════════════════
+   El HTML y el CSS ya traían todo listo (.admin-nav__btn[hidden],
+   .admin-nav__group[hidden], #admin-nav-empty) pero no había JS que
+   conectara el input con el filtrado — por eso no hacía nada. */
+function normalizeSearchText(str) {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function initAdminNavSearch() {
+  const input = document.getElementById('admin-nav-search');
+  const groups = document.querySelectorAll('.admin-nav__group');
+  const emptyState = document.getElementById('admin-nav-empty');
+
+  if (!input || !groups.length) return;
+
+  const filter = () => {
+    const query = normalizeSearchText(input.value);
+    let visibleCount = 0;
+
+    groups.forEach((group) => {
+      const buttons = group.querySelectorAll('.admin-nav__btn');
+      let groupHasMatch = false;
+
+      buttons.forEach((btn) => {
+        const label = btn.querySelector('.admin-nav__btn-label')?.textContent ?? '';
+        const matches = !query || normalizeSearchText(label).includes(query);
+        btn.hidden = !matches;
+        if (matches) {
+          groupHasMatch = true;
+          visibleCount += 1;
+        }
+      });
+
+      group.hidden = !groupHasMatch;
+    });
+
+    if (emptyState) emptyState.hidden = visibleCount > 0;
+  };
+
+  input.addEventListener('input', filter);
+
+  // Limpiar la búsqueda con Escape (sin cerrar el drawer si hay texto)
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && input.value) {
+      e.stopPropagation();
+      input.value = '';
+      filter();
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   9c. COLAPSAR SIDEBAR A RAIL (solo desktop)
+   ═══════════════════════════════════════════
+   El CSS del modo rail (.is-collapsed) ya estaba completo, pero nada
+   togglaba la clase — por eso el botón no hacía nada. */
+function initAdminNavCollapse() {
+  const nav = document.getElementById('admin-nav');
+  const toggle = document.getElementById('admin-nav-collapse');
+  if (!nav || !toggle) return;
+
+  const STORAGE_KEY = 'admin-nav-collapsed';
+
+  const setCollapsed = (collapsed) => {
+    nav.classList.toggle('is-collapsed', collapsed);
+    toggle.setAttribute('aria-pressed', String(collapsed));
+    const label = collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+    try {
+      localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* localStorage no disponible (modo privado, etc.) — no es crítico */
+    }
+  };
+
+  // Restaurar preferencia guardada. En móvil no afecta nada: la media
+  // query del drawer ignora .is-collapsed por fuera de escritorio.
+  let stored = null;
+  try {
+    stored = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignorar */
+  }
+  if (stored === '1') setCollapsed(true);
+
+  toggle.addEventListener('click', () => {
+    setCollapsed(!nav.classList.contains('is-collapsed'));
+  });
+
+  // El tooltip del modo rail usa var(--nav-tooltip-y, 50%) — sin esto
+  // siempre aparecía al centro de la pantalla en vez de junto al botón.
+  const placeTooltip = (btn) => {
+    const rect = btn.getBoundingClientRect();
+    nav.style.setProperty('--nav-tooltip-y', `${rect.top + rect.height / 2}px`);
+  };
+
+  nav.querySelectorAll('.admin-nav__btn').forEach((btn) => {
+    btn.addEventListener('mouseenter', () => placeTooltip(btn));
+    btn.addEventListener('focus', () => placeTooltip(btn));
+  });
+}
+
+/* ═══════════════════════════════════════════
    10. ARRANQUE
    ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
   initAdminSidebarDrawer();
+  initAdminNavSearch();
+  initAdminNavCollapse();
 });

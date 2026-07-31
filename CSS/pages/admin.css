@@ -56,6 +56,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--color-bg);
 }
 
 body {
@@ -617,9 +618,14 @@ select.form-field__input {
 /* ═══════════════════════════════════════════
    13. INSUMOS
    ═══════════════════════════════════════════ */
+/* Grid en vez de flex a propósito: con minmax(200px, 1fr) todas las
+   columnas miden EXACTAMENTE lo mismo entre sí (uniformidad) y además se
+   reparten el espacio sobrante del contenedor en partes iguales
+   (aprovechamiento de espacio) — a diferencia de flex-grow, que daba
+   anchos distintos según cuántos campos cayeran en cada fila. */
 .insumo-form {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0 var(--space-4);
   background: var(--color-surface);
   padding: var(--space-5);
@@ -629,17 +635,14 @@ select.form-field__input {
   margin-bottom: var(--space-6);
 }
 
-/* flex en vez de grid a propósito: con grid + auto-fit, la última fila
-   incompleta (ej. 6 campos en una fila de 4 columnas) deja huecos vacíos
-   y los elementos quedan pegados a la izquierda. Con flex + flex-grow,
-   los elementos de esa fila sobrante se expanden para llenar el ancho. */
-.insumo-form > .form-field,
-.insumo-form > .insumo-form__group {
-  flex: 1 1 200px;
-}
-
-.insumo-form__wide {
-  flex: 1 1 100%;
+/* Los campos/fieldsets ocupan su columna tal cual — grid ya los hace
+   uniformes, no necesitan flex-basis. Los "anchos" (Ingredientes, Notas)
+   y los fieldsets (que agrupan su propio sub-grid) sí deben ocupar la
+   fila completa sin importar cuántas columnas haya. */
+.insumo-form > .insumo-form__group,
+.insumo-form > .form-field.insumo-form__wide,
+.insumo-form > .insumo-form__wide {
+  grid-column: 1 / -1;
 }
 
 .insumo-form__actions {
@@ -813,9 +816,9 @@ select.form-field__input {
    ═══════════════════════════════════════════ */
 .receta-form__ingredientes-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
 
@@ -986,24 +989,19 @@ select.form-field__input {
 }
 
 .proveedor-form__grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0 var(--space-4);
 }
 
-.proveedor-form__grid > .form-field {
-  flex: 1 1 220px;
-}
-
 .proveedor-form__wide {
-  flex: 1 1 100%;
+  grid-column: 1 / -1;
 }
 
 .insumo-form__group {
   border: none;
   padding: 0;
   margin: 0 0 var(--space-5);
-  flex: 1 1 100%;
 }
 
 .insumo-form__legend {
@@ -1017,13 +1015,9 @@ select.form-field__input {
 }
 
 .insumo-form__group-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0 var(--space-4);
-}
-
-.insumo-form__group-grid > .form-field {
-  flex: 1 1 220px;
 }
 
 .insumo-form__checklist {
@@ -1107,13 +1101,12 @@ select.form-field__input {
   }
 
   /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
-     sola columna en vez de que el flex intente encajar 2 columnas
+     sola columna en vez de que el grid intente encajar 2 columnas
      angostas e incómodas de usar con el dedo. */
-  .insumo-form > .form-field,
-  .insumo-form > .insumo-form__group,
-  .insumo-form__group-grid > .form-field,
-  .proveedor-form__grid > .form-field {
-    flex-basis: 100%;
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: 1fr;
   }
 
   /* Fila de ingrediente (select + cantidad + quitar): en una columna se
