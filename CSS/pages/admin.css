@@ -1921,3 +1921,252 @@ select.form-field__input {
     transition-duration: 1ms;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+17. CENTRADO GLOBAL POR DISPOSITIVO
+Asegura que .view y sus hijos se vean centrados y legibles
+en móvil, tablet, desktop, TV y Smart TV.
+═══════════════════════════════════════════════════════════ */
+
+/* ── Base: el contenedor .view siempre centrado ── */
+.view {
+  max-width: 1200px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Los formularios .insumo-form y toolbars heredan el centrado del padre,
+   pero forzamos alineación interna para que los botones/actions queden
+   centrados en móvil cuando el formulario es de una sola columna. */
+.insumo-form__actions,
+.horneadas-toolbar {
+  justify-content: center;
+}
+
+.dashboard-header {
+  text-align: center;
+  align-items: center;
+}
+
+.dashboard-header__title {
+  width: 100%;
+}
+
+/* ── Móvil pequeño (≤ 480px): todo a ancho completo y centrado ── */
+@media (max-width: 480px) {
+  body {
+    padding: var(--space-3);
+  }
+
+  .view {
+    max-width: 100%;
+    padding-inline: var(--space-2);
+  }
+
+  .insumo-form,
+  .proveedor-form,
+  .insumos {
+    width: 100%;
+    padding: var(--space-4);
+  }
+
+  .insumo-form__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .insumo-form__actions .btn {
+    width: 100%;
+  }
+
+  .horneadas-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .horneadas-toolbar .btn {
+    width: 100%;
+  }
+
+  .stats {
+    flex-direction: column;
+  }
+
+  .stats > * {
+    flex-basis: 100%;
+  }
+}
+
+/* ── Móvil / tablet vertical (≤ 768px) ── */
+@media (max-width: 768px) {
+  .view {
+    max-width: 100%;
+  }
+
+  .dashboard-header {
+    text-align: center;
+  }
+
+  .dashboard-header__title h1 {
+    font-size: 1.5rem;
+  }
+
+  .insumo-form,
+  .proveedor-form {
+    padding: var(--space-4);
+  }
+
+  /* Centrar los fieldsets dentro del form de Insumos */
+  .insumo-form__group {
+    text-align: left; /* el legend queda a la izquierda, es más legible */
+    width: 100%;
+  }
+
+  .insumo-form__checklist {
+    justify-content: center;
+  }
+
+  .section-subtitle {
+    text-align: center;
+  }
+}
+
+/* ── Tablet horizontal / laptop pequeño (769px – 1279px) ── */
+@media (min-width: 769px) and (max-width: 1279px) {
+  .view {
+    max-width: 960px;
+    margin-inline: auto;
+  }
+}
+
+/* ── Desktop estándar (1280px – 1599px) ── */
+@media (min-width: 1280px) and (max-width: 1599px) {
+  .view {
+    max-width: 1200px;
+  }
+}
+
+/* ── Smart TV / monitores grandes (≥ 1600px) ── */
+@media (min-width: 1600px) {
+  .view {
+    max-width: 1400px;
+  }
+
+  /* Escalar tipografía del contenido principal para que se lea bien a distancia */
+  .dashboard-header__title h1 {
+    font-size: 2rem;
+  }
+
+  .dashboard-header__subtitle {
+    font-size: 1.05rem;
+  }
+
+  .section-subtitle {
+    font-size: 1.4rem;
+  }
+
+  .insumo-form,
+  .proveedor-form {
+    padding: var(--space-6);
+  }
+
+  .form-field__label {
+    font-size: 0.95rem;
+  }
+
+  .form-field__input {
+    font-size: 1.05rem;
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .btn {
+    font-size: 1rem;
+    padding: var(--space-4) var(--space-6);
+  }
+
+  .stat-card__value {
+    font-size: 2.25rem;
+  }
+
+  .stat-card__label {
+    font-size: 0.9rem;
+  }
+
+  .insumo-table,
+  .order-table {
+    font-size: 1rem;
+  }
+
+  .insumo-table th,
+  .insumo-table td,
+  .order-table th,
+  .order-table td {
+    padding: var(--space-4) var(--space-6);
+  }
+}
+
+/* ── Smart TV 4K / monitores muy grandes (≥ 2400px) ── */
+@media (min-width: 2400px) {
+  .view {
+    max-width: 1800px;
+  }
+
+  .dashboard-header__title h1 {
+    font-size: 2.5rem;
+  }
+
+  .dashboard-header__subtitle {
+    font-size: 1.2rem;
+  }
+
+  .section-subtitle {
+    font-size: 1.65rem;
+  }
+
+  .form-field__label {
+    font-size: 1.1rem;
+  }
+
+  .form-field__input {
+    font-size: 1.15rem;
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .btn {
+    font-size: 1.1rem;
+    padding: var(--space-5) var(--space-8);
+  }
+
+  .stat-card__value {
+    font-size: 2.75rem;
+  }
+
+  .stat-card__label {
+    font-size: 1rem;
+  }
+
+  .insumo-table,
+  .order-table {
+    font-size: 1.15rem;
+  }
+
+  .insumo-table th,
+  .insumo-table td,
+  .order-table th,
+  .order-table td {
+    padding: var(--space-5) var(--space-8);
+  }
+
+  .insumo-form,
+  .proveedor-form {
+    padding: var(--space-8);
+  }
+}
+
+/* ── Refuerzo: cuando hay sidebar en desktop, el .view ya tiene max-width
+   definido en la regla original, pero forzamos centrado explícito ── */
+@media (min-width: 900px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    margin-inline: auto;
+  }
+}
