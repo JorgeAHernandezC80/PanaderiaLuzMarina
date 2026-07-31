@@ -1267,11 +1267,10 @@ main,
     width: 100%;
   }
 
-  /* 8. Tablas convertidas en tarjetas */
+  /* 8. Tablas convertidas en tarjetas - PEDIDOS E INSUMOS */
   .order-table,
   .insumo-table,
-  .horneadas-table,
-  .inventario-table {
+  .horneadas-table {
     display: block;
     width: 100%;
     margin: var(--space-3) 0;
@@ -1280,15 +1279,13 @@ main,
 
   .order-table thead,
   .insumo-table thead,
-  .horneadas-table thead,
-  .inventario-table thead {
+  .horneadas-table thead {
     display: none;
   }
 
   .order-table tbody,
   .insumo-table tbody,
-  .horneadas-table tbody,
-  .inventario-table tbody {
+  .horneadas-table tbody {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -1298,8 +1295,7 @@ main,
 
   .order-table tr,
   .insumo-table tr,
-  .horneadas-table tr,
-  .inventario-table tr {
+  .horneadas-table tr {
     display: flex;
     flex-direction: column;
     background: var(--color-surface);
@@ -1314,8 +1310,7 @@ main,
 
   .order-table td,
   .insumo-table td,
-  .horneadas-table td,
-  .inventario-table td {
+  .horneadas-table td {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -1330,15 +1325,13 @@ main,
 
   .order-table td:last-child,
   .insumo-table td:last-child,
-  .horneadas-table td:last-child,
-  .inventario-table td:last-child {
+  .horneadas-table td:last-child {
     border-bottom: none;
   }
 
   .order-table td::before,
   .insumo-table td::before,
-  .horneadas-table td::before,
-  .inventario-table td::before {
+  .horneadas-table td::before {
     content: attr(data-label);
     font-weight: 700;
     text-transform: uppercase;
@@ -1496,41 +1489,354 @@ main,
 }
 
 /* ═══════════════════════════════════════════
-   20. INVENTARIO - VARIANTE CON MÁS ESPACIO
+   20. INVENTARIO - DISEÑO PROFESIONAL
    ═══════════════════════════════════════════ */
-/* Versión con más aire entre elementos */
-.inventario-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
 
-.inventario-wrapper .horneadas-toolbar {
-  margin-bottom: 0;
-  padding-bottom: var(--space-5);
-  border-bottom: 2px solid var(--color-border);
-}
-
-.inventario-wrapper .inventario-table-container {
-  margin-top: 0;
-  padding: var(--space-4);
+/* Contenedor principal con sombra y bordes elegantes */
+#inventario-container.insumos {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+  margin-top: var(--space-4);
 }
 
-/* Para el responsive */
+#inventario-container.insumos:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Tabla con mejor espaciado */
+#inventario-container .insumo-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+  table-layout: auto;
+}
+
+/* Encabezado con gradiente profesional */
+#inventario-container .insumo-table thead {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+}
+
+#inventario-container .insumo-table thead th {
+  padding: var(--space-4) var(--space-4);
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 700;
+  border-bottom: none;
+  white-space: nowrap;
+}
+
+#inventario-container .insumo-table thead th:first-child {
+  padding-left: var(--space-5);
+  border-radius: var(--radius-sm) 0 0 0;
+}
+
+#inventario-container .insumo-table thead th:last-child {
+  padding-right: var(--space-5);
+  border-radius: 0 var(--radius-sm) 0 0;
+}
+
+/* Filas con hover suave */
+#inventario-container .insumo-table tbody tr {
+  transition: all var(--transition);
+  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+}
+
+#inventario-container .insumo-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+#inventario-container .insumo-table tbody tr:hover {
+  background: var(--color-soft-bg);
+  transform: translateX(2px);
+}
+
+/* Celdas con mejor padding */
+#inventario-container .insumo-table td {
+  padding: var(--space-4) var(--space-4);
+  vertical-align: middle;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: inherit;
+}
+
+#inventario-container .insumo-table td:first-child {
+  padding-left: var(--space-5);
+}
+
+#inventario-container .insumo-table td:last-child {
+  padding-right: var(--space-5);
+}
+
+#inventario-container .insumo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Nombre del producto con icono */
+#inventario-container .insumo-table__nombre {
+  font-weight: 700;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+#inventario-container .insumo-table__nombre::before {
+  content: '🍩';
+  margin-right: var(--space-3);
+  opacity: 0.8;
+  font-size: 1rem;
+  display: inline-block;
+}
+
+/* Números centrados con estilo */
+#inventario-container .inventario-table__num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Disponible destacado */
+#inventario-container .inventario-table__disponible {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* Badge de stock bajo moderno y elegante */
+#inventario-container .insumo-badge--bajo-stock {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #fdecea;
+  color: var(--color-danger);
+  border: 1px solid rgba(192, 57, 43, 0.2);
+  transition: all var(--transition);
+}
+
+#inventario-container .insumo-badge--bajo-stock:hover {
+  background: var(--color-danger);
+  color: white;
+  border-color: var(--color-danger);
+}
+
+/* Stock mínimo con input elegante */
+#inventario-container .inventario-table__stock-minimo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+#inventario-container .inventario-table__stock-minimo input {
+  width: 4rem;
+  padding: 0.3rem 0.2rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: all var(--transition);
+  outline: none;
+}
+
+#inventario-container .inventario-table__stock-minimo input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.1);
+}
+
+#inventario-container .inventario-table__stock-minimo input:hover {
+  border-color: var(--color-primary-hover);
+}
+
+/* Indicador de guardado con animación */
+#inventario-container .inventario-table__stock-minimo__guardado {
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity var(--transition);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#inventario-container .inventario-table__stock-minimo__guardado--visible {
+  opacity: 1;
+}
+
+/* Filas con stock bajo - borde lateral elegante */
+#inventario-container .insumo-row--bajo-stock {
+  border-left: 4px solid var(--color-danger);
+  background: #fdf8f5;
+}
+
+#inventario-container .insumo-row--bajo-stock:hover {
+  background: #fdf3ed;
+}
+
+/* ═══════════════════════════════════════════
+   21. INVENTARIO - RESPONSIVE PROFESIONAL
+   ═══════════════════════════════════════════ */
 @media (max-width: 768px) {
-  .inventario-wrapper {
+  #inventario-container.insumos {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    margin-top: var(--space-3);
+  }
+
+  #inventario-container .insumo-table thead {
+    display: none;
+  }
+
+  #inventario-container .insumo-table tbody {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-4);
+    padding: var(--space-3);
   }
 
-  .inventario-wrapper .horneadas-toolbar {
-    padding-bottom: var(--space-4);
+  #inventario-container .insumo-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition);
+    border-left-width: 5px;
   }
 
-  .inventario-wrapper .inventario-table-container {
+  #inventario-container .insumo-row--bajo-stock {
+    border-left-color: var(--color-danger);
+    background: #fdf8f5;
+  }
+
+  #inventario-container .insumo-table tbody tr:hover {
+    transform: translateX(0);
+    box-shadow: var(--shadow-md);
+  }
+
+  #inventario-container .insumo-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-soft);
+    text-align: right;
+    font-size: 0.85rem;
+    gap: var(--space-3);
+    background: transparent;
+    border-bottom-color: var(--color-border-soft);
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  #inventario-container .insumo-table td:last-child {
+    border-bottom: none;
+  }
+
+  #inventario-container .insumo-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+
+  /* Nombre del producto en móvil - destacado */
+  #inventario-container .insumo-table__nombre {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  #inventario-container .insumo-table__nombre::before {
+    content: '🍩';
+    margin-right: var(--space-2);
+    opacity: 0.8;
+  }
+
+  /* Disponible en móvil - con fondo */
+  #inventario-container .inventario-table__disponible {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-accent);
+    background: rgba(39, 174, 96, 0.08);
+    padding: 0.2rem 0.8rem;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Badge en móvil más pequeño */
+  #inventario-container .insumo-badge--bajo-stock {
+    font-size: 0.55rem;
+    padding: 0.15rem 0.6rem;
+  }
+
+  /* Stock mínimo en móvil */
+  #inventario-container .inventario-table__stock-minimo {
+    justify-content: flex-end;
+  }
+
+  #inventario-container .inventario-table__stock-minimo input {
+    width: 3.5rem;
+    padding: 0.2rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Teléfonos muy pequeños */
+@media (max-width: 480px) {
+  #inventario-container .insumo-table tbody {
+    gap: var(--space-3);
     padding: var(--space-2);
+  }
+
+  #inventario-container .insumo-table tbody tr {
+    padding: var(--space-3);
+  }
+
+  #inventario-container .insumo-table td {
+    font-size: 0.8rem;
+    padding: var(--space-1) 0;
+  }
+
+  #inventario-container .insumo-table td::before {
+    min-width: 60px;
+    font-size: 0.65rem;
+  }
+
+  #inventario-container .insumo-table__nombre {
+    font-size: 0.9rem;
+  }
+
+  #inventario-container .inventario-table__disponible {
+    font-size: 0.9rem;
+    padding: 0.1rem 0.6rem;
   }
 }
