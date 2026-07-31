@@ -11,6 +11,18 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
 const { convertirAGramos, costoPorGramo } = require('./units');
+
+/* Zona horaria de referencia del negocio (Houston). El backend calcula
+   "hoy" con esto cuando no viene fecha explícita en la petición (ej.
+   GET /horneadas sin ?fecha=) — nunca con
+   new Date().toISOString().slice(0, 10), que da la fecha en UTC y se
+   adelanta un día por las noches (Houston va 5-6h detrás de UTC). */
+const HOUSTON_TZ = 'America/Chicago';
+
+function hoyHouston() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: HOUSTON_TZ });
+}
+
 const {
   validarOrden,
   ValidationError,
@@ -1222,8 +1234,7 @@ function calcularInventario(fechaConsulta) {
 
 app.get('/inventario', requireAuth, (req, res) => {
   const { fecha } = req.query;
-  const fechaConsulta =
-    fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : new Date().toISOString().slice(0, 10);
+  const fechaConsulta = fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : hoyHouston();
 
   try {
     const productos = calcularInventario(fechaConsulta);
@@ -1242,7 +1253,7 @@ app.get('/inventario', requireAuth, (req, res) => {
  * de contabilidad interna sin sentido para quien solo quiere saber si hay
  * pan o no. */
 app.get('/inventario/disponible', (req, res) => {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyHouston();
   try {
     const productos = calcularInventario(hoy).map((p) => ({
       productoId: p.productoId,
@@ -1331,11 +1342,9 @@ app.post('/recetas', requireAuth, rateLimit, (req, res) => {
     .prepare('SELECT id FROM recetas WHERE producto_id = ?')
     .get(datos.productoId);
   if (existente) {
-    return res
-      .status(400)
-      .json({
-        error: `Ya existe una receta para ${datos.productoNombre}. Edítala en vez de crear otra.`,
-      });
+    return res.status(400).json({
+      error: `Ya existe una receta para ${datos.productoNombre}. Edítala en vez de crear otra.`,
+    });
   }
 
   const id = crypto.randomUUID();

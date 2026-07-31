@@ -20,6 +20,7 @@ module.exports = [
       'server.js',
       'db.js',
       'validation.js',
+      'units.js',
       'babel.config.js',
       'jest.config.js',
       'eslint.config.js',

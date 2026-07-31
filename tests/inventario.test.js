@@ -245,10 +245,11 @@ describe('PUT /productos/:id/stock-minimo', () => {
 });
 
 describe('GET /inventario/disponible (público, sin auth)', () => {
-  // Este endpoint siempre calcula sobre HOY (la fecha real del reloj), a
-  // diferencia del resto de los tests de este archivo que usan la fecha
-  // fija FECHA — por eso necesita su propia fecha "de hoy" para sembrar datos.
-  const HOY = new Date().toISOString().slice(0, 10);
+  // Este endpoint siempre calcula sobre HOY en la zona horaria del negocio
+  // (Houston), igual que hoyHouston() en server.js — no en UTC. Si este test
+  // calculara "hoy" distinto al servidor, podrían desincronizarse cerca de
+  // la medianoche UTC (que en Houston todavía es tarde del día anterior).
+  const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
   test('no exige token de sesión', async () => {
     const res = await request(app).get('/inventario/disponible');

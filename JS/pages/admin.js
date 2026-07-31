@@ -7,6 +7,16 @@ import { escapeHTML } from '../core/cart.js';
 import { formatPrice, pluralizeEs } from '../core/format.js';
 import { API_BASE, apiFetch } from '../core/api.js';
 
+/* Zona horaria de referencia del negocio (Houston). Todo lo que necesite
+   "la fecha de hoy" debe pasar por hoyHouston(), nunca por
+   new Date().toISOString().slice(0, 10) — ese método da la fecha en UTC,
+   que se adelanta un día por las noches (Houston va 5-6h detrás de UTC). */
+const HOUSTON_TZ = 'America/Chicago';
+
+function hoyHouston() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: HOUSTON_TZ });
+}
+
 /* Ciclo de vida de una orden: Recibida → En Preparación → Preparada →
    Entregada. El valor interno (clave) es el que viaja al backend en
    `estado`; `label` y `siguiente` (próximo estado + texto del botón de
@@ -317,7 +327,7 @@ const Auth = {
    ═══════════════════════════════════════════ */
 const Api = {
   async getTodayOrders() {
-    const fecha = new Date().toISOString().slice(0, 10);
+    const fecha = hoyHouston();
 
     try {
       const res = await apiFetch(`/ordenes?fecha=${fecha}`, {
@@ -411,6 +421,7 @@ const Format = {
 
   todayDate() {
     return new Date().toLocaleDateString('es-US', {
+      timeZone: HOUSTON_TZ,
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -599,7 +610,7 @@ const Proveedores = {
    revisar la trazabilidad de cualquier día pasado. */
 const Horneadas = {
   async listar(fecha) {
-    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const fechaConsulta = fecha || hoyHouston();
     try {
       const res = await apiFetch(`/horneadas?fecha=${fechaConsulta}`, {
         timeout: 10_000,
@@ -682,7 +693,7 @@ const Horneadas = {
    ═══════════════════════════════════════════ */
 const Inventario = {
   async ver(fecha) {
-    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const fechaConsulta = fecha || hoyHouston();
     try {
       const res = await apiFetch(`/inventario?fecha=${fechaConsulta}`, {
         timeout: 10_000,
@@ -711,7 +722,7 @@ const Inventario = {
    ═══════════════════════════════════════════ */
 const Ajustes = {
   async listar(fecha) {
-    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const fechaConsulta = fecha || hoyHouston();
     try {
       const res = await apiFetch(`/ajustes-inventario?fecha=${fechaConsulta}`, {
         timeout: 10_000,
@@ -903,7 +914,7 @@ const Recetas = {
    ═══════════════════════════════════════════ */
 const Producciones = {
   async listar(fecha) {
-    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const fechaConsulta = fecha || hoyHouston();
     try {
       const res = await apiFetch(`/producciones?fecha=${fechaConsulta}`, {
         timeout: 10_000,
@@ -1282,7 +1293,7 @@ const Render = {
       vencimientoCell.textContent = '—';
     } else {
       vencimientoCell.textContent = insumo.fechaVencimiento;
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = hoyHouston();
       const diasRestantes = Math.floor(
         (new Date(insumo.fechaVencimiento) - new Date(hoy)) / (1000 * 60 * 60 * 24),
       );
@@ -1987,15 +1998,15 @@ const App = {
   // Fecha que se está consultando en la pestaña Horneadas — por defecto hoy,
   // pero el toolbar de la vista permite cambiarla para revisar trazabilidad
   // de días anteriores.
-  _horneadaFechaConsulta: new Date().toISOString().slice(0, 10),
+  _horneadaFechaConsulta: hoyHouston(),
   _inventarioCache: [],
   _ajustesCache: [],
   // Misma idea que _horneadaFechaConsulta, para la pestaña Inventario.
-  _inventarioFechaConsulta: new Date().toISOString().slice(0, 10),
+  _inventarioFechaConsulta: hoyHouston(),
   _recetasCache: [],
   _insumosCacheGeneral: [], // insumos reales, para poblar los selects de ingredientes
   _produccionesCache: [],
-  _produccionFechaConsulta: new Date().toISOString().slice(0, 10),
+  _produccionFechaConsulta: hoyHouston(),
 
   init() {
     this._bindEvents();
@@ -2072,13 +2083,13 @@ const App = {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
     this._horneadaFechaConsulta = fecha;
     const btnHoy = document.querySelector(CONFIG.SELECTORS.btnHorneadaHoy);
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     if (btnHoy) btnHoy.hidden = fecha === hoy;
     this.refreshHorneadas();
   },
 
   volverAHoyHorneadas() {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
     if (filtroEl) filtroEl.value = hoy;
     this.verFechaHorneadas(hoy);
@@ -2110,13 +2121,13 @@ const App = {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
     this._inventarioFechaConsulta = fecha;
     const btnHoy = document.querySelector(CONFIG.SELECTORS.btnInventarioHoy);
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     if (btnHoy) btnHoy.hidden = fecha === hoy;
     this.refreshInventario();
   },
 
   volverAHoyInventario() {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     const filtroEl = document.querySelector(CONFIG.SELECTORS.inventarioFiltroFecha);
     if (filtroEl) filtroEl.value = hoy;
     this.verFechaInventario(hoy);
@@ -2364,13 +2375,13 @@ const App = {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return;
     this._produccionFechaConsulta = fecha;
     const btnHoy = document.querySelector(CONFIG.SELECTORS.btnProduccionHoy);
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     if (btnHoy) btnHoy.hidden = fecha === hoy;
     this.refreshProducciones();
   },
 
   volverAHoyProduccion() {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyHouston();
     const filtroEl = document.querySelector(CONFIG.SELECTORS.produccionFiltroFecha);
     if (filtroEl) filtroEl.value = hoy;
     this.verFechaProduccion(hoy);
@@ -2549,7 +2560,7 @@ const App = {
     if (!productoId) return;
 
     const fechaEl = document.querySelector(CONFIG.SELECTORS.horneadaFecha);
-    const fecha = fechaEl?.value || new Date().toISOString().slice(0, 10);
+    const fecha = fechaEl?.value || hoyHouston();
 
     const producciones = await Producciones.listar(fecha);
     if (!Array.isArray(producciones)) return;
@@ -3293,7 +3304,7 @@ const App = {
       const filtroEl = document.querySelector(CONFIG.SELECTORS.produccionFiltroFecha);
       if (filtroEl && !filtroEl.value) filtroEl.value = this._produccionFechaConsulta;
       const fechaEl = document.querySelector(CONFIG.SELECTORS.produccionFecha);
-      if (fechaEl && !fechaEl.value) fechaEl.value = new Date().toISOString().slice(0, 10);
+      if (fechaEl && !fechaEl.value) fechaEl.value = hoyHouston();
       this.refreshProducciones();
     }
   },
@@ -3332,7 +3343,7 @@ const App = {
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
       if (dateEl) {
         dateEl.textContent = Format.todayDate();
-        dateEl.dateTime = new Date().toISOString().slice(0, 10);
+        dateEl.dateTime = hoyHouston();
       }
 
       this.refresh();
