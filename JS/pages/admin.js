@@ -3364,11 +3364,13 @@ const App = {
 };
 
 /* ═══════════════════════════════════════════
-   9. SIDEBAR MÓVIL (drawer)
+   9. SIDEBAR (drawer móvil + rail colapsable en desktop)
    ═══════════════════════════════════════════
    No toca _switchView: sigue usando .admin-nav__btn + data-view-target.
    Los botones deshabilitados (.admin-nav__btn--soon) no tienen
    data-view-target, así que nunca disparan un cambio de vista. */
+const NAV_COLLAPSED_KEY = 'plm_admin_nav_collapsed';
+
 function initAdminSidebarDrawer() {
   const nav = document.getElementById('admin-nav');
   const toggle = document.getElementById('admin-menu-toggle');
@@ -3376,10 +3378,23 @@ function initAdminSidebarDrawer() {
   const topbar = document.getElementById('admin-topbar');
   const logoutMobile = document.getElementById('btn-logout-mobile');
   const logoutDesktop = document.getElementById('btn-logout');
+  const collapseBtn = document.getElementById('admin-nav-collapse');
+  const search = document.getElementById('admin-nav-search');
+  const emptyMsg = document.getElementById('admin-nav-empty');
 
   if (!nav || !toggle) return;
 
+  let lastFocused = null;
+
+  const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
+
+  const focusables = () =>
+    Array.from(nav.querySelectorAll('button:not([disabled]), input, a[href]')).filter(
+      (el) => el.offsetParent !== null,
+    );
+
   const open = () => {
+    lastFocused = document.activeElement;
     nav.classList.add('is-open');
     if (overlay) {
       overlay.hidden = false;
@@ -3387,9 +3402,10 @@ function initAdminSidebarDrawer() {
     }
     toggle.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
+    focusables()[0]?.focus();
   };
 
-  const close = () => {
+  const close = ({ restoreFocus = false } = {}) => {
     nav.classList.remove('is-open');
     if (overlay) {
       overlay.classList.remove('is-visible');
@@ -3399,22 +3415,125 @@ function initAdminSidebarDrawer() {
     }
     toggle.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
+    if (restoreFocus) (lastFocused instanceof HTMLElement ? lastFocused : toggle).focus();
   };
 
-  const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
-
   toggle.addEventListener('click', () => {
-    if (nav.classList.contains('is-open')) close();
+    if (nav.classList.contains('is-open')) close({ restoreFocus: true });
     else open();
   });
 
-  overlay?.addEventListener('click', close);
+  overlay?.addEventListener('click', () => close());
 
   // Cerrar drawer al elegir una sección (solo móvil)
   nav.querySelectorAll('.admin-nav__btn[data-view-target]').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (isMobile()) close();
     });
+  });
+
+  /* ── Rail colapsable (desktop): se recuerda entre sesiones ── */
+  const applyCollapsed = (collapsed) => {
+    nav.classList.toggle('is-collapsed', collapsed);
+    if (!collapseBtn) return;
+    const label = collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral';
+    collapseBtn.setAttribute('aria-pressed', String(collapsed));
+    collapseBtn.setAttribute('aria-label', label);
+    collapseBtn.title = label;
+    if (collapsed && search) {
+      search.value = '';
+      search.dispatchEvent(new Event('input'));
+    }
+  };
+
+  let storedCollapsed = false;
+  try {
+    storedCollapsed = localStorage.getItem(NAV_COLLAPSED_KEY) === '1';
+  } catch {
+    storedCollapsed = false;
+  }
+  applyCollapsed(storedCollapsed);
+
+  collapseBtn?.addEventListener('click', () => {
+    const collapsed = !nav.classList.contains('is-collapsed');
+    applyCollapsed(collapsed);
+    try {
+      localStorage.setItem(NAV_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* modo privado: el estado solo dura esta sesión */
+    }
+  });
+
+  /* ── Buscador de secciones ── */
+  const normalize = (str) =>
+    str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  search?.addEventListener('input', () => {
+    const query = normalize(search.value.trim());
+    let visibles = 0;
+
+    nav.querySelectorAll('.admin-nav__group').forEach((group) => {
+      let groupVisibles = 0;
+      group.querySelectorAll('.admin-nav__btn').forEach((btn) => {
+        const label = normalize(btn.querySelector('.admin-nav__btn-label')?.textContent ?? '');
+        const match = !query || label.includes(query);
+        btn.hidden = !match;
+        if (match) groupVisibles += 1;
+      });
+      group.hidden = groupVisibles === 0;
+      visibles += groupVisibles;
+    });
+
+    if (emptyMsg) emptyMsg.hidden = visibles > 0;
+  });
+
+  search?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && search.value) {
+      e.stopPropagation();
+      search.value = '';
+      search.dispatchEvent(new Event('input'));
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      nav.querySelector('.admin-nav__btn[data-view-target]:not([hidden])')?.click();
+    }
+  });
+
+  /* ── Navegación con flechas entre secciones ── */
+  nav.addEventListener('keydown', (e) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    const btn = e.target.closest?.('.admin-nav__btn');
+    if (!btn) return;
+    const items = Array.from(nav.querySelectorAll('.admin-nav__btn:not([disabled]):not([hidden])'));
+    if (items.length === 0) return;
+    e.preventDefault();
+    const i = items.indexOf(btn);
+    const next =
+      e.key === 'Home'
+        ? items[0]
+        : e.key === 'End'
+          ? items[items.length - 1]
+          : items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length];
+    next.focus();
+  });
+
+  /* ── Focus trap mientras el drawer está abierto ── */
+  nav.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !nav.classList.contains('is-open')) return;
+    const items = focusables();
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
 
   // Logout móvil → mismo comportamiento que desktop
@@ -3437,7 +3556,7 @@ function initAdminSidebarDrawer() {
 
   // Escape cierra el drawer
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && nav.classList.contains('is-open')) close();
+    if (e.key === 'Escape' && nav.classList.contains('is-open')) close({ restoreFocus: true });
   });
 }
 
