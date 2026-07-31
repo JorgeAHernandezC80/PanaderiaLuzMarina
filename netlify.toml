@@ -1,0 +1,11 @@
+# El frontend es estático, pero Netlify instala las dependencias del repo antes
+# de publicar y better-sqlite3 (9.x) no compila con la versión de Node que
+# Netlify usa por defecto (24.x). Se fija la misma que declara
+# package.json → engines.node.
+[build]
+  environment = { NODE_VERSION = "20" }
+  # Directorio de funciones serverless (vacío). Si no se fija, algunos sitios
+  # usan la raíz del repo e intentan desplegar babel.config.js,
+  # eslint.config.js y jest.config.js como funciones, lo que falla porque los
+  # nombres llevan puntos.
+  functions = "netlify/functions"

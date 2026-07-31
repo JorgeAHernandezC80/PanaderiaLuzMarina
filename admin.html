@@ -134,6 +134,29 @@
             <i class="fa-solid fa-bread-slice" aria-hidden="true"></i>
           </span>
           <span class="admin-nav__brand-text">Panadería Luz Marina</span>
+          <button
+            type="button"
+            id="admin-nav-collapse"
+            class="admin-nav__collapse"
+            aria-label="Colapsar menú lateral"
+            aria-pressed="false"
+            aria-controls="admin-nav"
+            title="Colapsar menú lateral"
+          >
+            <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="admin-nav__search">
+          <i class="fa-solid fa-magnifying-glass admin-nav__search-icon" aria-hidden="true"></i>
+          <label class="sr-only" for="admin-nav-search">Buscar sección</label>
+          <input
+            type="search"
+            id="admin-nav-search"
+            class="admin-nav__search-input"
+            placeholder="Buscar sección…"
+            autocomplete="off"
+          />
         </div>
 
         <div class="admin-nav__groups">
@@ -144,6 +167,7 @@
                 type="button"
                 class="admin-nav__btn is-active"
                 data-view-target="dashboard-view"
+                data-tooltip="Pedidos"
                 role="tab"
                 aria-selected="true"
               >
@@ -154,6 +178,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="horneadas-view"
+                data-tooltip="Horneadas"
                 role="tab"
                 aria-selected="false"
               >
@@ -165,6 +190,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="produccion-view"
+                data-tooltip="Producción"
                 role="tab"
                 aria-selected="false"
               >
@@ -182,6 +208,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="recetas-view"
+                data-tooltip="Recetas"
                 role="tab"
                 aria-selected="false"
               >
@@ -193,6 +220,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="insumos-view"
+                data-tooltip="Insumos"
                 role="tab"
                 aria-selected="false"
               >
@@ -203,6 +231,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Productos (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -220,6 +249,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="inventario-view"
+                data-tooltip="Inventario"
                 role="tab"
                 aria-selected="false"
               >
@@ -233,6 +263,7 @@
                 type="button"
                 class="admin-nav__btn"
                 data-view-target="proveedores-view"
+                data-tooltip="Proveedores"
                 role="tab"
                 aria-selected="false"
               >
@@ -243,6 +274,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Órdenes de compra (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -253,6 +285,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Lotes (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -263,6 +296,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Mermas (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -279,6 +313,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Costeo (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -289,6 +324,7 @@
               <button
                 type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Dashboard (pronto)"
                 disabled
                 aria-disabled="true"
               >
@@ -298,6 +334,10 @@
               </button>
             </div>
           </div>
+
+          <p id="admin-nav-empty" class="admin-nav__empty" role="status" hidden>
+            Sin secciones que coincidan
+          </p>
         </div>
 
         <div class="admin-nav__footer">
@@ -306,9 +346,10 @@
             id="btn-logout"
             class="btn btn--ghost admin-nav__logout"
             aria-label="Cerrar sesión de administrador"
+            data-tooltip="Cerrar sesión"
           >
             <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-            Cerrar sesión
+            <span>Cerrar sesión</span>
           </button>
         </div>
       </nav>
