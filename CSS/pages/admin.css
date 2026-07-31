@@ -325,10 +325,14 @@ select.form-field__input {
    8. STATS
    ═══════════════════════════════════════════ */
 .stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
+}
+
+.stats > * {
+  flex: 1 1 200px;
 }
 
 .stat-card {
@@ -614,8 +618,8 @@ select.form-field__input {
    13. INSUMOS
    ═══════════════════════════════════════════ */
 .insumo-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0 var(--space-4);
   background: var(--color-surface);
   padding: var(--space-5);
@@ -625,8 +629,17 @@ select.form-field__input {
   margin-bottom: var(--space-6);
 }
 
+/* flex en vez de grid a propósito: con grid + auto-fit, la última fila
+   incompleta (ej. 6 campos en una fila de 4 columnas) deja huecos vacíos
+   y los elementos quedan pegados a la izquierda. Con flex + flex-grow,
+   los elementos de esa fila sobrante se expanden para llenar el ancho. */
+.insumo-form > .form-field,
+.insumo-form > .insumo-form__group {
+  flex: 1 1 200px;
+}
+
 .insumo-form__wide {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
 }
 
 .insumo-form__actions {
@@ -825,9 +838,13 @@ select.form-field__input {
    15. PRODUCCIÓN
    ═══════════════════════════════════════════ */
 #producciones-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-5);
+}
+
+#producciones-container > * {
+  flex: 1 1 340px;
 }
 
 #producciones-container .empty-state {
@@ -960,20 +977,24 @@ select.form-field__input {
 }
 
 .proveedor-form__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0 var(--space-4);
 }
 
+.proveedor-form__grid > .form-field {
+  flex: 1 1 220px;
+}
+
 .proveedor-form__wide {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
 }
 
 .insumo-form__group {
   border: none;
   padding: 0;
   margin: 0 0 var(--space-5);
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
 }
 
 .insumo-form__legend {
@@ -987,9 +1008,13 @@ select.form-field__input {
 }
 
 .insumo-form__group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0 var(--space-4);
+}
+
+.insumo-form__group-grid > .form-field {
+  flex: 1 1 220px;
 }
 
 .insumo-form__checklist {
@@ -1027,8 +1052,8 @@ select.form-field__input {
    mayoría de los casos, pero las tarjetas de Producción (min 340px) son
    demasiado anchas incluso para muchas tablets en modo vertical. */
 @media (max-width: 900px) {
-  #producciones-container {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  #producciones-container > * {
+    flex-basis: 280px;
   }
 }
 
@@ -1041,8 +1066,8 @@ select.form-field__input {
     flex-direction: column;
   }
 
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
+  .stats > * {
+    flex-basis: calc(50% - var(--space-4) / 2);
   }
 
   .stat-card__value {
@@ -1073,12 +1098,13 @@ select.form-field__input {
   }
 
   /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
-     sola columna en vez de que el auto-fit intente encajar 2 columnas
+     sola columna en vez de que el flex intente encajar 2 columnas
      angostas e incómodas de usar con el dedo. */
-  .insumo-form,
-  .insumo-form__group-grid,
-  .proveedor-form__grid {
-    grid-template-columns: 1fr;
+  .insumo-form > .form-field,
+  .insumo-form > .insumo-form__group,
+  .insumo-form__group-grid > .form-field,
+  .proveedor-form__grid > .form-field {
+    flex-basis: 100%;
   }
 
   /* Fila de ingrediente (select + cantidad + quitar): en una columna se
@@ -1113,12 +1139,12 @@ select.form-field__input {
 }
 
 @media (max-width: 480px) {
-  .stats {
-    grid-template-columns: 1fr;
+  .stats > * {
+    flex-basis: 100%;
   }
 
-  #producciones-container {
-    grid-template-columns: 1fr;
+  #producciones-container > * {
+    flex-basis: 100%;
   }
 }
 
