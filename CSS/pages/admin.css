@@ -1025,116 +1025,193 @@ button {
 }
 
 /* ═══════════════════════════════════════════
-   15. RESPONSIVE
+   15. RESPONSIVE OPTIMIZADO PARA MÓVILES
    ═══════════════════════════════════════════ */
 
-/* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
-   mayoría de los casos, pero las tarjetas de Producción (min 340px) son
-   demasiado anchas incluso para muchas tablets en modo vertical. */
+/* Tablets y pantallas medianas (<= 900px) */
 @media (max-width: 900px) {
   #producciones-container {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 
+/* Smartphones y Tablets pequeñas (<= 768px) */
 @media (max-width: 768px) {
   body {
-    padding: var(--space-4);
+    padding: var(--space-3); /* Reducimos padding exterior para ganar área útil */
   }
 
+  /* 1. Header & Stats */
   .dashboard-header {
     flex-direction: column;
+    gap: var(--space-2);
   }
 
   .stats {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .stat-card__value {
-    font-size: 1.5rem;
-  }
-
-  .order-table {
-    font-size: 0.85rem;
-  }
-  .order-table th,
-  .order-table td {
-    padding: var(--space-3);
-  }
-
-  .order-group__header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  /* Nav: pestañas más compactas para que quepan varias por fila en vez de
-     una sola pestaña gigante por línea. */
-  .admin-nav__btn {
-    padding: var(--space-2) var(--space-3);
-    font-size: 0.85rem;
-  }
-
-  /* Tablas de datos: mismo tratamiento que order-table — más compactas,
-     con scroll horizontal de respaldo (.insumos ya tiene overflow-x: auto). */
-  .insumo-table {
-    font-size: 0.85rem;
-  }
-  .insumo-table th,
-  .insumo-table td {
-    padding: var(--space-3);
-  }
-
-  /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
-     sola columna en vez de que el auto-fit intente encajar 2 columnas
-     angostas e incómodas de usar con el dedo. */
-  .insumo-form,
-  .insumo-form__group-grid,
-  .proveedor-form__grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Fila de ingrediente (select + cantidad + quitar): en una columna se
-     lee mejor que 3 celdas apretadas. */
-  .receta-ingrediente-row {
-    grid-template-columns: 1fr;
     gap: var(--space-2);
   }
 
-  /* Encabezados internos con botón a la derecha: que bajen en vez de
-     encimarse cuando no cabe todo en una fila. */
-  .receta-form__ingredientes-header,
-  .produccion-card__header {
-    flex-wrap: wrap;
+  .stat-card {
+    padding: var(--space-3);
   }
 
-  .etapa-item {
-    flex-wrap: wrap;
+  .stat-card__value {
+    font-size: 1.4rem;
   }
 
-  /* Toolbars de fecha (Horneadas/Inventario/Producción): que el selector
-     de fecha y los botones se apilen y ocupen todo el ancho, más fácil
-     de tocar que botones angostos en una fila. */
+  /* 2. Navegación Principal por Pestañas */
+  .admin-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .admin-nav__tabs {
+    display: flex;
+    overflow-x: auto; /* Scroll horizontal táctil para pestañas */
+    flex-wrap: nowrap;
+    padding-bottom: var(--space-2);
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+
+  .admin-nav__btn {
+    flex: 0 0 auto; /* Evita que las pestañas se aplasten */
+    scroll-snap-align: start;
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .admin-nav__logout {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  /* 3. Formularios en Móvil (Insumos, Proveedores, Horneadas, Recetas, etc.) */
+  .insumo-form,
+  .proveedor-form {
+    padding: var(--space-3);
+  }
+
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: 1fr !important; /* Fuerza 1 sola columna rígida en móvil */
+    gap: 0;
+  }
+
+  .insumo-form__actions {
+    flex-direction: column;
+  }
+
+  .insumo-form__actions .btn {
+    width: 100%;
+  }
+
+  /* 4. Filas Dinámicas de Ingredientes (Receta y Producción) */
+  .receta-ingrediente-row {
+    grid-template-columns: 1fr 1fr auto; /* Mantiene insumo y cantidad lado a lado en móvil */
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  /* 5. Transformación de Tablas a Tarjetas (Card View) para Pantallas Pequeñas */
+  /* Evita el scroll horizontal incómodo convirtiendo filas de tabla en tarjetas flexibles */
+  .order-table,
+  .insumo-table {
+    display: block;
+    width: 100%;
+  }
+
+  .order-table thead,
+  .insumo-table thead {
+    display: none; /* Oculta los encabezados <th/> */
+  }
+
+  .order-table tbody,
+  .insumo-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .order-table tr,
+  .insumo-table tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .order-table td,
+  .insumo-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-soft);
+    text-align: right;
+    font-size: 0.875rem;
+  }
+
+  .order-table td:last-child,
+  .insumo-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Inyecta la etiqueta (Label) antes de cada dato usando la propiedad HTML data-label */
+  .order-table td::before,
+  .insumo-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: left;
+    padding-right: var(--space-2);
+  }
+
+  .order-table__productos {
+    max-width: 100%;
+    text-align: right;
+  }
+
+  .insumo-table__acciones {
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: var(--space-2);
+  }
+
+  /* 6. Toolbars de Filtro y Fechas */
   .horneadas-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--space-2);
   }
+
   .horneadas-toolbar .form-field,
   .horneadas-toolbar .btn {
     width: 100%;
   }
 }
 
+/* Teléfonos muy pequeños (<= 480px) */
 @media (max-width: 480px) {
   .stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* Tarjetas de resumen en 1 sola columna */
   }
 
   #producciones-container {
     grid-template-columns: 1fr;
   }
 
-  .admin-nav__btn {
-    padding: var(--space-2);
-    font-size: 0.8rem;
+  .login-card {
+    padding: var(--space-5) var(--space-4);
   }
 }
