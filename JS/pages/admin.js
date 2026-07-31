@@ -3379,39 +3379,17 @@ function initAdminSidebarDrawer() {
 
   if (!nav || !toggle) return;
 
-  let lastFocused = null;
-
-  const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
-
   const open = () => {
-    lastFocused = document.activeElement;
     nav.classList.add('is-open');
     if (overlay) {
       overlay.hidden = false;
       requestAnimationFrame(() => overlay.classList.add('is-visible'));
     }
     toggle.setAttribute('aria-expanded', 'true');
-    toggle.setAttribute('aria-label', 'Cerrar menú');
-
-    // Bloqueo sin salto de layout ni zoom residual
-    const scrollY = window.scrollY;
-    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = 'hidden';
-    if (scrollbarW > 0) document.body.style.paddingRight = `${scrollbarW}px`;
-    // iOS: fija el body para que no “salte” al quitar el scroll
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.dataset.scrollY = String(scrollY);
-
-    // No enfocar el input de búsqueda (provoca zoom en iOS).
-    // Enfocar el primer botón de sección o el propio toggle.
-    const firstBtn = nav.querySelector('.admin-nav__btn[data-view-target]:not([disabled])');
-    (firstBtn || toggle).focus();
   };
 
-  const close = ({ restoreFocus = false } = {}) => {
+  const close = () => {
     nav.classList.remove('is-open');
     if (overlay) {
       overlay.classList.remove('is-visible');
@@ -3420,22 +3398,10 @@ function initAdminSidebarDrawer() {
       }, 200);
     }
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Abrir menú');
-
-    const y = Number(document.body.dataset.scrollY || 0);
     document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.right = '';
-    delete document.body.dataset.scrollY;
-    window.scrollTo(0, y);
-
-    if (restoreFocus) {
-      (lastFocused instanceof HTMLElement ? lastFocused : toggle).focus();
-    }
   };
+
+  const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
 
   toggle.addEventListener('click', () => {
     if (nav.classList.contains('is-open')) close();
