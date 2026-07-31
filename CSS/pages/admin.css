@@ -175,6 +175,9 @@ button {
    ═══════════════════════════════════════════ */
 .form-field {
   margin-bottom: var(--space-4);
+  min-width: 0; /* permite que se encoja dentro de un grid/flex — sin esto,
+                   un <input type="date"/"time"> nativo fuerza su ancho
+                   mínimo de contenido y desborda el contenedor en móvil */
 }
 
 .form-field__label {
@@ -187,6 +190,7 @@ button {
 
 .form-field__input {
   width: 100%;
+  min-width: 0;
   padding: var(--space-3) var(--space-4);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1023,6 +1027,16 @@ button {
 /* ═══════════════════════════════════════════
    15. RESPONSIVE
    ═══════════════════════════════════════════ */
+
+/* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
+   mayoría de los casos, pero las tarjetas de Producción (min 340px) son
+   demasiado anchas incluso para muchas tablets en modo vertical. */
+@media (max-width: 900px) {
+  #producciones-container {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   body {
     padding: var(--space-4);
@@ -1052,10 +1066,75 @@ button {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  /* Nav: pestañas más compactas para que quepan varias por fila en vez de
+     una sola pestaña gigante por línea. */
+  .admin-nav__btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.85rem;
+  }
+
+  /* Tablas de datos: mismo tratamiento que order-table — más compactas,
+     con scroll horizontal de respaldo (.insumos ya tiene overflow-x: auto). */
+  .insumo-table {
+    font-size: 0.85rem;
+  }
+  .insumo-table th,
+  .insumo-table td {
+    padding: var(--space-3);
+  }
+
+  /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
+     sola columna en vez de que el auto-fit intente encajar 2 columnas
+     angostas e incómodas de usar con el dedo. */
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Fila de ingrediente (select + cantidad + quitar): en una columna se
+     lee mejor que 3 celdas apretadas. */
+  .receta-ingrediente-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  /* Encabezados internos con botón a la derecha: que bajen en vez de
+     encimarse cuando no cabe todo en una fila. */
+  .receta-form__ingredientes-header,
+  .produccion-card__header {
+    flex-wrap: wrap;
+  }
+
+  .etapa-item {
+    flex-wrap: wrap;
+  }
+
+  /* Toolbars de fecha (Horneadas/Inventario/Producción): que el selector
+     de fecha y los botones se apilen y ocupen todo el ancho, más fácil
+     de tocar que botones angostos en una fila. */
+  .horneadas-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .horneadas-toolbar .form-field,
+  .horneadas-toolbar .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
   .stats {
     grid-template-columns: 1fr;
+  }
+
+  #producciones-container {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-nav__btn {
+    padding: var(--space-2);
+    font-size: 0.8rem;
   }
 }
