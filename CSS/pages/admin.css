@@ -1267,10 +1267,11 @@ main,
     width: 100%;
   }
 
-  /* 8. Tablas convertidas en tarjetas - PEDIDOS */
+  /* 8. Tablas convertidas en tarjetas */
   .order-table,
   .insumo-table,
-  .horneadas-table {
+  .horneadas-table,
+  .inventario-table {
     display: block;
     width: 100%;
     margin: var(--space-3) 0;
@@ -1279,13 +1280,15 @@ main,
 
   .order-table thead,
   .insumo-table thead,
-  .horneadas-table thead {
+  .horneadas-table thead,
+  .inventario-table thead {
     display: none;
   }
 
   .order-table tbody,
   .insumo-table tbody,
-  .horneadas-table tbody {
+  .horneadas-table tbody,
+  .inventario-table tbody {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -1295,7 +1298,8 @@ main,
 
   .order-table tr,
   .insumo-table tr,
-  .horneadas-table tr {
+  .horneadas-table tr,
+  .inventario-table tr {
     display: flex;
     flex-direction: column;
     background: var(--color-surface);
@@ -1310,7 +1314,8 @@ main,
 
   .order-table td,
   .insumo-table td,
-  .horneadas-table td {
+  .horneadas-table td,
+  .inventario-table td {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -1325,13 +1330,15 @@ main,
 
   .order-table td:last-child,
   .insumo-table td:last-child,
-  .horneadas-table td:last-child {
+  .horneadas-table td:last-child,
+  .inventario-table td:last-child {
     border-bottom: none;
   }
 
   .order-table td::before,
   .insumo-table td::before,
-  .horneadas-table td::before {
+  .horneadas-table td::before,
+  .inventario-table td::before {
     content: attr(data-label);
     font-weight: 700;
     text-transform: uppercase;
@@ -1355,117 +1362,7 @@ main,
     margin-top: var(--space-2);
   }
 
-  /* ═══════════════════════════════════════════
-     9. INVENTARIO - VISTA MEJORADA PARA MÓVIL
-     ═══════════════════════════════════════════ */
-  .inventario-table {
-    display: block;
-    width: 100%;
-    margin: var(--space-3) 0;
-    overflow: visible;
-  }
-
-  .inventario-table thead {
-    display: none;
-  }
-
-  .inventario-table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-2) 0;
-    width: 100%;
-  }
-
-  /* Cada producto como una tarjeta independiente */
-  .inventario-table tr {
-    display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--transition);
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .inventario-table tr:hover {
-    box-shadow: var(--shadow-md);
-  }
-
-  /* Cada celda como una fila con etiqueta y valor */
-  .inventario-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border-soft);
-    font-size: 0.9rem;
-    gap: var(--space-3);
-    min-width: 0;
-    word-break: break-word;
-  }
-
-  .inventario-table td:last-child {
-    border-bottom: none;
-  }
-
-  /* Etiqueta de cada campo */
-  .inventario-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-    min-width: 80px;
-  }
-
-  /* Estilo especial para el nombre del producto */
-  .inventario-table td:first-child {
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: var(--color-primary);
-    border-bottom: 2px solid var(--color-primary);
-    padding-bottom: var(--space-3);
-    margin-bottom: var(--space-2);
-  }
-
-  .inventario-table td:first-child::before {
-    content: '📦';
-    font-weight: 400;
-    font-size: 1rem;
-  }
-
-  /* Estilo especial para disponible (destacar) */
-  .inventario-table td:nth-child(6) {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--color-accent);
-    background: var(--color-soft-bg);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    margin: var(--space-1) 0;
-  }
-
-  /* Badge de stock bajo más visible */
-  .insumo-badge--bajo-stock {
-    display: inline-block;
-    padding: var(--space-1) var(--space-3);
-    background: #fdecea;
-    color: var(--color-danger);
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border: 1px solid var(--color-danger);
-  }
-
-  /* 10. Producción - tarjetas en 1 columna */
+  /* 9. Producción - tarjetas en 1 columna */
   #producciones-container {
     grid-template-columns: 1fr;
     gap: var(--space-3);
@@ -1475,7 +1372,7 @@ main,
     padding: var(--space-3);
   }
 
-  /* 11. Títulos y textos centrados */
+  /* 10. Títulos y textos centrados */
   .section-subtitle,
   .dashboard-header__title h1 {
     text-align: center;
@@ -1503,30 +1400,6 @@ main,
   .stat-card__value {
     font-size: 1.25rem;
   }
-
-  /* Versión más compacta para inventario en móviles pequeños */
-  .inventario-table tr {
-    padding: var(--space-3);
-  }
-
-  .inventario-table td {
-    font-size: 0.85rem;
-    padding: var(--space-1) 0;
-  }
-
-  .inventario-table td::before {
-    min-width: 60px;
-    font-size: 0.7rem;
-  }
-
-  .inventario-table td:first-child {
-    font-size: 0.95rem;
-  }
-
-  .inventario-table td:nth-child(6) {
-    font-size: 1rem;
-    padding: var(--space-1) var(--space-2);
-  }
 }
 
 /* ═══════════════════════════════════════════
@@ -1548,23 +1421,98 @@ main,
 }
 
 /* ═══════════════════════════════════════════
-   19. INVENTARIO - ESPACIADO MEJORADO
+   19. INVENTARIO - MEJORAS DE ESPACIADO
    ═══════════════════════════════════════════ */
+/* Contenedor principal de inventario */
+.inventario-section,
 #tab-inventario {
+  padding-top: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding-top: var(--space-3);
+  gap: var(--space-4);
 }
 
-#tab-inventario .horneadas-toolbar {
-  margin-bottom: 0;
+/* Separación entre la barra de fecha y la tabla */
+.inventario-fecha-container,
+.horneadas-toolbar,
+.inventario-toolbar {
+  margin-bottom: var(--space-5);
   padding-bottom: var(--space-4);
   border-bottom: 2px solid var(--color-border-soft);
 }
 
-#tab-inventario .inventario-table-container {
-  margin-top: var(--space-2);
+/* Contenedor de la tabla de inventario */
+.inventario-table-container,
+.inventario-container {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Cada producto en la tabla de inventario */
+.inventario-table tbody tr {
+  transition: background var(--transition);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventario-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Para el responsive: más separación entre tarjetas */
+@media (max-width: 768px) {
+  .inventario-section,
+  #tab-inventario {
+    padding-top: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .inventario-fecha-container,
+  .horneadas-toolbar,
+  .inventario-toolbar {
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+
+  .inventario-table-container,
+  .inventario-container {
+    margin-top: var(--space-3);
+    padding-top: var(--space-2);
+  }
+
+  /* Más separación entre tarjetas de productos en móvil */
+  .inventario-table tbody {
+    gap: var(--space-4);
+  }
+
+  .inventario-table tr {
+    padding: var(--space-4);
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   20. INVENTARIO - VARIANTE CON MÁS ESPACIO
+   ═══════════════════════════════════════════ */
+/* Versión con más aire entre elementos */
+.inventario-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.inventario-wrapper .horneadas-toolbar {
+  margin-bottom: 0;
+  padding-bottom: var(--space-5);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.inventario-wrapper .inventario-table-container {
+  margin-top: 0;
   padding: var(--space-4);
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -1572,13 +1520,17 @@ main,
   box-shadow: var(--shadow-sm);
 }
 
+/* Para el responsive */
 @media (max-width: 768px) {
-  #tab-inventario {
-    gap: var(--space-3);
-    padding-top: var(--space-2);
+  .inventario-wrapper {
+    gap: var(--space-4);
   }
 
-  #tab-inventario .inventario-table-container {
+  .inventario-wrapper .horneadas-toolbar {
+    padding-bottom: var(--space-4);
+  }
+
+  .inventario-wrapper .inventario-table-container {
     padding: var(--space-2);
   }
 }
