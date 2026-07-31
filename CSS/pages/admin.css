@@ -1476,11 +1476,18 @@ select.form-field__input {
   outline-offset: 2px;
 }
 
-.admin-nav--sidebar .admin-nav__btn.is-active {
+.admin-nav--sidebar .admin-nav__btn.is-active,
+.admin-nav--sidebar .admin-nav__btn.is-active:hover:not(:disabled),
+.admin-nav--sidebar .admin-nav__btn.is-active:focus-visible {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   color: white;
   box-shadow: var(--shadow-sm);
   transform: none;
+}
+
+.admin-nav--sidebar .admin-nav__btn.is-active:hover:not(:disabled) i {
+  background: rgba(255, 255, 255, 0.24);
+  color: white;
 }
 
 .admin-nav--sidebar .admin-nav__btn.is-active i {
@@ -1622,12 +1629,15 @@ select.form-field__input {
     justify-content: center;
   }
 
-  /* Tooltip en rail */
+  /* Tooltip en rail.
+     `position: fixed` (con la coordenada vertical que publica el JS en
+     --nav-tooltip-y) porque .admin-nav__groups tiene overflow y recortaría
+     un tooltip posicionado de forma absoluta. */
   .admin-nav--sidebar.is-collapsed .admin-nav__btn::after {
     content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + var(--space-2));
-    top: 50%;
+    position: fixed;
+    left: calc(var(--nav-rail-width) + var(--space-2));
+    top: var(--nav-tooltip-y, 50%);
     transform: translateY(-50%) scale(0.96);
     padding: 0.35em 0.7em;
     border-radius: var(--radius-sm);
@@ -1654,6 +1664,13 @@ select.form-field__input {
 
 /* ── Shell: sidebar al lado del contenido (desktop) ── */
 @media (min-width: 900px) {
+  /* El padding del body dejaría al sidebar (100dvh) sobresaliendo del
+     viewport y cortando el botón de cerrar sesión: el espaciado lo pone
+     cada .view. */
+  body:has(.admin-nav--sidebar:not([hidden])) {
+    padding: 0;
+  }
+
   .admin:has(.admin-nav--sidebar:not([hidden])) {
     display: flex;
     flex-direction: row;
