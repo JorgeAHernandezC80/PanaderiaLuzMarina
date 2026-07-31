@@ -101,15 +101,45 @@ button {
 }
 
 /* ═══════════════════════════════════════════
+   2.1. MAIN Y CONTENEDORES PRINCIPALES
+   ═══════════════════════════════════════════ */
+main,
+.main-content,
+.tab-content,
+.admin-section {
+  width: 100%;
+  max-width: 100%;
+  min-height: 60vh;
+  height: auto;
+  display: block;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: var(--space-2) 0;
+  overflow: visible;
+}
+
+/* ═══════════════════════════════════════════
    3. LAYOUT
    ═══════════════════════════════════════════ */
 .admin {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 var(--space-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
+/* Contenedor principal de las vistas */
 .view {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
   animation: fadeIn 280ms ease-out;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 @keyframes fadeIn {
@@ -131,6 +161,7 @@ button {
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - var(--space-6) * 2);
+  flex: 1;
 }
 
 .login-card {
@@ -937,7 +968,7 @@ button {
 }
 
 /* ═══════════════════════════════════════════
-   14. PROVEEDORES
+   16. PROVEEDORES
    ═══════════════════════════════════════════ */
 .proveedor-form {
   background: var(--color-surface);
@@ -1024,7 +1055,9 @@ button {
   color: var(--color-text-muted);
 }
 
-/* 15. RESPONSIVE OPTIMIZADO PARA MÓVILES */
+/* ═══════════════════════════════════════════
+   17. RESPONSIVE OPTIMIZADO PARA MÓVILES
+   ═══════════════════════════════════════════ */
 
 /* Contenedor principal siempre centrado y fluido */
 .admin {
@@ -1109,20 +1142,24 @@ button {
     margin-left: 0;
   }
 
-  /* 3. Main Content - CENTRADO SIN FORZAR HIJOS */
-  /* CLAVE: NO usar align-items:center en el main,
-     eso encoje los hijos. Usamos margin auto en los hijos. */
+  /* 3. Main Content - CONTROLA ALTURA Y ANCHO */
   main,
   .main-content,
-  .tab-content {
+  .tab-content,
+  .view {
     width: 100%;
     max-width: 100%;
+    min-height: 50vh;
+    height: auto;
     margin: 0 auto;
     padding: var(--space-2) 0;
     box-sizing: border-box;
+    overflow: visible;
+    display: block;
+    flex: 1 1 auto;
   }
 
-  /* 4. Formularios y Secciones - centrados con margin auto */
+  /* Los hijos internos se centran con márgenes automáticos */
   .admin-section,
   .insumo-form,
   .proveedor-form,
@@ -1140,6 +1177,7 @@ button {
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
+    flex-shrink: 0;
   }
 
   /* 5. Formularios en 1 columna */
@@ -1175,7 +1213,9 @@ button {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    min-width: 0; /* evita desbordes por contenido interno */
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   /* Ajuste para selectores de fecha nativos en iOS Safari */
@@ -1269,7 +1309,7 @@ button {
     box-shadow: var(--shadow-sm);
     width: 100%;
     box-sizing: border-box;
-    overflow: hidden; /* evita desbordes */
+    overflow: hidden;
   }
 
   .order-table td,
@@ -1278,14 +1318,14 @@ button {
   .inventario-table td {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start; /* antes center, causaba desbordes */
+    align-items: flex-start;
     padding: var(--space-2) 0;
     border-bottom: 1px solid var(--color-border-soft);
     text-align: right;
     font-size: 0.875rem;
     gap: var(--space-2);
     min-width: 0;
-    word-break: break-word; /* evita que textos largos rompan el layout */
+    word-break: break-word;
   }
 
   .order-table td:last-child,
@@ -1306,7 +1346,7 @@ button {
     color: var(--color-text-muted);
     text-align: left;
     padding-right: var(--space-2);
-    flex-shrink: 0; /* la etiqueta no se encoje */
+    flex-shrink: 0;
     min-width: 40%;
   }
 
@@ -1360,4 +1400,22 @@ button {
   .stat-card__value {
     font-size: 1.25rem;
   }
+}
+
+/* ═══════════════════════════════════════════
+   18. UTILIDADES DE LIMPIEZA
+   ═══════════════════════════════════════════ */
+/* Fuerza que los contenedores principales no tengan desbordes */
+main,
+.main-wrapper,
+.app-container {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+/* Para scroll horizontal solo cuando sea necesario */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
