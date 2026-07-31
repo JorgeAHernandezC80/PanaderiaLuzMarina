@@ -1024,9 +1024,16 @@ button {
   color: var(--color-text-muted);
 }
 
-/* ═══════════════════════════════════════════
-   15. RESPONSIVE OPTIMIZADO PARA MÓVILES
-   ═══════════════════════════════════════════ */
+/* 15. RESPONSIVE OPTIMIZADO PARA MÓVILES */
+
+/* Contenedor principal siempre centrado y fluido */
+.admin {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-2);
+  box-sizing: border-box;
+}
 
 /* Tablets y pantallas medianas (<= 900px) */
 @media (max-width: 900px) {
@@ -1044,7 +1051,12 @@ button {
   /* 1. Header & Stats */
   .dashboard-header {
     flex-direction: column;
+    align-items: stretch;
     gap: var(--space-2);
+  }
+
+  .dashboard-header__title {
+    text-align: center;
   }
 
   .stats {
@@ -1077,6 +1089,11 @@ button {
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
     width: 100%;
+    gap: var(--space-2);
+  }
+
+  .admin-nav__tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .admin-nav__btn {
@@ -1092,60 +1109,73 @@ button {
     margin-left: 0;
   }
 
-  /* 3. Centrado Total del Main y Contenedores */
+  /* 3. Main Content - CENTRADO SIN FORZAR HIJOS */
+  /* CLAVE: NO usar align-items:center en el main,
+     eso encoje los hijos. Usamos margin auto en los hijos. */
   main,
   .main-content,
   .tab-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Centrado vertical */
-    align-items: center; /* Centrado horizontal */
     width: 100%;
-    min-height: calc(100vh - 120px);
+    max-width: 100%;
     margin: 0 auto;
-    padding: var(--space-2);
+    padding: var(--space-2) 0;
     box-sizing: border-box;
-    text-align: center;
   }
 
+  /* 4. Formularios y Secciones - centrados con margin auto */
   .admin-section,
   .insumo-form,
   .proveedor-form,
+  .receta-form,
+  .produccion-form,
+  .horneas-section,
+  .inventario-section,
   .horneadas-container,
-  .stats-container {
+  .stats-container,
+  .login-card,
+  .order-group,
+  .empty-state {
     width: 100%;
-    max-width: 500px; /* Evita que los formularios se deformen en pantallas anchas */
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
   }
 
-  /* 4. Formularios y Corrección de Fechas (Insumos y General) */
+  /* 5. Formularios en 1 columna */
   .insumo-form,
-  .proveedor-form {
+  .proveedor-form,
+  .receta-form {
     padding: var(--space-3);
   }
 
   .insumo-form,
   .insumo-form__group-grid,
-  .proveedor-form__grid {
-    grid-template-columns: 1fr !important;
+  .proveedor-form__grid,
+  .proveedor-form {
+    grid-template-columns: 1fr;
     gap: 0;
     width: 100%;
   }
 
-  .insumo-form .form-group,
-  .insumo-form__fecha-vencimiento,
+  /* Inputs, selects y fechas siempre al 100% */
+  .form-field,
+  .form-field__input,
+  .form-group,
+  input[type='text'],
+  input[type='number'],
+  input[type='email'],
+  input[type='tel'],
+  input[type='password'],
   input[type='date'],
   input[type='datetime-local'],
-  input[type='time'] {
-    width: 100% !important;
+  input[type='time'],
+  select,
+  textarea {
+    width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 auto var(--space-3) auto;
+    min-width: 0; /* evita desbordes por contenido interno */
   }
 
   /* Ajuste para selectores de fecha nativos en iOS Safari */
@@ -1163,22 +1193,20 @@ button {
     width: 100%;
   }
 
-  /* 5. Corrección Específica: Pestaña Horneadas */
+  /* 6. Horneadas - centrado correcto */
   #tab-horneadas,
   .horneadas-section,
   .horneadas-toolbar,
   .horneadas-fecha-container,
   .horneadas-consultar-fecha {
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Elimina la inclinación a la izquierda */
-    justify-content: center;
-    margin: 0 auto;
     box-sizing: border-box;
+    margin: 0 auto;
   }
 
   .horneadas-toolbar {
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--space-2);
   }
 
@@ -1188,46 +1216,50 @@ button {
   .horneadas-toolbar .btn,
   .horneadas-consultar-fecha .btn {
     width: 100%;
-    max-width: 320px;
-    margin: 0 auto;
     text-align: center;
   }
 
-  /* 6. Filas Dinámicas de Ingredientes */
+  /* 7. Filas Dinámicas de Ingredientes */
   .receta-ingrediente-row {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr;
     gap: var(--space-2);
     margin-bottom: var(--space-2);
     width: 100%;
   }
 
-  /* 7. Transformación de Tablas a Tarjetas (Card View) */
+  /* 8. Tablas convertidas en tarjetas */
   .order-table,
   .insumo-table,
-  .horneadas-table {
+  .horneadas-table,
+  .inventario-table {
     display: block;
     width: 100%;
-    margin: var(--space-3) auto;
+    margin: var(--space-3) 0;
+    overflow: visible;
   }
 
   .order-table thead,
   .insumo-table thead,
-  .horneadas-table thead {
+  .horneadas-table thead,
+  .inventario-table thead {
     display: none;
   }
 
   .order-table tbody,
   .insumo-table tbody,
-  .horneadas-table tbody {
+  .horneadas-table tbody,
+  .inventario-table tbody {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-2) 0;
+    width: 100%;
   }
 
   .order-table tr,
   .insumo-table tr,
-  .horneadas-table tr {
+  .horneadas-table tr,
+  .inventario-table tr {
     display: flex;
     flex-direction: column;
     background: var(--color-surface);
@@ -1237,29 +1269,36 @@ button {
     box-shadow: var(--shadow-sm);
     width: 100%;
     box-sizing: border-box;
+    overflow: hidden; /* evita desbordes */
   }
 
   .order-table td,
   .insumo-table td,
-  .horneadas-table td {
+  .horneadas-table td,
+  .inventario-table td {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start; /* antes center, causaba desbordes */
     padding: var(--space-2) 0;
     border-bottom: 1px solid var(--color-border-soft);
     text-align: right;
     font-size: 0.875rem;
+    gap: var(--space-2);
+    min-width: 0;
+    word-break: break-word; /* evita que textos largos rompan el layout */
   }
 
   .order-table td:last-child,
   .insumo-table td:last-child,
-  .horneadas-table td:last-child {
+  .horneadas-table td:last-child,
+  .inventario-table td:last-child {
     border-bottom: none;
   }
 
   .order-table td::before,
   .insumo-table td::before,
-  .horneadas-table td::before {
+  .horneadas-table td::before,
+  .inventario-table td::before {
     content: attr(data-label);
     font-weight: 700;
     text-transform: uppercase;
@@ -1267,11 +1306,14 @@ button {
     color: var(--color-text-muted);
     text-align: left;
     padding-right: var(--space-2);
+    flex-shrink: 0; /* la etiqueta no se encoje */
+    min-width: 40%;
   }
 
   .order-table__productos {
     max-width: 100%;
     text-align: right;
+    word-break: break-word;
   }
 
   .insumo-table__acciones {
@@ -1279,19 +1321,43 @@ button {
     width: 100%;
     margin-top: var(--space-2);
   }
+
+  /* 9. Producción - tarjetas en 1 columna */
+  #producciones-container {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .produccion-card {
+    padding: var(--space-3);
+  }
+
+  /* 10. Títulos y textos centrados */
+  .section-subtitle,
+  .dashboard-header__title h1 {
+    text-align: center;
+  }
+
+  .empty-state {
+    padding: var(--space-5) var(--space-3);
+  }
 }
 
 /* Teléfonos muy pequeños (<= 480px) */
 @media (max-width: 480px) {
-  .stats {
-    grid-template-columns: 1fr; /* Tarjetas de resumen en 1 sola columna */
+  body {
+    padding: var(--space-2);
   }
 
-  #producciones-container {
+  .stats {
     grid-template-columns: 1fr;
   }
 
   .login-card {
     padding: var(--space-5) var(--space-4);
+  }
+
+  .stat-card__value {
+    font-size: 1.25rem;
   }
 }
