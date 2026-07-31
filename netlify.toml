@@ -1,0 +1,6 @@
+# El frontend es estático, pero Netlify instala las dependencias del repo antes
+# de publicar y better-sqlite3 (9.x) no compila con la versión de Node que
+# Netlify usa por defecto (24.x). Se fija la misma que declara
+# package.json → engines.node.
+[build]
+  environment = { NODE_VERSION = "20" }
