@@ -101,45 +101,15 @@ button {
 }
 
 /* ═══════════════════════════════════════════
-   2.1. MAIN Y CONTENEDORES PRINCIPALES
-   ═══════════════════════════════════════════ */
-main,
-.main-content,
-.tab-content,
-.admin-section {
-  width: 100%;
-  max-width: 100%;
-  min-height: 60vh;
-  height: auto;
-  display: block;
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding: var(--space-2) 0;
-  overflow: visible;
-}
-
-/* ═══════════════════════════════════════════
    3. LAYOUT
    ═══════════════════════════════════════════ */
 .admin {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--space-2);
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
 }
 
-/* Contenedor principal de las vistas */
 .view {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 100%;
   animation: fadeIn 280ms ease-out;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  overflow: visible;
 }
 
 @keyframes fadeIn {
@@ -161,7 +131,6 @@ main,
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - var(--space-6) * 2);
-  flex: 1;
 }
 
 .login-card {
@@ -238,6 +207,18 @@ main,
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.12);
+}
+
+.form-field__input::placeholder {
+  font-size: 0.9rem;
+}
+
+.form-field__input option {
+  font-size: 0.9rem;
+}
+
+select.form-field__input {
+  font-size: 0.9rem;
 }
 
 .form-error {
@@ -422,7 +403,7 @@ main,
 }
 
 .order-group__time {
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -575,27 +556,10 @@ main,
 
 /* ═══════════════════════════════════════════
    12. NAV DE SECCIONES
-   ═══════════════════════════════════════════ */
-.admin-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-  flex-wrap: wrap;
-}
-
-.admin-nav__tabs {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.admin-nav__logout {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
+   ═══════════════════════════════════════════
+   El layout real (sidebar fijo en desktop, drawer en móvil) vive en el
+   bloque "SIDEBAR + DRAWER" al final del archivo — aquí solo queda la
+   apariencia base de los botones, reutilizada por ambos contextos. */
 .admin-nav__btn {
   display: inline-flex;
   align-items: center;
@@ -642,7 +606,7 @@ main,
 
 .section-subtitle {
   margin: var(--space-6) 0 var(--space-3);
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
@@ -889,7 +853,7 @@ main,
 }
 
 .produccion-card__titulo {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   margin: 0 0 var(--space-1);
 }
@@ -944,7 +908,7 @@ main,
 }
 
 .produccion-card__horneadas h4 {
-  font-size: 0.85rem;
+  font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-text-muted);
@@ -968,7 +932,7 @@ main,
 }
 
 /* ═══════════════════════════════════════════
-   16. PROVEEDORES
+   14. PROVEEDORES
    ═══════════════════════════════════════════ */
 .proveedor-form {
   background: var(--color-surface);
@@ -1056,787 +1020,405 @@ main,
 }
 
 /* ═══════════════════════════════════════════
-   17. RESPONSIVE OPTIMIZADO PARA MÓVILES
+   15. RESPONSIVE
    ═══════════════════════════════════════════ */
 
-/* Contenedor principal siempre centrado y fluido */
-.admin {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-2);
-  box-sizing: border-box;
-}
-
-/* Tablets y pantallas medianas (<= 900px) */
+/* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
+   mayoría de los casos, pero las tarjetas de Producción (min 340px) son
+   demasiado anchas incluso para muchas tablets en modo vertical. */
 @media (max-width: 900px) {
   #producciones-container {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 
-/* Smartphones y Tablets pequeñas (<= 768px) */
 @media (max-width: 768px) {
   body {
-    padding: var(--space-3);
+    padding: var(--space-4);
   }
 
-  /* 1. Header & Stats */
   .dashboard-header {
     flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-  }
-
-  .dashboard-header__title {
-    text-align: center;
   }
 
   .stats {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
-    width: 100%;
-  }
-
-  .stat-card {
-    padding: var(--space-3);
   }
 
   .stat-card__value {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
   }
 
-  /* 2. Navegación Principal por Pestañas */
-  .admin-nav {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-    width: 100%;
-  }
-
-  .admin-nav__tabs {
-    display: flex;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: var(--space-2);
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
-    width: 100%;
-    gap: var(--space-2);
-  }
-
-  .admin-nav__tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .admin-nav__btn {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    padding: var(--space-2) var(--space-3);
+  .order-table {
     font-size: 0.85rem;
-    white-space: nowrap;
   }
-
-  .admin-nav__logout {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  /* 3. Main Content - CONTROLA ALTURA Y ANCHO */
-  main,
-  .main-content,
-  .tab-content,
-  .view {
-    width: 100%;
-    max-width: 100%;
-    min-height: 50vh;
-    height: auto;
-    margin: 0 auto;
-    padding: var(--space-2) 0;
-    box-sizing: border-box;
-    overflow: visible;
-    display: block;
-    flex: 1 1 auto;
-  }
-
-  /* Los hijos internos se centran con márgenes automáticos */
-  .admin-section,
-  .insumo-form,
-  .proveedor-form,
-  .receta-form,
-  .produccion-form,
-  .horneas-section,
-  .inventario-section,
-  .horneadas-container,
-  .stats-container,
-  .login-card,
-  .order-group,
-  .empty-state {
-    width: 100%;
-    max-width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    box-sizing: border-box;
-    flex-shrink: 0;
-  }
-
-  /* 5. Formularios en 1 columna */
-  .insumo-form,
-  .proveedor-form,
-  .receta-form {
+  .order-table th,
+  .order-table td {
     padding: var(--space-3);
   }
 
+  .order-group__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Tablas de datos: mismo tratamiento que order-table — más compactas,
+     con scroll horizontal de respaldo (.insumos ya tiene overflow-x: auto). */
+  .insumo-table {
+    font-size: 0.85rem;
+  }
+  .insumo-table th,
+  .insumo-table td {
+    padding: var(--space-3);
+  }
+
+  /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
+     sola columna en vez de que el auto-fit intente encajar 2 columnas
+     angostas e incómodas de usar con el dedo. */
   .insumo-form,
   .insumo-form__group-grid,
-  .proveedor-form__grid,
-  .proveedor-form {
+  .proveedor-form__grid {
     grid-template-columns: 1fr;
-    gap: 0;
-    width: 100%;
   }
 
-  /* Inputs, selects y fechas siempre al 100% */
-  .form-field,
-  .form-field__input,
-  .form-group,
-  input[type='text'],
-  input[type='number'],
-  input[type='email'],
-  input[type='tel'],
-  input[type='password'],
-  input[type='date'],
-  input[type='datetime-local'],
-  input[type='time'],
-  select,
-  textarea {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    min-width: 0;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  /* Ajuste para selectores de fecha nativos en iOS Safari */
-  input[type='date']::-webkit-inner-spin-button,
-  input[type='date']::-webkit-calendar-picker-indicator {
-    margin-right: 0;
-  }
-
-  .insumo-form__actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .insumo-form__actions .btn {
-    width: 100%;
-  }
-
-  /* 6. Horneadas - centrado correcto */
-  #tab-horneadas,
-  .horneadas-section,
-  .horneadas-toolbar,
-  .horneadas-fecha-container,
-  .horneadas-consultar-fecha {
-    width: 100%;
-    box-sizing: border-box;
-    margin: 0 auto;
-  }
-
-  .horneadas-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-  }
-
-  .horneadas-toolbar .form-field,
-  .horneadas-toolbar input,
-  .horneadas-toolbar button,
-  .horneadas-toolbar .btn,
-  .horneadas-consultar-fecha .btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  /* 7. Filas Dinámicas de Ingredientes */
+  /* Fila de ingrediente (select + cantidad + quitar): en una columna se
+     lee mejor que 3 celdas apretadas. */
   .receta-ingrediente-row {
     grid-template-columns: 1fr;
     gap: var(--space-2);
-    margin-bottom: var(--space-2);
-    width: 100%;
   }
 
-  /* 8. Tablas convertidas en tarjetas - PEDIDOS E INSUMOS */
-  .order-table,
-  .insumo-table,
-  .horneadas-table {
-    display: block;
-    width: 100%;
-    margin: var(--space-3) 0;
-    overflow: visible;
+  /* Encabezados internos con botón a la derecha: que bajen en vez de
+     encimarse cuando no cabe todo en una fila. */
+  .receta-form__ingredientes-header,
+  .produccion-card__header {
+    flex-wrap: wrap;
   }
 
-  .order-table thead,
-  .insumo-table thead,
-  .horneadas-table thead {
-    display: none;
+  .etapa-item {
+    flex-wrap: wrap;
   }
 
-  .order-table tbody,
-  .insumo-table tbody,
-  .horneadas-table tbody {
-    display: flex;
+  /* Toolbars de fecha (Horneadas/Inventario/Producción): que el selector
+     de fecha y los botones se apilen y ocupen todo el ancho, más fácil
+     de tocar que botones angostos en una fila. */
+  .horneadas-toolbar {
     flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-2) 0;
+    align-items: stretch;
+  }
+  .horneadas-toolbar .form-field,
+  .horneadas-toolbar .btn {
     width: 100%;
-  }
-
-  .order-table tr,
-  .insumo-table tr,
-  .horneadas-table tr {
-    display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-3);
-    box-shadow: var(--shadow-sm);
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-
-  .order-table td,
-  .insumo-table td,
-  .horneadas-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border-soft);
-    text-align: right;
-    font-size: 0.875rem;
-    gap: var(--space-2);
-    min-width: 0;
-    word-break: break-word;
-  }
-
-  .order-table td:last-child,
-  .insumo-table td:last-child,
-  .horneadas-table td:last-child {
-    border-bottom: none;
-  }
-
-  .order-table td::before,
-  .insumo-table td::before,
-  .horneadas-table td::before {
-    content: attr(data-label);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    text-align: left;
-    padding-right: var(--space-2);
-    flex-shrink: 0;
-    min-width: 40%;
-  }
-
-  .order-table__productos {
-    max-width: 100%;
-    text-align: right;
-    word-break: break-word;
-  }
-
-  .insumo-table__acciones {
-    justify-content: flex-end;
-    width: 100%;
-    margin-top: var(--space-2);
-  }
-
-  /* 9. Producción - tarjetas en 1 columna */
-  #producciones-container {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-
-  .produccion-card {
-    padding: var(--space-3);
-  }
-
-  /* 10. Títulos y textos centrados */
-  .section-subtitle,
-  .dashboard-header__title h1 {
-    text-align: center;
-  }
-
-  .empty-state {
-    padding: var(--space-5) var(--space-3);
   }
 }
 
-/* Teléfonos muy pequeños (<= 480px) */
 @media (max-width: 480px) {
-  body {
-    padding: var(--space-2);
-  }
-
   .stats {
     grid-template-columns: 1fr;
   }
 
-  .login-card {
-    padding: var(--space-5) var(--space-4);
-  }
-
-  .stat-card__value {
-    font-size: 1.25rem;
+  #producciones-container {
+    grid-template-columns: 1fr;
   }
 }
 
-/* ═══════════════════════════════════════════
-   18. UTILIDADES DE LIMPIEZA
-   ═══════════════════════════════════════════ */
-/* Fuerza que los contenedores principales no tengan desbordes */
-main,
-.main-wrapper,
-.app-container {
-  overflow-x: hidden;
-  overflow-y: visible;
-}
+/* ═══════════════════════════════════════════════════════════
+   16. SIDEBAR + DRAWER (nav del panel admin)
+   Sidebar fijo en desktop (≥900px), drawer deslizante en móvil/tablet.
+   ═══════════════════════════════════════════════════════════ */
 
-/* Para scroll horizontal solo cuando sea necesario */
-.table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-
-/* ═══════════════════════════════════════════
-   19. INVENTARIO - MEJORAS DE ESPACIADO
-   ═══════════════════════════════════════════ */
-/* Contenedor principal de inventario */
-.inventario-section,
-#tab-inventario {
-  padding-top: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* Separación entre la barra de fecha y la tabla */
-.inventario-fecha-container,
-.horneadas-toolbar,
-.inventario-toolbar {
-  margin-bottom: var(--space-5);
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--color-border-soft);
-}
-
-/* Contenedor de la tabla de inventario */
-.inventario-table-container,
-.inventario-container {
-  margin-top: var(--space-4);
-  padding-top: var(--space-3);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-/* Cada producto en la tabla de inventario */
-.inventario-table tbody tr {
-  transition: background var(--transition);
-  border-bottom: 1px solid var(--color-border-soft);
-}
-
-.inventario-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-/* Para el responsive: más separación entre tarjetas */
-@media (max-width: 768px) {
-  .inventario-section,
-  #tab-inventario {
-    padding-top: var(--space-3);
-    gap: var(--space-3);
-  }
-
-  .inventario-fecha-container,
-  .horneadas-toolbar,
-  .inventario-toolbar {
-    margin-bottom: var(--space-4);
-    padding-bottom: var(--space-3);
-  }
-
-  .inventario-table-container,
-  .inventario-container {
-    margin-top: var(--space-3);
-    padding-top: var(--space-2);
-  }
-
-  /* Más separación entre tarjetas de productos en móvil */
-  .inventario-table tbody {
-    gap: var(--space-4);
-  }
-
-  .inventario-table tr {
-    padding: var(--space-4);
-    margin-bottom: var(--space-2);
-  }
-}
-
-/* ═══════════════════════════════════════════
-   20. INVENTARIO - DISEÑO PROFESIONAL
-   ═══════════════════════════════════════════ */
-
-/* Contenedor principal con sombra y bordes elegantes */
-#inventario-container.insumos {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  transition: box-shadow var(--transition);
-  margin-top: var(--space-4);
-}
-
-#inventario-container.insumos:hover {
-  box-shadow: var(--shadow-lg);
-}
-
-/* Tabla con mejor espaciado */
-#inventario-container .insumo-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 0.9rem;
-  table-layout: auto;
-}
-
-/* Encabezado con gradiente profesional */
-#inventario-container .insumo-table thead {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-}
-
-#inventario-container .insumo-table thead th {
-  padding: var(--space-4) var(--space-4);
-  text-align: left;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 700;
-  border-bottom: none;
-  white-space: nowrap;
-}
-
-#inventario-container .insumo-table thead th:first-child {
-  padding-left: var(--space-5);
-  border-radius: var(--radius-sm) 0 0 0;
-}
-
-#inventario-container .insumo-table thead th:last-child {
-  padding-right: var(--space-5);
-  border-radius: 0 var(--radius-sm) 0 0;
-}
-
-/* Filas con hover suave */
-#inventario-container .insumo-table tbody tr {
-  transition: all var(--transition);
-  border-bottom: 1px solid var(--color-border-soft);
-  background: var(--color-surface);
-}
-
-#inventario-container .insumo-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-#inventario-container .insumo-table tbody tr:hover {
-  background: var(--color-soft-bg);
-  transform: translateX(2px);
-}
-
-/* Celdas con mejor padding */
-#inventario-container .insumo-table td {
-  padding: var(--space-4) var(--space-4);
-  vertical-align: middle;
-  font-size: 0.9rem;
-  border-bottom: 1px solid var(--color-border-soft);
-  background: inherit;
-}
-
-#inventario-container .insumo-table td:first-child {
-  padding-left: var(--space-5);
-}
-
-#inventario-container .insumo-table td:last-child {
-  padding-right: var(--space-5);
-}
-
-#inventario-container .insumo-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* Nombre del producto con icono */
-#inventario-container .insumo-table__nombre {
-  font-weight: 700;
-  color: var(--color-text);
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
-}
-
-#inventario-container .insumo-table__nombre::before {
-  content: '🍩';
-  margin-right: var(--space-3);
-  opacity: 0.8;
-  font-size: 1rem;
-  display: inline-block;
-}
-
-/* Números centrados con estilo */
-#inventario-container .inventario-table__num {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-/* Disponible destacado */
-#inventario-container .inventario-table__disponible {
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-size: 1.1rem;
-  color: var(--color-text);
-  line-height: 1.6;
-}
-
-/* Badge de stock bajo moderno y elegante */
-#inventario-container .insumo-badge--bajo-stock {
-  display: inline-block;
-  margin-top: var(--space-1);
-  padding: 0.2rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: #fdecea;
-  color: var(--color-danger);
-  border: 1px solid rgba(192, 57, 43, 0.2);
-  transition: all var(--transition);
-}
-
-#inventario-container .insumo-badge--bajo-stock:hover {
-  background: var(--color-danger);
-  color: white;
-  border-color: var(--color-danger);
-}
-
-/* Stock mínimo con input elegante */
-#inventario-container .inventario-table__stock-minimo {
-  display: flex;
+/* ── Topbar (solo visible en móvil) ── */
+.admin-topbar {
+  display: none;
   align-items: center;
   gap: var(--space-3);
-  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
-#inventario-container .inventario-table__stock-minimo input {
-  width: 4rem;
-  padding: 0.3rem 0.2rem;
+.admin-topbar__menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
   border: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
-  transition: all var(--transition);
-  outline: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    background var(--transition);
 }
 
-#inventario-container .inventario-table__stock-minimo input:focus {
+.admin-topbar__menu-btn:hover,
+.admin-topbar__menu-btn[aria-expanded='true'] {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.1);
+  background: var(--color-soft-bg);
 }
 
-#inventario-container .inventario-table__stock-minimo input:hover {
-  border-color: var(--color-primary-hover);
+.admin-topbar__title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
-/* Indicador de guardado con animación */
-#inventario-container .inventario-table__stock-minimo__guardado {
-  font-size: 0.7rem;
-  color: var(--color-accent);
+.admin-topbar__logout {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ── Overlay drawer ── */
+.admin-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 36, 22, 0.4);
+  z-index: 45;
   opacity: 0;
   transition: opacity var(--transition);
-  font-weight: 600;
-  white-space: nowrap;
 }
 
-#inventario-container .inventario-table__stock-minimo__guardado--visible {
+.admin-nav-overlay.is-visible {
+  display: block;
   opacity: 1;
 }
 
-/* Filas con stock bajo - borde lateral elegante */
-#inventario-container .insumo-row--bajo-stock {
-  border-left: 4px solid var(--color-danger);
-  background: #fdf8f5;
+/* ── Sidebar base ── */
+.admin-nav--sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 288px;
+  min-height: 100vh;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4) 0;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex-shrink: 0;
+  z-index: 50;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+  margin-bottom: 0;
+  gap: 0;
 }
 
-#inventario-container .insumo-row--bajo-stock:hover {
-  background: #fdf3ed;
+/* Brand */
+.admin-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5) var(--space-5);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
-/* ═══════════════════════════════════════════
-   21. INVENTARIO - RESPONSIVE PROFESIONAL
-   ═══════════════════════════════════════════ */
-@media (max-width: 768px) {
-  #inventario-container.insumos {
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    margin-top: var(--space-3);
-  }
+.admin-nav__brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  font-size: 1rem;
+}
 
-  #inventario-container .insumo-table thead {
-    display: none;
-  }
+.admin-nav__brand-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
 
-  #inventario-container .insumo-table tbody {
+/* Grupos */
+.admin-nav__groups {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+}
+
+.admin-nav__group-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2) var(--space-2);
+}
+
+.admin-nav--sidebar .admin-nav__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex-wrap: nowrap;
+}
+
+/* Botones de ítem */
+.admin-nav--sidebar .admin-nav__btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.admin-nav--sidebar .admin-nav__btn i {
+  width: 1.25rem;
+  text-align: center;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.admin-nav--sidebar .admin-nav__btn-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-nav--sidebar .admin-nav__btn:hover:not(:disabled) {
+  background: var(--color-soft-bg);
+  border-color: transparent;
+}
+
+.admin-nav--sidebar .admin-nav__btn.is-active {
+  background: var(--color-primary);
+  color: white;
+  border-color: transparent;
+}
+
+.admin-nav--sidebar .admin-nav__btn.is-active .admin-nav__count {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Ítems futuros */
+.admin-nav__btn--soon {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-nav__soon {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1em 0.45em;
+  border-radius: 999px;
+  background: var(--color-soft-bg);
+  color: var(--color-text-muted);
+}
+
+.admin-nav__btn.is-active .admin-nav__soon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Footer / logout */
+.admin-nav__footer {
+  padding: var(--space-4) var(--space-4) 0;
+  margin-top: auto;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.admin-nav--sidebar .admin-nav__logout {
+  width: 100%;
+  justify-content: flex-start;
+  margin-left: 0;
+}
+
+/* ── Shell: sidebar al lado del contenido (desktop) ── */
+@media (min-width: 900px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-3);
+    flex-direction: row;
+    align-items: flex-start;
+    max-width: none;
+    padding: 0;
+    gap: 0;
   }
 
-  #inventario-container .insumo-table tbody tr {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .admin-nav--sidebar {
     display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
-    box-shadow: var(--shadow-sm);
-    transition: all var(--transition);
-    border-left-width: 5px;
   }
 
-  #inventario-container .insumo-row--bajo-stock {
-    border-left-color: var(--color-danger);
-    background: #fdf8f5;
-  }
-
-  #inventario-container .insumo-table tbody tr:hover {
-    transform: translateX(0);
-    box-shadow: var(--shadow-md);
-  }
-
-  #inventario-container .insumo-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--color-border-soft);
-    text-align: right;
-    font-size: 0.85rem;
-    gap: var(--space-3);
-    background: transparent;
-    border-bottom-color: var(--color-border-soft);
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    flex: 1 1 auto;
     min-width: 0;
-    word-break: break-word;
+    padding: var(--space-6);
+    max-width: 1200px;
   }
 
-  #inventario-container .insumo-table td:last-child {
-    border-bottom: none;
+  .admin-topbar {
+    display: none !important;
   }
 
-  #inventario-container .insumo-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-    min-width: 80px;
-  }
-
-  /* Nombre del producto en móvil - destacado */
-  #inventario-container .insumo-table__nombre {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-primary);
-    border-bottom: 2px solid var(--color-primary);
-    padding-bottom: var(--space-3);
-    margin-bottom: var(--space-2);
-  }
-
-  #inventario-container .insumo-table__nombre::before {
-    content: '🍩';
-    margin-right: var(--space-2);
-    opacity: 0.8;
-  }
-
-  /* Disponible en móvil - con fondo */
-  #inventario-container .inventario-table__disponible {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--color-accent);
-    background: rgba(39, 174, 96, 0.08);
-    padding: 0.2rem 0.8rem;
-    border-radius: var(--radius-sm);
-  }
-
-  /* Badge en móvil más pequeño */
-  #inventario-container .insumo-badge--bajo-stock {
-    font-size: 0.55rem;
-    padding: 0.15rem 0.6rem;
-  }
-
-  /* Stock mínimo en móvil */
-  #inventario-container .inventario-table__stock-minimo {
-    justify-content: flex-end;
-  }
-
-  #inventario-container .inventario-table__stock-minimo input {
-    width: 3.5rem;
-    padding: 0.2rem;
-    font-size: 0.85rem;
+  .admin-nav-overlay {
+    display: none !important;
   }
 }
 
-/* Teléfonos muy pequeños */
-@media (max-width: 480px) {
-  #inventario-container .insumo-table tbody {
-    gap: var(--space-3);
-    padding: var(--space-2);
+/* ── Móvil / tablet: drawer ── */
+@media (max-width: 899px) {
+  .admin-topbar:not([hidden]) {
+    display: flex;
   }
 
-  #inventario-container .insumo-table tbody tr {
-    padding: var(--space-3);
+  .admin-nav--sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 88vw);
+    min-height: 100%;
+    transform: translateX(-105%);
+    transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-lg);
+    border-right: none;
   }
 
-  #inventario-container .insumo-table td {
-    font-size: 0.8rem;
-    padding: var(--space-1) 0;
+  .admin-nav--sidebar.is-open {
+    transform: translateX(0);
   }
 
-  #inventario-container .insumo-table td::before {
-    min-width: 60px;
-    font-size: 0.65rem;
+  .admin-nav--sidebar[hidden] {
+    display: none !important;
   }
 
-  #inventario-container .insumo-table__nombre {
-    font-size: 0.9rem;
+  .admin-nav--sidebar:not([hidden]) {
+    display: flex;
   }
+}
 
-  #inventario-container .inventario-table__disponible {
-    font-size: 0.9rem;
-    padding: 0.1rem 0.6rem;
-  }
+/* ── Ajustes de conteos ── */
+.admin-nav--sidebar .admin-nav__count {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.admin-nav--sidebar .admin-nav__count:empty,
+.admin-nav--sidebar .admin-nav__count[data-zero] {
+  display: none;
 }

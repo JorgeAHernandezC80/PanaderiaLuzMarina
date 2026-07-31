@@ -3364,6 +3364,87 @@ const App = {
 };
 
 /* ═══════════════════════════════════════════
-   9. ARRANQUE
+   9. SIDEBAR MÓVIL (drawer)
+   ═══════════════════════════════════════════
+   No toca _switchView: sigue usando .admin-nav__btn + data-view-target.
+   Los botones deshabilitados (.admin-nav__btn--soon) no tienen
+   data-view-target, así que nunca disparan un cambio de vista. */
+function initAdminSidebarDrawer() {
+  const nav = document.getElementById('admin-nav');
+  const toggle = document.getElementById('admin-menu-toggle');
+  const overlay = document.getElementById('admin-nav-overlay');
+  const topbar = document.getElementById('admin-topbar');
+  const logoutMobile = document.getElementById('btn-logout-mobile');
+  const logoutDesktop = document.getElementById('btn-logout');
+
+  if (!nav || !toggle) return;
+
+  const open = () => {
+    nav.classList.add('is-open');
+    if (overlay) {
+      overlay.hidden = false;
+      requestAnimationFrame(() => overlay.classList.add('is-visible'));
+    }
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  };
+
+  const close = () => {
+    nav.classList.remove('is-open');
+    if (overlay) {
+      overlay.classList.remove('is-visible');
+      window.setTimeout(() => {
+        if (!overlay.classList.contains('is-visible')) overlay.hidden = true;
+      }, 200);
+    }
+    toggle.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  };
+
+  const isMobile = () => window.matchMedia('(max-width: 899px)').matches;
+
+  toggle.addEventListener('click', () => {
+    if (nav.classList.contains('is-open')) close();
+    else open();
+  });
+
+  overlay?.addEventListener('click', close);
+
+  // Cerrar drawer al elegir una sección (solo móvil)
+  nav.querySelectorAll('.admin-nav__btn[data-view-target]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (isMobile()) close();
+    });
+  });
+
+  // Logout móvil → mismo comportamiento que desktop
+  logoutMobile?.addEventListener('click', () => {
+    logoutDesktop?.click();
+  });
+
+  // Mostrar topbar cuando la nav deja de estar hidden (post-login)
+  const syncTopbar = () => {
+    if (!topbar) return;
+    const navVisible = !nav.hasAttribute('hidden');
+    if (navVisible) topbar.removeAttribute('hidden');
+    else topbar.setAttribute('hidden', '');
+  };
+
+  // Observar atributo hidden de #admin-nav (Auth lo quita al entrar)
+  const observer = new MutationObserver(syncTopbar);
+  observer.observe(nav, { attributes: true, attributeFilter: ['hidden'] });
+  syncTopbar();
+
+  // Escape cierra el drawer
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nav.classList.contains('is-open')) close();
+  });
+}
+
+/* ═══════════════════════════════════════════
+   10. ARRANQUE
    ═══════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+  initAdminSidebarDrawer();
+});
