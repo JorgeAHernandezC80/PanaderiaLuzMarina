@@ -1068,7 +1068,7 @@ select.form-field__input {
 
 @media (max-width: 768px) {
   body {
-    padding: var(--space-4);
+    padding: var(--space-5);
   }
 
   .dashboard-header {
