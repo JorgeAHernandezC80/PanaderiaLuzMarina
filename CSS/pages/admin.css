@@ -1038,7 +1038,7 @@ button {
 /* Smartphones y Tablets pequeñas (<= 768px) */
 @media (max-width: 768px) {
   body {
-    padding: var(--space-3); /* Reducimos padding exterior para ganar área útil */
+    padding: var(--space-3);
   }
 
   /* 1. Header & Stats */
@@ -1050,6 +1050,7 @@ button {
   .stats {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-2);
+    width: 100%;
   }
 
   .stat-card {
@@ -1065,19 +1066,21 @@ button {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-2);
+    width: 100%;
   }
 
   .admin-nav__tabs {
     display: flex;
-    overflow-x: auto; /* Scroll horizontal táctil para pestañas */
+    overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: var(--space-2);
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
+    width: 100%;
   }
 
   .admin-nav__btn {
-    flex: 0 0 auto; /* Evita que las pestañas se aplasten */
+    flex: 0 0 auto;
     scroll-snap-align: start;
     padding: var(--space-2) var(--space-3);
     font-size: 0.85rem;
@@ -1089,7 +1092,35 @@ button {
     margin-left: 0;
   }
 
-  /* 3. Formularios en Móvil (Insumos, Proveedores, Horneadas, Recetas, etc.) */
+  /* 3. Centrado Total del Main y Contenedores */
+  main,
+  .main-content,
+  .tab-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centrado vertical */
+    align-items: center; /* Centrado horizontal */
+    width: 100%;
+    min-height: calc(100vh - 120px);
+    margin: 0 auto;
+    padding: var(--space-2);
+    box-sizing: border-box;
+    text-align: center;
+  }
+
+  .admin-section,
+  .insumo-form,
+  .proveedor-form,
+  .horneadas-container,
+  .stats-container {
+    width: 100%;
+    max-width: 500px; /* Evita que los formularios se deformen en pantallas anchas */
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+  }
+
+  /* 4. Formularios y Corrección de Fechas (Insumos y General) */
   .insumo-form,
   .proveedor-form {
     padding: var(--space-3);
@@ -1098,48 +1129,105 @@ button {
   .insumo-form,
   .insumo-form__group-grid,
   .proveedor-form__grid {
-    grid-template-columns: 1fr !important; /* Fuerza 1 sola columna rígida en móvil */
+    grid-template-columns: 1fr !important;
     gap: 0;
+    width: 100%;
+  }
+
+  .insumo-form .form-group,
+  .insumo-form__fecha-vencimiento,
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'] {
+    width: 100% !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto var(--space-3) auto;
+  }
+
+  /* Ajuste para selectores de fecha nativos en iOS Safari */
+  input[type='date']::-webkit-inner-spin-button,
+  input[type='date']::-webkit-calendar-picker-indicator {
+    margin-right: 0;
   }
 
   .insumo-form__actions {
     flex-direction: column;
+    width: 100%;
   }
 
   .insumo-form__actions .btn {
     width: 100%;
   }
 
-  /* 4. Filas Dinámicas de Ingredientes (Receta y Producción) */
-  .receta-ingrediente-row {
-    grid-template-columns: 1fr 1fr auto; /* Mantiene insumo y cantidad lado a lado en móvil */
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
+  /* 5. Corrección Específica: Pestaña Horneadas */
+  #tab-horneadas,
+  .horneadas-section,
+  .horneadas-toolbar,
+  .horneadas-fecha-container,
+  .horneadas-consultar-fecha {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Elimina la inclinación a la izquierda */
+    justify-content: center;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 
-  /* 5. Transformación de Tablas a Tarjetas (Card View) para Pantallas Pequeñas */
-  /* Evita el scroll horizontal incómodo convirtiendo filas de tabla en tarjetas flexibles */
-  .order-table,
-  .insumo-table {
-    display: block;
+  .horneadas-toolbar {
+    gap: var(--space-2);
+  }
+
+  .horneadas-toolbar .form-field,
+  .horneadas-toolbar input,
+  .horneadas-toolbar button,
+  .horneadas-toolbar .btn,
+  .horneadas-consultar-fecha .btn {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  /* 6. Filas Dinámicas de Ingredientes */
+  .receta-ingrediente-row {
+    grid-template-columns: 1fr 1fr auto;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
     width: 100%;
   }
 
+  /* 7. Transformación de Tablas a Tarjetas (Card View) */
+  .order-table,
+  .insumo-table,
+  .horneadas-table {
+    display: block;
+    width: 100%;
+    margin: var(--space-3) auto;
+  }
+
   .order-table thead,
-  .insumo-table thead {
-    display: none; /* Oculta los encabezados <th/> */
+  .insumo-table thead,
+  .horneadas-table thead {
+    display: none;
   }
 
   .order-table tbody,
-  .insumo-table tbody {
+  .insumo-table tbody,
+  .horneadas-table tbody {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    padding: var(--space-3);
+    padding: var(--space-2) 0;
   }
 
   .order-table tr,
-  .insumo-table tr {
+  .insumo-table tr,
+  .horneadas-table tr {
     display: flex;
     flex-direction: column;
     background: var(--color-surface);
@@ -1147,10 +1235,13 @@ button {
     border-radius: var(--radius-md);
     padding: var(--space-3);
     box-shadow: var(--shadow-sm);
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .order-table td,
-  .insumo-table td {
+  .insumo-table td,
+  .horneadas-table td {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1161,13 +1252,14 @@ button {
   }
 
   .order-table td:last-child,
-  .insumo-table td:last-child {
+  .insumo-table td:last-child,
+  .horneadas-table td:last-child {
     border-bottom: none;
   }
 
-  /* Inyecta la etiqueta (Label) antes de cada dato usando la propiedad HTML data-label */
   .order-table td::before,
-  .insumo-table td::before {
+  .insumo-table td::before,
+  .horneadas-table td::before {
     content: attr(data-label);
     font-weight: 700;
     text-transform: uppercase;
@@ -1186,18 +1278,6 @@ button {
     justify-content: flex-end;
     width: 100%;
     margin-top: var(--space-2);
-  }
-
-  /* 6. Toolbars de Filtro y Fechas */
-  .horneadas-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-  }
-
-  .horneadas-toolbar .form-field,
-  .horneadas-toolbar .btn {
-    width: 100%;
   }
 }
 
