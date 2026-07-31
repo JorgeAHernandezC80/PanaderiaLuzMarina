@@ -750,6 +750,11 @@ button {
   color: var(--color-danger);
 }
 
+.insumo-badge--por-vencer {
+  background: #fff4e0;
+  color: #b8720a;
+}
+
 .insumo-badge--info {
   background: var(--color-accent-bg);
   color: var(--color-accent);
@@ -959,6 +964,47 @@ button {
 
 .proveedor-form__wide {
   grid-column: 1 / -1;
+}
+
+.insumo-form__group {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-5);
+  grid-column: 1 / -1;
+}
+
+.insumo-form__legend {
+  font-family: var(--font-display, inherit);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.insumo-form__group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 var(--space-4);
+}
+
+.insumo-form__checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.insumo-form__checklist label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+.insumo-form__hint {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  margin-top: var(--space-1);
 }
 
 .proveedor-form textarea.form-field__input {

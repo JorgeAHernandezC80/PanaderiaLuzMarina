@@ -33,23 +33,75 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON ordenes(fecha_iso)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON ordenes(estado)');
 
+  /* Migración: si la tabla insumos ya existía de una versión anterior (por
+     ejemplo, tu base de datos local mientras probabas el panel), le pueden
+     faltar columnas agregadas después. A diferencia de proveedores (una
+     columna renombrada), aquí solo se agregan columnas nuevas —
+     ALTER TABLE ADD COLUMN es seguro y nunca toca los datos existentes. */
+  const insumosExiste = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'insumos'")
+    .get();
+  if (insumosExiste) {
+    const columnasActuales = db
+      .prepare('PRAGMA table_info(insumos)')
+      .all()
+      .map((c) => c.name);
+    const columnasNuevas = {
+      marca: 'TEXT',
+      fecha_vencimiento: 'TEXT',
+      ubicacion: 'TEXT',
+      sku: 'TEXT',
+      stock_maximo: 'REAL',
+      presentacion_compra: 'TEXT',
+      condiciones_almacenamiento: 'TEXT',
+      lote_proveedor: 'TEXT',
+      vida_util_abierto_dias: 'INTEGER',
+      proveedor_secundario: 'TEXT',
+      lead_time_dias: 'INTEGER',
+      impuesto_porcentaje: 'REAL',
+      alergenos: 'TEXT',
+      equivalencia_gramos: 'REAL',
+    };
+    for (const [columna, tipo] of Object.entries(columnasNuevas)) {
+      if (!columnasActuales.includes(columna)) {
+        console.log(`[db] Agregando columna insumos.${columna} (migración)...`);
+        db.exec(`ALTER TABLE insumos ADD COLUMN ${columna} ${tipo}`);
+      }
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS insumos (
-      id             TEXT PRIMARY KEY,
-      nombre         TEXT NOT NULL,
-      categoria      TEXT NOT NULL DEFAULT 'otros',
-      cantidad       REAL NOT NULL,
-      unidad         TEXT NOT NULL,
-      costo_unitario REAL,
-      stock_minimo   REAL,
-      proveedor      TEXT,
-      notas          TEXT,
-      creado_en      TEXT NOT NULL DEFAULT (datetime('now')),
-      actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+      id                          TEXT PRIMARY KEY,
+      nombre                      TEXT NOT NULL,
+      categoria                   TEXT NOT NULL DEFAULT 'otros',
+      cantidad                    REAL NOT NULL,
+      unidad                      TEXT NOT NULL,
+      costo_unitario              REAL,
+      stock_minimo                REAL,
+      stock_maximo                REAL,
+      proveedor                   TEXT,
+      proveedor_secundario        TEXT,
+      marca                       TEXT,
+      sku                         TEXT,
+      fecha_vencimiento           TEXT,
+      ubicacion                   TEXT,
+      presentacion_compra         TEXT,
+      condiciones_almacenamiento  TEXT,
+      lote_proveedor              TEXT,
+      vida_util_abierto_dias      INTEGER,
+      lead_time_dias              INTEGER,
+      impuesto_porcentaje         REAL,
+      alergenos                   TEXT,
+      equivalencia_gramos         REAL,
+      notas                       TEXT,
+      creado_en                   TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en              TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_insumos_nombre ON insumos(nombre)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_insumos_fecha_vencimiento ON insumos(fecha_vencimiento)');
 
   /* Migración: la tabla proveedores pudo haber sido creada por una
      implementación anterior con la columna nombre_legal. CREATE TABLE

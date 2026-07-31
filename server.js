@@ -4,11 +4,13 @@
  */
 
 const cors = require('cors');
+const helmet = require('helmet');
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
+const { convertirAGramos, costoPorGramo } = require('./units');
 const {
   validarOrden,
   ValidationError,
@@ -125,18 +127,29 @@ app.use(
   }),
 );
 
-// 3. Cabeceras de seguridad en todas las respuestas (defensa en profundidad)
+// 3. Cabeceras de seguridad estándar, vía helmet (se actualiza solo con
+//    `npm update` en vez de tener que mantener cada cabecera a mano).
+//    La Content-Security-Policy se desactiva aquí porque depende de
+//    FRONTEND_ORIGINS y del host de cada petición (para el wss:// del
+//    WebSocket) — eso se define abajo, a medida.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'no-referrer' },
+    hsts: { maxAge: 63072000, includeSubDomains: true, preload: true },
+  }),
+);
+
+// 3b. Cabeceras que helmet no cubre: CSP a medida (depende del host de cada
+//     petición) y Permissions-Policy.
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader(
     'Content-Security-Policy',
     `default-src 'none'; connect-src 'self' ${FRONTEND_ORIGINS.join(' ')} wss://${req.headers.host}; frame-ancestors 'none'; base-uri 'none'`,
   );
-  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   next();
 });
 
@@ -385,7 +398,7 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
    INSUMOS — CRUD protegido (solo panel admin)
    ═══════════════════════════════════════════ */
 function serializeInsumo(row) {
-  return {
+  const insumo = {
     id: row.id,
     nombre: row.nombre,
     categoria: row.categoria,
@@ -393,11 +406,41 @@ function serializeInsumo(row) {
     unidad: row.unidad,
     costoUnitario: row.costo_unitario,
     stockMinimo: row.stock_minimo,
+    stockMaximo: row.stock_maximo,
     proveedor: row.proveedor,
+    proveedorSecundario: row.proveedor_secundario,
+    marca: row.marca,
+    sku: row.sku,
+    fechaVencimiento: row.fecha_vencimiento,
+    ubicacion: row.ubicacion,
+    presentacionCompra: row.presentacion_compra,
+    condicionesAlmacenamiento: row.condiciones_almacenamiento,
+    loteProveedor: row.lote_proveedor,
+    vidaUtilAbiertoDias: row.vida_util_abierto_dias,
+    leadTimeDias: row.lead_time_dias,
+    impuestoPorcentaje: row.impuesto_porcentaje,
+    alergenos: row.alergenos ? JSON.parse(row.alergenos) : [],
+    equivalenciaGramos: row.equivalencia_gramos,
     notas: row.notas,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
+  // Gramaje total en existencia, cuando se puede calcular (unidades de peso
+  // siempre; unidades de conteo solo si se cargó equivalenciaGramos). Es
+  // informativo por ahora — todavía no descuenta nada automáticamente.
+  insumo.cantidadEnGramos = convertirAGramos({
+    unidad: row.unidad,
+    cantidad: row.cantidad,
+    equivalenciaGramos: row.equivalencia_gramos,
+  });
+  // Costo por gramo — información lista para cuando se conecte el costeo
+  // real de una receta; no se usa todavía en ningún cálculo.
+  insumo.costoPorGramo = costoPorGramo({
+    unidad: row.unidad,
+    costoUnitario: row.costo_unitario,
+    equivalenciaGramos: row.equivalencia_gramos,
+  });
+  return insumo;
 }
 
 app.get('/insumos', requireAuth, (req, res) => {
@@ -424,8 +467,14 @@ app.post('/insumos', requireAuth, rateLimit, (req, res) => {
   const id = crypto.randomUUID();
   try {
     db.prepare(
-      `INSERT INTO insumos (id, nombre, categoria, cantidad, unidad, costo_unitario, stock_minimo, proveedor, notas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO insumos (
+         id, nombre, categoria, cantidad, unidad, costo_unitario, stock_minimo, stock_maximo,
+         proveedor, proveedor_secundario, marca, sku, fecha_vencimiento, ubicacion,
+         presentacion_compra, condiciones_almacenamiento, lote_proveedor,
+         vida_util_abierto_dias, lead_time_dias, impuesto_porcentaje, alergenos,
+         equivalencia_gramos, notas
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       datos.nombre,
@@ -434,7 +483,21 @@ app.post('/insumos', requireAuth, rateLimit, (req, res) => {
       datos.unidad,
       datos.costoUnitario,
       datos.stockMinimo,
+      datos.stockMaximo,
       datos.proveedor,
+      datos.proveedorSecundario,
+      datos.marca,
+      datos.sku,
+      datos.fechaVencimiento,
+      datos.ubicacion,
+      datos.presentacionCompra,
+      datos.condicionesAlmacenamiento,
+      datos.loteProveedor,
+      datos.vidaUtilAbiertoDias,
+      datos.leadTimeDias,
+      datos.impuestoPorcentaje,
+      datos.alergenos,
+      datos.equivalenciaGramos,
       datos.notas,
     );
     const fila = db.prepare('SELECT * FROM insumos WHERE id = ?').get(id);
@@ -466,7 +529,11 @@ app.put('/insumos/:id', requireAuth, (req, res) => {
       .prepare(
         `UPDATE insumos
          SET nombre = ?, categoria = ?, cantidad = ?, unidad = ?, costo_unitario = ?,
-             stock_minimo = ?, proveedor = ?, notas = ?, actualizado_en = datetime('now')
+             stock_minimo = ?, stock_maximo = ?, proveedor = ?, proveedor_secundario = ?,
+             marca = ?, sku = ?, fecha_vencimiento = ?, ubicacion = ?,
+             presentacion_compra = ?, condiciones_almacenamiento = ?, lote_proveedor = ?,
+             vida_util_abierto_dias = ?, lead_time_dias = ?, impuesto_porcentaje = ?,
+             alergenos = ?, equivalencia_gramos = ?, notas = ?, actualizado_en = datetime('now')
          WHERE id = ?`,
       )
       .run(
@@ -476,7 +543,21 @@ app.put('/insumos/:id', requireAuth, (req, res) => {
         datos.unidad,
         datos.costoUnitario,
         datos.stockMinimo,
+        datos.stockMaximo,
         datos.proveedor,
+        datos.proveedorSecundario,
+        datos.marca,
+        datos.sku,
+        datos.fechaVencimiento,
+        datos.ubicacion,
+        datos.presentacionCompra,
+        datos.condicionesAlmacenamiento,
+        datos.loteProveedor,
+        datos.vidaUtilAbiertoDias,
+        datos.leadTimeDias,
+        datos.impuestoPorcentaje,
+        datos.alergenos,
+        datos.equivalenciaGramos,
         datos.notas,
         id,
       );

@@ -15,6 +15,8 @@ const ORDER_STATES = ['pendiente', 'en_preparacion', 'preparada', 'entregada'];
 
 const MAX_INSUMO_NOMBRE_LEN = 120;
 const MAX_INSUMO_PROVEEDOR_LEN = 120;
+const MAX_INSUMO_MARCA_LEN = 80;
+const MAX_INSUMO_UBICACION_LEN = 120;
 const MAX_INSUMO_NOTAS_LEN = 500;
 const MAX_INSUMO_CANTIDAD = 999999;
 const MAX_INSUMO_COSTO = 999999;
@@ -30,6 +32,27 @@ const CATEGORIAS_INSUMO = [
   'otros',
 ];
 const UNIDADES_INSUMO = ['kg', 'g', 'l', 'ml', 'lb', 'gal', 'unidad', 'paquete', 'caja'];
+
+/* Alérgenos comunes en panadería, para poder generar advertencias en
+   etiquetas de producto más adelante. Lista blanca: un alérgeno mal escrito
+   que no se detecte es un riesgo real, así que se rechaza en vez de
+   ignorarse en silencio. */
+const ALERGENOS_INSUMO = [
+  'gluten',
+  'lacteos',
+  'huevo',
+  'soya',
+  'frutos_secos',
+  'mani',
+  'mariscos',
+  'sesamo',
+];
+
+const MAX_INSUMO_SKU_LEN = 40;
+const MAX_INSUMO_TEXTO_CORTO_LEN = 120;
+const MAX_INSUMO_DIAS = 3650; // 10 años, tope defensivo
+const MAX_INSUMO_IMPUESTO_PORCENTAJE = 100;
+const MAX_INSUMO_EQUIVALENCIA_GRAMOS = 1_000_000; // 1 tonelada, tope generoso
 
 const MAX_PROVEEDOR_TEXTO_LEN = 120;
 const MAX_PROVEEDOR_LARGO_LEN = 500;
@@ -191,8 +214,30 @@ function validarInsumo(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const { nombre, categoria, cantidad, unidad, costoUnitario, stockMinimo, proveedor, notas } =
-    datos;
+  const {
+    nombre,
+    categoria,
+    cantidad,
+    unidad,
+    costoUnitario,
+    stockMinimo,
+    stockMaximo,
+    proveedor,
+    proveedorSecundario,
+    marca,
+    sku,
+    fechaVencimiento,
+    ubicacion,
+    presentacionCompra,
+    condicionesAlmacenamiento,
+    loteProveedor,
+    vidaUtilAbiertoDias,
+    leadTimeDias,
+    impuestoPorcentaje,
+    alergenos,
+    equivalenciaGramos,
+    notas,
+  } = datos;
 
   if (typeof nombre !== 'string' || nombre.trim() === '' || nombre.length > MAX_INSUMO_NOMBRE_LEN) {
     throw new ValidationError('Nombre del insumo inválido.');
@@ -227,8 +272,110 @@ function validarInsumo(datos) {
     stockMinFinal = stockNum;
   }
 
+  let stockMaxFinal = null;
+  if (stockMaximo !== null && stockMaximo !== undefined && stockMaximo !== '') {
+    const stockMaxNum = Number(stockMaximo);
+    if (!Number.isFinite(stockMaxNum) || stockMaxNum < 0 || stockMaxNum > MAX_INSUMO_CANTIDAD) {
+      throw new ValidationError('Stock máximo inválido.');
+    }
+    if (stockMinFinal !== null && stockMaxNum < stockMinFinal) {
+      throw new ValidationError('El stock máximo no puede ser menor que el stock mínimo.');
+    }
+    stockMaxFinal = stockMaxNum;
+  }
+
   const proveedorFinal =
     typeof proveedor === 'string' ? proveedor.trim().slice(0, MAX_INSUMO_PROVEEDOR_LEN) : '';
+  const proveedorSecundarioFinal =
+    typeof proveedorSecundario === 'string'
+      ? proveedorSecundario.trim().slice(0, MAX_INSUMO_PROVEEDOR_LEN)
+      : '';
+  const marcaFinal = typeof marca === 'string' ? marca.trim().slice(0, MAX_INSUMO_MARCA_LEN) : '';
+  const ubicacionFinal =
+    typeof ubicacion === 'string' ? ubicacion.trim().slice(0, MAX_INSUMO_UBICACION_LEN) : '';
+  const skuFinal = typeof sku === 'string' ? sku.trim().slice(0, MAX_INSUMO_SKU_LEN) : '';
+  const presentacionCompraFinal =
+    typeof presentacionCompra === 'string'
+      ? presentacionCompra.trim().slice(0, MAX_INSUMO_TEXTO_CORTO_LEN)
+      : '';
+  const condicionesAlmacenamientoFinal =
+    typeof condicionesAlmacenamiento === 'string'
+      ? condicionesAlmacenamiento.trim().slice(0, MAX_INSUMO_TEXTO_CORTO_LEN)
+      : '';
+  const loteProveedorFinal =
+    typeof loteProveedor === 'string'
+      ? loteProveedor.trim().slice(0, MAX_INSUMO_TEXTO_CORTO_LEN)
+      : '';
+
+  let fechaVencimientoFinal = null;
+  if (fechaVencimiento !== null && fechaVencimiento !== undefined && fechaVencimiento !== '') {
+    if (typeof fechaVencimiento !== 'string' || !FECHA_RE.test(fechaVencimiento)) {
+      throw new ValidationError('Fecha de vencimiento inválida.');
+    }
+    fechaVencimientoFinal = fechaVencimiento;
+  }
+
+  let vidaUtilAbiertoDiasFinal = null;
+  if (
+    vidaUtilAbiertoDias !== null &&
+    vidaUtilAbiertoDias !== undefined &&
+    vidaUtilAbiertoDias !== ''
+  ) {
+    const val = Number(vidaUtilAbiertoDias);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_INSUMO_DIAS) {
+      throw new ValidationError('Vida útil una vez abierto inválida.');
+    }
+    vidaUtilAbiertoDiasFinal = val;
+  }
+
+  let leadTimeDiasFinal = null;
+  if (leadTimeDias !== null && leadTimeDias !== undefined && leadTimeDias !== '') {
+    const val = Number(leadTimeDias);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_INSUMO_DIAS) {
+      throw new ValidationError('Tiempo de entrega (lead time) inválido.');
+    }
+    leadTimeDiasFinal = val;
+  }
+
+  let impuestoPorcentajeFinal = null;
+  if (
+    impuestoPorcentaje !== null &&
+    impuestoPorcentaje !== undefined &&
+    impuestoPorcentaje !== ''
+  ) {
+    const val = Number(impuestoPorcentaje);
+    if (!Number.isFinite(val) || val < 0 || val > MAX_INSUMO_IMPUESTO_PORCENTAJE) {
+      throw new ValidationError('Porcentaje de impuesto inválido.');
+    }
+    impuestoPorcentajeFinal = val;
+  }
+
+  let equivalenciaGramosFinal = null;
+  if (
+    equivalenciaGramos !== null &&
+    equivalenciaGramos !== undefined &&
+    equivalenciaGramos !== ''
+  ) {
+    const val = Number(equivalenciaGramos);
+    if (!Number.isFinite(val) || val <= 0 || val > MAX_INSUMO_EQUIVALENCIA_GRAMOS) {
+      throw new ValidationError('Equivalencia en gramos inválida.');
+    }
+    equivalenciaGramosFinal = val;
+  }
+
+  let alergenosFinal = [];
+  if (alergenos !== null && alergenos !== undefined) {
+    if (!Array.isArray(alergenos)) {
+      throw new ValidationError('Alérgenos debe ser una lista.');
+    }
+    for (const a of alergenos) {
+      if (!ALERGENOS_INSUMO.includes(a)) {
+        throw new ValidationError(`Alérgeno inválido: "${a}".`);
+      }
+    }
+    alergenosFinal = [...new Set(alergenos)];
+  }
+
   const notasFinal = typeof notas === 'string' ? notas.trim().slice(0, MAX_INSUMO_NOTAS_LEN) : '';
 
   return {
@@ -238,7 +385,21 @@ function validarInsumo(datos) {
     unidad,
     costoUnitario: costoFinal,
     stockMinimo: stockMinFinal,
+    stockMaximo: stockMaxFinal,
     proveedor: proveedorFinal,
+    proveedorSecundario: proveedorSecundarioFinal,
+    marca: marcaFinal,
+    sku: skuFinal,
+    fechaVencimiento: fechaVencimientoFinal,
+    ubicacion: ubicacionFinal,
+    presentacionCompra: presentacionCompraFinal,
+    condicionesAlmacenamiento: condicionesAlmacenamientoFinal,
+    loteProveedor: loteProveedorFinal,
+    vidaUtilAbiertoDias: vidaUtilAbiertoDiasFinal,
+    leadTimeDias: leadTimeDiasFinal,
+    impuestoPorcentaje: impuestoPorcentajeFinal,
+    alergenos: JSON.stringify(alergenosFinal),
+    equivalenciaGramos: equivalenciaGramosFinal,
     notas: notasFinal,
   };
 }
@@ -636,6 +797,7 @@ module.exports = {
   validarInsumo,
   INSUMO_ID_RE,
   CATEGORIAS_INSUMO,
+  ALERGENOS_INSUMO,
   UNIDADES_INSUMO,
   validarProveedor,
   PROVEEDOR_ID_RE,

@@ -277,99 +277,325 @@
         <form id="insumo-form" class="insumo-form" novalidate data-component="insumo-form">
           <input type="hidden" id="insumo-id" name="id" />
 
-          <div class="form-field">
-            <label for="insumo-nombre" class="form-field__label">Nombre</label>
-            <input
-              type="text"
-              id="insumo-nombre"
-              name="nombre"
-              class="form-field__input"
-              placeholder="Harina de trigo"
-              maxlength="80"
-              required
-            />
-          </div>
+          <fieldset class="insumo-form__group">
+            <legend class="insumo-form__legend">1. Identificación</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="insumo-nombre" class="form-field__label">Nombre</label>
+                <input
+                  type="text"
+                  id="insumo-nombre"
+                  name="nombre"
+                  class="form-field__input"
+                  placeholder="Harina de trigo"
+                  maxlength="80"
+                  required
+                />
+              </div>
 
-          <div class="form-field">
-            <label for="insumo-categoria" class="form-field__label">Categoría</label>
-            <select id="insumo-categoria" name="categoria" class="form-field__input">
-              <option value="harinas">Harinas</option>
-              <option value="lacteos">Lácteos</option>
-              <option value="huevos">Huevos</option>
-              <option value="endulzantes">Endulzantes</option>
-              <option value="grasas">Grasas / aceites</option>
-              <option value="levaduras">Levaduras / leudantes</option>
-              <option value="empaque">Empaque</option>
-              <option value="otros" selected>Otros</option>
-            </select>
-          </div>
+              <div class="form-field">
+                <label for="insumo-categoria" class="form-field__label">Categoría</label>
+                <select id="insumo-categoria" name="categoria" class="form-field__input">
+                  <option value="harinas">Harinas</option>
+                  <option value="lacteos">Lácteos</option>
+                  <option value="huevos">Huevos</option>
+                  <option value="endulzantes">Endulzantes</option>
+                  <option value="grasas">Grasas / aceites</option>
+                  <option value="levaduras">Levaduras / leudantes</option>
+                  <option value="empaque">Empaque</option>
+                  <option value="otros" selected>Otros</option>
+                </select>
+              </div>
 
-          <div class="form-field">
-            <label for="insumo-cantidad" class="form-field__label">Cantidad</label>
-            <input
-              type="number"
-              id="insumo-cantidad"
-              name="cantidad"
-              class="form-field__input"
-              min="0"
-              step="0.01"
-              placeholder="0"
-              required
-            />
-          </div>
+              <div class="form-field">
+                <label for="insumo-marca" class="form-field__label">Marca</label>
+                <input
+                  type="text"
+                  id="insumo-marca"
+                  name="marca"
+                  class="form-field__input"
+                  placeholder="Opcional"
+                  maxlength="80"
+                />
+              </div>
 
-          <div class="form-field">
-            <label for="insumo-unidad" class="form-field__label">Unidad</label>
-            <select id="insumo-unidad" name="unidad" class="form-field__input">
-              <option value="kg" selected>kg</option>
-              <option value="g">g</option>
-              <option value="l">l</option>
-              <option value="ml">ml</option>
-              <option value="lb">lb</option>
-              <option value="gal">Gal</option>
-              <option value="unidad">unidad</option>
-              <option value="paquete">paquete</option>
-              <option value="caja">caja</option>
-            </select>
-          </div>
+              <div class="form-field">
+                <label for="insumo-sku" class="form-field__label">SKU / Código de barras</label>
+                <input
+                  type="text"
+                  id="insumo-sku"
+                  name="sku"
+                  class="form-field__input"
+                  placeholder="Opcional · ej. HAR-001"
+                  maxlength="40"
+                />
+              </div>
+            </div>
+          </fieldset>
 
-          <div class="form-field">
-            <label for="insumo-costo" class="form-field__label">Costo unitario</label>
-            <input
-              type="number"
-              id="insumo-costo"
-              name="costoUnitario"
-              class="form-field__input"
-              min="0"
-              step="0.01"
-              placeholder="Opcional"
-            />
-          </div>
+          <fieldset class="insumo-form__group">
+            <legend class="insumo-form__legend">2. Cantidad y unidad</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="insumo-cantidad" class="form-field__label">Cantidad</label>
+                <input
+                  type="number"
+                  id="insumo-cantidad"
+                  name="cantidad"
+                  class="form-field__input"
+                  min="0"
+                  step="0.01"
+                  placeholder="0"
+                  required
+                />
+              </div>
 
-          <div class="form-field">
-            <label for="insumo-stock-minimo" class="form-field__label">Stock mínimo</label>
-            <input
-              type="number"
-              id="insumo-stock-minimo"
-              name="stockMinimo"
-              class="form-field__input"
-              min="0"
-              step="0.01"
-              placeholder="Opcional"
-            />
-          </div>
+              <div class="form-field">
+                <label for="insumo-unidad" class="form-field__label">Unidad</label>
+                <select id="insumo-unidad" name="unidad" class="form-field__input">
+                  <option value="" disabled selected hidden>Selecciona una unidad</option>
 
-          <div class="form-field">
-            <label for="insumo-proveedor" class="form-field__label">Proveedor</label>
-            <input
-              type="text"
-              id="insumo-proveedor"
-              name="proveedor"
-              class="form-field__input"
-              placeholder="Opcional"
-              maxlength="80"
-            />
-          </div>
+                  <optgroup label="Masa / Peso">
+                    <option value="kg">kg (Kilogramos)</option>
+                    <option value="g">g (Gramos)</option>
+                    <option value="lb">lb (Libras)</option>
+                  </optgroup>
+
+                  <optgroup label="Volumen / Líquidos">
+                    <option value="l">l (Litros)</option>
+                    <option value="ml">ml (Mililitros)</option>
+                    <option value="gal">gal (Galones)</option>
+                  </optgroup>
+
+                  <optgroup label="Conteo / Empaque">
+                    <option value="unidad">Unidad</option>
+                    <option value="paquete">Paquete</option>
+                    <option value="caja">Caja</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-stock-minimo" class="form-field__label">Stock mínimo</label>
+                <input
+                  type="number"
+                  id="insumo-stock-minimo"
+                  name="stockMinimo"
+                  class="form-field__input"
+                  min="0"
+                  step="0.01"
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-stock-maximo" class="form-field__label">Stock máximo</label>
+                <input
+                  type="number"
+                  id="insumo-stock-maximo"
+                  name="stockMaximo"
+                  class="form-field__input"
+                  min="0"
+                  step="0.01"
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div class="form-field insumo-form__wide">
+                <label for="insumo-equivalencia-gramos" class="form-field__label">
+                  Equivalencia en gramos (solo si la unidad es Unidad/Paquete/Caja)
+                </label>
+                <input
+                  type="number"
+                  id="insumo-equivalencia-gramos"
+                  name="equivalenciaGramos"
+                  class="form-field__input"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="Opcional · ej. 1 paquete de levadura = 500"
+                />
+                <p class="insumo-form__hint">
+                  Para kg/g/lb la conversión a gramos es automática — esto solo hace falta cuando
+                  compras por unidad, paquete o caja.
+                </p>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="insumo-form__group">
+            <legend class="insumo-form__legend">3. Compra y proveedores</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="insumo-costo" class="form-field__label">Costo unitario</label>
+                <input
+                  type="number"
+                  id="insumo-costo"
+                  name="costoUnitario"
+                  class="form-field__input"
+                  min="0"
+                  step="0.01"
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-presentacion-compra" class="form-field__label">
+                  Presentación de compra
+                </label>
+                <input
+                  type="text"
+                  id="insumo-presentacion-compra"
+                  name="presentacionCompra"
+                  class="form-field__input"
+                  placeholder="Opcional · ej. Saco 25kg"
+                  maxlength="120"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-impuesto" class="form-field__label">Impuesto (%)</label>
+                <input
+                  type="number"
+                  id="insumo-impuesto"
+                  name="impuestoPorcentaje"
+                  class="form-field__input"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-proveedor" class="form-field__label">Proveedor principal</label>
+                <input
+                  type="text"
+                  id="insumo-proveedor"
+                  name="proveedor"
+                  class="form-field__input"
+                  placeholder="Opcional"
+                  maxlength="80"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-proveedor-secundario" class="form-field__label">
+                  Proveedor secundario
+                </label>
+                <input
+                  type="text"
+                  id="insumo-proveedor-secundario"
+                  name="proveedorSecundario"
+                  class="form-field__input"
+                  placeholder="Opcional · por si el principal desabastece"
+                  maxlength="120"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-lead-time" class="form-field__label">
+                  Tiempo de entrega (días)
+                </label>
+                <input
+                  type="number"
+                  id="insumo-lead-time"
+                  name="leadTimeDias"
+                  class="form-field__input"
+                  min="1"
+                  step="1"
+                  placeholder="Opcional"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="insumo-form__group">
+            <legend class="insumo-form__legend">4. Almacenamiento y vencimiento</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="insumo-ubicacion" class="form-field__label">Ubicación</label>
+                <input
+                  type="text"
+                  id="insumo-ubicacion"
+                  name="ubicacion"
+                  class="form-field__input"
+                  placeholder="Opcional · ej. Bodega, Estante 3"
+                  maxlength="120"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-condiciones-almacenamiento" class="form-field__label">
+                  Condiciones de almacenamiento
+                </label>
+                <input
+                  type="text"
+                  id="insumo-condiciones-almacenamiento"
+                  name="condicionesAlmacenamiento"
+                  class="form-field__input"
+                  placeholder="Opcional · ej. Refrigeración 2-4°C"
+                  maxlength="120"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-fecha-vencimiento" class="form-field__label">
+                  Fecha de vencimiento
+                </label>
+                <input
+                  type="date"
+                  id="insumo-fecha-vencimiento"
+                  name="fechaVencimiento"
+                  class="form-field__input"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-vida-util-abierto" class="form-field__label">
+                  Vida útil una vez abierto (días)
+                </label>
+                <input
+                  type="number"
+                  id="insumo-vida-util-abierto"
+                  name="vidaUtilAbiertoDias"
+                  class="form-field__input"
+                  min="1"
+                  step="1"
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="insumo-lote-proveedor" class="form-field__label">
+                  Número de lote del proveedor
+                </label>
+                <input
+                  type="text"
+                  id="insumo-lote-proveedor"
+                  name="loteProveedor"
+                  class="form-field__input"
+                  placeholder="Opcional"
+                  maxlength="120"
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="insumo-form__group">
+            <legend class="insumo-form__legend">5. Alérgenos</legend>
+            <div class="insumo-form__checklist" data-component="insumo-alergenos">
+              <label><input type="checkbox" name="alergenos" value="gluten" /> Gluten</label>
+              <label><input type="checkbox" name="alergenos" value="lacteos" /> Lácteos</label>
+              <label><input type="checkbox" name="alergenos" value="huevo" /> Huevo</label>
+              <label><input type="checkbox" name="alergenos" value="soya" /> Soya</label>
+              <label
+                ><input type="checkbox" name="alergenos" value="frutos_secos" /> Frutos secos</label
+              >
+              <label><input type="checkbox" name="alergenos" value="mani" /> Maní</label>
+              <label><input type="checkbox" name="alergenos" value="mariscos" /> Mariscos</label>
+              <label><input type="checkbox" name="alergenos" value="sesamo" /> Sésamo</label>
+            </div>
+          </fieldset>
 
           <div class="form-field insumo-form__wide">
             <label for="insumo-notas" class="form-field__label">Notas</label>
@@ -1449,6 +1675,11 @@
         <td class="insumo-table__cantidad" data-label="Cantidad"></td>
         <td class="insumo-table__costo" data-label="Costo unit."></td>
         <td class="insumo-table__proveedor" data-label="Proveedor"></td>
+        <td class="insumo-table__marca" data-label="Marca"></td>
+        <td class="insumo-table__sku" data-label="SKU"></td>
+        <td class="insumo-table__vencimiento" data-label="Vencimiento"></td>
+        <td class="insumo-table__ubicacion" data-label="Ubicación"></td>
+        <td class="insumo-table__alergenos" data-label="Alérgenos"></td>
         <td class="insumo-table__acciones" data-label="Acciones"></td>
       </tr>
     </template>

@@ -86,6 +86,20 @@ const CONFIG = Object.freeze({
     insumoCosto: '#insumo-costo',
     insumoStockMinimo: '#insumo-stock-minimo',
     insumoProveedor: '#insumo-proveedor',
+    insumoProveedorSecundario: '#insumo-proveedor-secundario',
+    insumoMarca: '#insumo-marca',
+    insumoSku: '#insumo-sku',
+    insumoStockMaximo: '#insumo-stock-maximo',
+    insumoEquivalenciaGramos: '#insumo-equivalencia-gramos',
+    insumoPresentacionCompra: '#insumo-presentacion-compra',
+    insumoImpuesto: '#insumo-impuesto',
+    insumoLeadTime: '#insumo-lead-time',
+    insumoCondicionesAlmacenamiento: '#insumo-condiciones-almacenamiento',
+    insumoLoteProveedor: '#insumo-lote-proveedor',
+    insumoVidaUtilAbierto: '#insumo-vida-util-abierto',
+    insumoAlergenos: '#insumo-form [data-component="insumo-alergenos"]',
+    insumoFechaVencimiento: '#insumo-fecha-vencimiento',
+    insumoUbicacion: '#insumo-ubicacion',
     insumoNotas: '#insumo-notas',
     insumoError: '#insumo-error',
     insumoErrorMsg: '#insumo-error [data-insumo-error-msg]',
@@ -238,6 +252,16 @@ const CONFIG = Object.freeze({
     levaduras: 'Levaduras / leudantes',
     empaque: 'Empaque',
     otros: 'Otros',
+  },
+  ALERGENO_LABELS: {
+    gluten: 'Gluten',
+    lacteos: 'Lácteos',
+    huevo: 'Huevo',
+    soya: 'Soya',
+    frutos_secos: 'Frutos secos',
+    mani: 'Maní',
+    mariscos: 'Mariscos',
+    sesamo: 'Sésamo',
   },
 });
 
@@ -1202,6 +1226,11 @@ const Render = {
           <th scope="col">Cantidad</th>
           <th scope="col">Costo unit.</th>
           <th scope="col">Proveedor</th>
+          <th scope="col">Marca</th>
+          <th scope="col">SKU</th>
+          <th scope="col">Vencimiento</th>
+          <th scope="col">Ubicación</th>
+          <th scope="col">Alérgenos</th>
           <th scope="col">Acciones</th>
         </tr>
       </thead>
@@ -1244,6 +1273,39 @@ const Render = {
         ? Format.currency(insumo.costoUnitario)
         : '—';
     row.querySelector('.insumo-table__proveedor').textContent = insumo.proveedor || '—';
+    row.querySelector('.insumo-table__marca').textContent = insumo.marca || '—';
+    row.querySelector('.insumo-table__sku').textContent = insumo.sku || '—';
+    row.querySelector('.insumo-table__ubicacion').textContent = insumo.ubicacion || '—';
+
+    const vencimientoCell = row.querySelector('.insumo-table__vencimiento');
+    if (!insumo.fechaVencimiento) {
+      vencimientoCell.textContent = '—';
+    } else {
+      vencimientoCell.textContent = insumo.fechaVencimiento;
+      const hoy = new Date().toISOString().slice(0, 10);
+      const diasRestantes = Math.floor(
+        (new Date(insumo.fechaVencimiento) - new Date(hoy)) / (1000 * 60 * 60 * 24),
+      );
+      if (diasRestantes < 0) {
+        const badge = document.createElement('span');
+        badge.className = 'insumo-badge insumo-badge--bajo-stock';
+        badge.textContent = 'Vencido';
+        vencimientoCell.appendChild(document.createElement('br'));
+        vencimientoCell.appendChild(badge);
+      } else if (diasRestantes <= 7) {
+        const badge = document.createElement('span');
+        badge.className = 'insumo-badge insumo-badge--por-vencer';
+        badge.textContent = 'Por vencer';
+        vencimientoCell.appendChild(document.createElement('br'));
+        vencimientoCell.appendChild(badge);
+      }
+    }
+
+    const alergenosCell = row.querySelector('.insumo-table__alergenos');
+    alergenosCell.textContent =
+      Array.isArray(insumo.alergenos) && insumo.alergenos.length > 0
+        ? insumo.alergenos.map((a) => CONFIG.ALERGENO_LABELS[a] || a).join(', ')
+        : '—';
 
     const acciones = row.querySelector('.insumo-table__acciones');
 
@@ -2884,6 +2946,31 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.insumoCosto).value = insumo.costoUnitario ?? '';
     document.querySelector(CONFIG.SELECTORS.insumoStockMinimo).value = insumo.stockMinimo ?? '';
     document.querySelector(CONFIG.SELECTORS.insumoProveedor).value = insumo.proveedor || '';
+    document.querySelector(CONFIG.SELECTORS.insumoProveedorSecundario).value =
+      insumo.proveedorSecundario || '';
+    document.querySelector(CONFIG.SELECTORS.insumoMarca).value = insumo.marca || '';
+    document.querySelector(CONFIG.SELECTORS.insumoSku).value = insumo.sku || '';
+    document.querySelector(CONFIG.SELECTORS.insumoStockMaximo).value = insumo.stockMaximo ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoEquivalenciaGramos).value =
+      insumo.equivalenciaGramos ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoPresentacionCompra).value =
+      insumo.presentacionCompra || '';
+    document.querySelector(CONFIG.SELECTORS.insumoImpuesto).value = insumo.impuestoPorcentaje ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoLeadTime).value = insumo.leadTimeDias ?? '';
+    document.querySelector(CONFIG.SELECTORS.insumoCondicionesAlmacenamiento).value =
+      insumo.condicionesAlmacenamiento || '';
+    document.querySelector(CONFIG.SELECTORS.insumoLoteProveedor).value = insumo.loteProveedor || '';
+    document.querySelector(CONFIG.SELECTORS.insumoVidaUtilAbierto).value =
+      insumo.vidaUtilAbiertoDias ?? '';
+    document
+      .querySelector(CONFIG.SELECTORS.insumoAlergenos)
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach((cb) => {
+        cb.checked = Array.isArray(insumo.alergenos) && insumo.alergenos.includes(cb.value);
+      });
+    document.querySelector(CONFIG.SELECTORS.insumoFechaVencimiento).value =
+      insumo.fechaVencimiento || '';
+    document.querySelector(CONFIG.SELECTORS.insumoUbicacion).value = insumo.ubicacion || '';
     document.querySelector(CONFIG.SELECTORS.insumoNotas).value = insumo.notas || '';
 
     const submitBtn = document.querySelector(CONFIG.SELECTORS.insumoSubmitBtn);
@@ -3088,6 +3175,16 @@ const App = {
 
     const costoRaw = document.querySelector(CONFIG.SELECTORS.insumoCosto).value;
     const stockMinRaw = document.querySelector(CONFIG.SELECTORS.insumoStockMinimo).value;
+    const stockMaxRaw = document.querySelector(CONFIG.SELECTORS.insumoStockMaximo).value;
+    const equivalenciaRaw = document.querySelector(CONFIG.SELECTORS.insumoEquivalenciaGramos).value;
+    const impuestoRaw = document.querySelector(CONFIG.SELECTORS.insumoImpuesto).value;
+    const leadTimeRaw = document.querySelector(CONFIG.SELECTORS.insumoLeadTime).value;
+    const vidaUtilRaw = document.querySelector(CONFIG.SELECTORS.insumoVidaUtilAbierto).value;
+    const alergenos = [
+      ...document.querySelectorAll(
+        `${CONFIG.SELECTORS.insumoAlergenos} input[type="checkbox"]:checked`,
+      ),
+    ].map((cb) => cb.value);
     const idExistente = document.querySelector(CONFIG.SELECTORS.insumoId).value || null;
 
     const datos = {
@@ -3097,7 +3194,28 @@ const App = {
       unidad,
       costoUnitario: costoRaw === '' ? null : Number(costoRaw),
       stockMinimo: stockMinRaw === '' ? null : Number(stockMinRaw),
+      stockMaximo: stockMaxRaw === '' ? null : Number(stockMaxRaw),
       proveedor: document.querySelector(CONFIG.SELECTORS.insumoProveedor).value.trim(),
+      proveedorSecundario: document
+        .querySelector(CONFIG.SELECTORS.insumoProveedorSecundario)
+        .value.trim(),
+      marca: document.querySelector(CONFIG.SELECTORS.insumoMarca).value.trim(),
+      sku: document.querySelector(CONFIG.SELECTORS.insumoSku).value.trim(),
+      equivalenciaGramos: equivalenciaRaw === '' ? null : Number(equivalenciaRaw),
+      presentacionCompra: document
+        .querySelector(CONFIG.SELECTORS.insumoPresentacionCompra)
+        .value.trim(),
+      impuestoPorcentaje: impuestoRaw === '' ? null : Number(impuestoRaw),
+      leadTimeDias: leadTimeRaw === '' ? null : Number(leadTimeRaw),
+      condicionesAlmacenamiento: document
+        .querySelector(CONFIG.SELECTORS.insumoCondicionesAlmacenamiento)
+        .value.trim(),
+      loteProveedor: document.querySelector(CONFIG.SELECTORS.insumoLoteProveedor).value.trim(),
+      vidaUtilAbiertoDias: vidaUtilRaw === '' ? null : Number(vidaUtilRaw),
+      alergenos,
+      fechaVencimiento:
+        document.querySelector(CONFIG.SELECTORS.insumoFechaVencimiento).value || null,
+      ubicacion: document.querySelector(CONFIG.SELECTORS.insumoUbicacion).value.trim(),
       notas: document.querySelector(CONFIG.SELECTORS.insumoNotas).value.trim(),
     };
 
