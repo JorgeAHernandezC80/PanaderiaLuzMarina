@@ -3502,6 +3502,26 @@ function initAdminSidebarDrawer() {
     }
   });
 
+  /* ── Tooltips del rail ──
+     El tooltip se dibuja con position: fixed para que no lo recorte el
+     scroll de .admin-nav__groups, así que necesita su coordenada vertical. */
+  const placeTooltips = () => {
+    if (!nav.classList.contains('is-collapsed')) return;
+    nav.querySelectorAll('.admin-nav__btn').forEach((btn) => {
+      const rect = btn.getBoundingClientRect();
+      btn.style.setProperty('--nav-tooltip-y', `${rect.top + rect.height / 2}px`);
+    });
+  };
+
+  // Los ítems deshabilitados no reciben eventos de puntero, así que se
+  // recalculan todos a la vez en lugar de solo el que tiene el cursor.
+  nav.addEventListener('pointerover', placeTooltips);
+  nav.addEventListener('focusin', placeTooltips);
+  nav.querySelector('.admin-nav__groups')?.addEventListener('scroll', placeTooltips);
+  window.addEventListener('resize', placeTooltips);
+  collapseBtn?.addEventListener('click', () => requestAnimationFrame(placeTooltips));
+  placeTooltips();
+
   /* ── Navegación con flechas entre secciones ── */
   nav.addEventListener('keydown', (e) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
