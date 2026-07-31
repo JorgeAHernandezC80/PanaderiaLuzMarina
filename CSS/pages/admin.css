@@ -1123,6 +1123,84 @@ select.form-field__input {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   TABLAS → TARJETAS EN MÓVIL
+   Las 6 tablas dinámicas (Pedidos, Insumos, Proveedores,
+   Horneadas, Inventario, Ajustes) ya traen data-label en cada
+   <td> desde sus <template>. Por debajo de 640px, en vez de
+   depender de scroll horizontal sobre una tabla angosta, cada
+   fila se convierte en una tarjeta con "etiqueta: valor".
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  table:has(td[data-label]) {
+    display: block;
+    width: 100%;
+  }
+
+  table:has(td[data-label]) thead {
+    display: none;
+  }
+
+  table:has(td[data-label]) tbody {
+    display: block;
+  }
+
+  table:has(td[data-label]) tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+  }
+
+  table:has(td[data-label]) tr:last-child {
+    margin-bottom: 0;
+  }
+
+  table:has(td[data-label]) td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  table:has(td[data-label]) td:not(:last-child) {
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  table:has(td[data-label]) td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  table:has(td[data-label]) td:empty::before {
+    content: none;
+  }
+
+  /* Columna de acciones: los botones ya se ven bien a la derecha,
+     no necesitan la etiqueta duplicada. */
+  .insumo-table__acciones {
+    justify-content: flex-end;
+  }
+}
+
+/* ── Refuerzo: grupos que pueden desbordar con contenido largo ── */
+.order-group__meta,
+.produccion-card__header {
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
    16. SIDEBAR + DRAWER (nav del panel admin)
    Un solo componente para todas las pantallas:
    · < 900px  → drawer deslizante sobre el contenido (+ topbar)
