@@ -84,6 +84,7 @@ const PRODUCTOS_CATALOGO = {
   6: 'Pandebono',
   7: 'Pan de Yuca',
   8: 'Conchas',
+  9: 'Pan mariquiteño',
 };
 
 const AJUSTE_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
