@@ -13,12 +13,18 @@
   --color-primary-hover: #4a3d28;
   --color-accent: #27ae60;
   --color-accent-hover: #229954;
+  --color-accent-bg: #e8f8ef;
   --color-danger: #c0392b;
+  --color-success: #27ae60;
+  --color-success-bg: #e8f5e9;
+  --color-warning: #b8720a;
+  --color-warning-bg: #fff4e0;
   --color-soft-bg: #faf6ee;
 
   /* Tipografía */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SF Mono', Consolas, monospace;
+  --font-display: 'Montserrat', var(--font-sans);
 
   /* Espaciado (grid 8px) */
   --space-1: 0.25rem;
@@ -2228,5 +2234,69 @@ button {
   .admin-nav__collapse i,
   .admin-nav-overlay {
     transition-duration: 1ms;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   17. REFUERZOS RESPONSIVE EXTRA
+   ═══════════════════════════════════════════════════════════ */
+
+/* Evita overflow horizontal en cualquier viewport */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Inputs nativos de date/time que a veces desbordan en iOS */
+input[type='date'],
+input[type='time'] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Asegura que los fieldsets no rompan el grid en pantallas muy estrechas */
+.insumo-form__group,
+.proveedor-form__group {
+  min-width: 0;
+}
+
+/* Stats: en pantallas intermedias (tablets landscape) que no se vean demasiado estrechas */
+@media (min-width: 641px) and (max-width: 899px) {
+  .stats > * {
+    flex: 1 1 calc(33.333% - var(--space-4));
+    min-width: 140px;
+  }
+}
+
+/* Formularios de horneadas / inventario / producción:
+   en tablets el toolbar se ve mejor en 2 columnas que en 1 */
+@media (min-width: 481px) and (max-width: 768px) {
+  .horneadas-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+  .horneadas-toolbar .form-field {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Ultra-wide: evita que las tablas de pedidos se estiren demasiado */
+@media (min-width: 2560px) {
+  .order-table {
+    max-width: 1800px;
+    margin-inline: auto;
+  }
+}
+
+/* Safe-area para notch / Dynamic Island en iPhone */
+@supports (padding: max(0px)) {
+  .admin-topbar {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+
+  .admin-nav--sidebar {
+    padding-left: max(0px, env(safe-area-inset-left));
   }
 }
