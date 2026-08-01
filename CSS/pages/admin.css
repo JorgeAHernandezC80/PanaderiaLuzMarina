@@ -371,13 +371,16 @@ button {
   height: 100vh;
   height: 100dvh;
   /* Glass: gradiente translúcido + blur de lo que quede detrás. En
-     desktop (al lado del contenido) el efecto es sutil; en el drawer
-     móvil (superpuesto sobre la vista + overlay oscuro) es donde más
-     se nota — look "panel flotante" en vez de un rectángulo opaco. */
+     desktop (al lado del contenido) el efecto es sutil a propósito; en
+     el drawer móvil (superpuesto sobre la vista + overlay oscuro) es
+     donde más se nota — look "panel flotante" en vez de un rectángulo
+     opaco. 80% (antes 92%, casi imperceptible) porque acá SIEMPRE hay
+     un overlay oscuro detrás, no texto de la página como en el topbar
+     — no aplica el mismo riesgo que llevó a subirle la opacidad ahí. */
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-surface) 92%, transparent) 0%,
-    color-mix(in srgb, var(--color-soft-bg) 92%, transparent) 100%
+    color-mix(in srgb, var(--color-surface) 80%, transparent) 0%,
+    color-mix(in srgb, var(--color-soft-bg) 80%, transparent) 100%
   );
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);

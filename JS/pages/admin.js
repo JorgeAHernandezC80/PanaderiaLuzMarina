@@ -3584,6 +3584,24 @@ function initAdminNavCollapse() {
 }
 
 /* ═══════════════════════════════════════════
+   9c. SOMBRA DEL TOPBAR AL HACER SCROLL
+   ═══════════════════════════════════════════
+   El CSS ya trae la regla .admin-topbar.is-scrolled (sombra + borde
+   transparente) — sin este listener, esa clase nunca se agrega y el
+   topbar se queda siempre con el borde sutil de reposo. */
+function initAdminTopbarScroll() {
+  const topbar = document.getElementById('admin-topbar');
+  if (!topbar) return;
+
+  const sync = () => {
+    topbar.classList.toggle('is-scrolled', window.scrollY > 0);
+  };
+
+  window.addEventListener('scroll', sync, { passive: true });
+  sync(); // estado inicial (por si la página carga ya con scroll restaurado)
+}
+
+/* ═══════════════════════════════════════════
    10. ARRANQUE
    ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -3591,4 +3609,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initAdminSidebarDrawer();
   initAdminNavSearch();
   initAdminNavCollapse();
+  initAdminTopbarScroll();
 });
