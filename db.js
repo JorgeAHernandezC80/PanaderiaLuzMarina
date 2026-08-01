@@ -179,19 +179,46 @@ try {
       '[db] Migración completada. Respaldo conservado en la tabla proveedores_legacy_backup.',
     );
   }
+  /* Migración: agrega a horneadas los campos "reales" de horneado (lo que
+     de verdad pasó en esa tanda), para comparar contra el objetivo que
+     vive en recetas — mismo patrón no destructivo que insumos. */
+  const horneadasExiste = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'horneadas'")
+    .get();
+  if (horneadasExiste) {
+    const columnasActuales = db
+      .prepare('PRAGMA table_info(horneadas)')
+      .all()
+      .map((c) => c.name);
+    const columnasNuevas = {
+      temperatura_horneado_real_c: 'REAL',
+      tiempo_horneado_real_min: 'INTEGER',
+      merma_real_pct: 'REAL',
+    };
+    for (const [columna, tipo] of Object.entries(columnasNuevas)) {
+      if (!columnasActuales.includes(columna)) {
+        console.log(`[db] Agregando columna horneadas.${columna} (migración)...`);
+        db.exec(`ALTER TABLE horneadas ADD COLUMN ${columna} ${tipo}`);
+      }
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS horneadas (
-      id               TEXT PRIMARY KEY,
-      producto_id      TEXT NOT NULL,
-      producto_nombre  TEXT NOT NULL,
-      cantidad         INTEGER NOT NULL,
-      fecha            TEXT NOT NULL,
-      hora             TEXT NOT NULL,
-      registrado_por   TEXT,
-      notas            TEXT,
-      produccion_id    TEXT,
-      creado_en        TEXT NOT NULL DEFAULT (datetime('now')),
-      actualizado_en   TEXT NOT NULL DEFAULT (datetime('now'))
+      id                            TEXT PRIMARY KEY,
+      producto_id                   TEXT NOT NULL,
+      producto_nombre               TEXT NOT NULL,
+      cantidad                      INTEGER NOT NULL,
+      fecha                         TEXT NOT NULL,
+      hora                          TEXT NOT NULL,
+      registrado_por                TEXT,
+      notas                         TEXT,
+      produccion_id                 TEXT,
+      temperatura_horneado_real_c   REAL,
+      tiempo_horneado_real_min      INTEGER,
+      merma_real_pct                REAL,
+      creado_en                     TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en                TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
 
@@ -238,6 +265,32 @@ try {
      proporción, y cuánto pesa cada unidad. Es la base de la que depende
      Producción (no registra nada del día a día por sí sola).
      ═══════════════════════════════════════════ */
+  /* Migración: agrega a recetas los campos "objetivo" de ficha técnica
+     que faltaban (horneado, mano de obra, merma esperada, pasos) —
+     mismo patrón no destructivo que insumos/horneadas. */
+  const recetasExiste = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recetas'")
+    .get();
+  if (recetasExiste) {
+    const columnasActuales = db
+      .prepare('PRAGMA table_info(recetas)')
+      .all()
+      .map((c) => c.name);
+    const columnasNuevas = {
+      tiempo_horneado_min: 'INTEGER',
+      temperatura_horneado_c: 'REAL',
+      tiempo_mano_obra_min: 'INTEGER',
+      merma_coccion_pct: 'REAL',
+      pasos: 'TEXT',
+    };
+    for (const [columna, tipo] of Object.entries(columnasNuevas)) {
+      if (!columnasActuales.includes(columna)) {
+        console.log(`[db] Agregando columna recetas.${columna} (migración)...`);
+        db.exec(`ALTER TABLE recetas ADD COLUMN ${columna} ${tipo}`);
+      }
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS recetas (
       id                       TEXT PRIMARY KEY,
@@ -245,6 +298,11 @@ try {
       producto_nombre          TEXT NOT NULL,
       peso_masa_por_unidad_g   REAL NOT NULL,
       tiempo_fermentacion_min  INTEGER,
+      tiempo_horneado_min      INTEGER,
+      temperatura_horneado_c   REAL,
+      tiempo_mano_obra_min     INTEGER,
+      merma_coccion_pct        REAL,
+      pasos                    TEXT,
       notas                    TEXT,
       creado_en                TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en           TEXT NOT NULL DEFAULT (datetime('now'))
@@ -274,20 +332,37 @@ try {
      hasta que queda lista para hornear (etapas 1-8). La etapa 9 (horneado)
      ya la cubre la tabla horneadas, ligada por produccion_id.
      ═══════════════════════════════════════════ */
+  /* Migración: agrega a producciones la mano de obra real de la tanda
+     (etapas 1-8) — mismo patrón no destructivo que las anteriores. */
+  const produccionesExiste = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'producciones'")
+    .get();
+  if (produccionesExiste) {
+    const columnasActuales = db
+      .prepare('PRAGMA table_info(producciones)')
+      .all()
+      .map((c) => c.name);
+    if (!columnasActuales.includes('tiempo_mano_obra_real_min')) {
+      console.log('[db] Agregando columna producciones.tiempo_mano_obra_real_min (migración)...');
+      db.exec('ALTER TABLE producciones ADD COLUMN tiempo_mano_obra_real_min INTEGER');
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS producciones (
-      id                    TEXT PRIMARY KEY,
-      producto_id           TEXT NOT NULL,
-      producto_nombre       TEXT NOT NULL,
-      receta_id             TEXT REFERENCES recetas(id),
-      fecha                 TEXT NOT NULL,
-      hora_inicio            TEXT NOT NULL,
-      peso_total_masa_g     REAL NOT NULL,
-      unidades_estimadas    INTEGER NOT NULL,
-      registrado_por        TEXT,
-      notas                 TEXT,
-      creado_en             TEXT NOT NULL DEFAULT (datetime('now')),
-      actualizado_en        TEXT NOT NULL DEFAULT (datetime('now'))
+      id                          TEXT PRIMARY KEY,
+      producto_id                 TEXT NOT NULL,
+      producto_nombre             TEXT NOT NULL,
+      receta_id                   TEXT REFERENCES recetas(id),
+      fecha                       TEXT NOT NULL,
+      hora_inicio                  TEXT NOT NULL,
+      peso_total_masa_g           REAL NOT NULL,
+      unidades_estimadas          INTEGER NOT NULL,
+      tiempo_mano_obra_real_min   INTEGER,
+      registrado_por              TEXT,
+      notas                       TEXT,
+      creado_en                   TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en              TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
 

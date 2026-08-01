@@ -801,6 +801,9 @@ function serializeHorneada(row) {
     registradoPor: row.registrado_por,
     notas: row.notas,
     produccionId: row.produccion_id,
+    temperaturaHorneadoRealC: row.temperatura_horneado_real_c,
+    tiempoHorneadoRealMin: row.tiempo_horneado_real_min,
+    mermaRealPct: row.merma_real_pct,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
@@ -855,8 +858,11 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
   const id = crypto.randomUUID();
   try {
     db.prepare(
-      `INSERT INTO horneadas (id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas, produccion_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO horneadas (
+         id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas,
+         produccion_id, temperatura_horneado_real_c, tiempo_horneado_real_min, merma_real_pct
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       datos.productoId,
@@ -867,6 +873,9 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
       datos.registradoPor,
       datos.notas,
       datos.produccionId,
+      datos.temperaturaHorneadoRealC,
+      datos.tiempoHorneadoRealMin,
+      datos.mermaRealPct,
     );
     const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
     broadcast({ tipo: 'horneada:nueva', horneada: serializeHorneada(fila) });
@@ -912,7 +921,9 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
       .prepare(
         `UPDATE horneadas
          SET producto_id = ?, producto_nombre = ?, cantidad = ?, fecha = ?, hora = ?,
-             registrado_por = ?, notas = ?, produccion_id = ?, actualizado_en = datetime('now')
+             registrado_por = ?, notas = ?, produccion_id = ?,
+             temperatura_horneado_real_c = ?, tiempo_horneado_real_min = ?, merma_real_pct = ?,
+             actualizado_en = datetime('now')
          WHERE id = ?`,
       )
       .run(
@@ -924,6 +935,9 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
         datos.registradoPor,
         datos.notas,
         datos.produccionId,
+        datos.temperaturaHorneadoRealC,
+        datos.tiempoHorneadoRealMin,
+        datos.mermaRealPct,
         id,
       );
     if (info.changes === 0) {
@@ -1157,16 +1171,16 @@ function calcularInventario(fechaConsulta) {
   // se indexa por id, para cruzar por productoId cuando esté disponible.
   const porProducto = new Map();
   const porProductoId = new Map();
-  for (const [id, nombre] of Object.entries(PRODUCTOS_CATALOGO)) {
+  for (const [id, producto] of Object.entries(PRODUCTOS_CATALOGO)) {
     const entry = {
       productoId: String(id),
-      productoNombre: nombre,
+      productoNombre: producto.nombre,
       horneado: 0,
       preparado: 0,
       vendido: 0,
       ajustes: 0,
     };
-    porProducto.set(nombre, entry);
+    porProducto.set(producto.nombre, entry);
     porProductoId.set(String(id), entry);
   }
 
@@ -1275,8 +1289,14 @@ function serializeReceta(row, ingredientes) {
     id: row.id,
     productoId: row.producto_id,
     productoNombre: row.producto_nombre,
+    categoria: PRODUCTOS_CATALOGO[Number(row.producto_id)]?.categoria ?? null,
     pesoMasaPorUnidadG: row.peso_masa_por_unidad_g,
     tiempoFermentacionMin: row.tiempo_fermentacion_min,
+    tiempoHorneadoMin: row.tiempo_horneado_min,
+    temperaturaHorneadoC: row.temperatura_horneado_c,
+    tiempoManoObraMin: row.tiempo_mano_obra_min,
+    mermaCoccionPct: row.merma_coccion_pct,
+    pasos: row.pasos,
     notas: row.notas,
     ingredientes: ingredientes.map((i) => ({
       id: i.id,
@@ -1351,14 +1371,23 @@ app.post('/recetas', requireAuth, rateLimit, (req, res) => {
   try {
     const crear = db.transaction(() => {
       db.prepare(
-        `INSERT INTO recetas (id, producto_id, producto_nombre, peso_masa_por_unidad_g, tiempo_fermentacion_min, notas)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO recetas (
+           id, producto_id, producto_nombre, peso_masa_por_unidad_g, tiempo_fermentacion_min,
+           tiempo_horneado_min, temperatura_horneado_c, tiempo_mano_obra_min, merma_coccion_pct,
+           pasos, notas
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         datos.productoId,
         datos.productoNombre,
         datos.pesoMasaPorUnidadG,
         datos.tiempoFermentacionMin,
+        datos.tiempoHorneadoMin,
+        datos.temperaturaHorneadoC,
+        datos.tiempoManoObraMin,
+        datos.mermaCoccionPct,
+        datos.pasos,
         datos.notas,
       );
 
@@ -1409,7 +1438,9 @@ app.put('/recetas/:id', requireAuth, (req, res) => {
         .prepare(
           `UPDATE recetas
            SET producto_id = ?, producto_nombre = ?, peso_masa_por_unidad_g = ?,
-               tiempo_fermentacion_min = ?, notas = ?, actualizado_en = datetime('now')
+               tiempo_fermentacion_min = ?, tiempo_horneado_min = ?, temperatura_horneado_c = ?,
+               tiempo_mano_obra_min = ?, merma_coccion_pct = ?, pasos = ?, notas = ?,
+               actualizado_en = datetime('now')
            WHERE id = ?`,
         )
         .run(
@@ -1417,6 +1448,11 @@ app.put('/recetas/:id', requireAuth, (req, res) => {
           datos.productoNombre,
           datos.pesoMasaPorUnidadG,
           datos.tiempoFermentacionMin,
+          datos.tiempoHorneadoMin,
+          datos.temperaturaHorneadoC,
+          datos.tiempoManoObraMin,
+          datos.mermaCoccionPct,
+          datos.pasos,
           datos.notas,
           id,
         );
@@ -1479,6 +1515,7 @@ function serializeProduccion(row, ingredientes, etapas) {
     horaInicio: row.hora_inicio,
     pesoTotalMasaG: row.peso_total_masa_g,
     unidadesEstimadas: row.unidades_estimadas,
+    tiempoManoObraRealMin: row.tiempo_mano_obra_real_min,
     registradoPor: row.registrado_por,
     notas: row.notas,
     ingredientes: ingredientes.map((i) => ({
@@ -1570,8 +1607,9 @@ app.post('/producciones', requireAuth, rateLimit, (req, res) => {
     const crear = db.transaction(() => {
       db.prepare(
         `INSERT INTO producciones
-           (id, producto_id, producto_nombre, receta_id, fecha, hora_inicio, peso_total_masa_g, unidades_estimadas, registrado_por, notas)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, producto_id, producto_nombre, receta_id, fecha, hora_inicio, peso_total_masa_g,
+            unidades_estimadas, tiempo_mano_obra_real_min, registrado_por, notas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         datos.productoId,
@@ -1581,6 +1619,7 @@ app.post('/producciones', requireAuth, rateLimit, (req, res) => {
         datos.horaInicio,
         pesoTotalMasaG,
         unidadesEstimadas,
+        datos.tiempoManoObraRealMin,
         datos.registradoPor,
         datos.notas,
       );

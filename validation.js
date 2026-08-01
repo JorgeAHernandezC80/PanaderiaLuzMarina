@@ -69,22 +69,29 @@ const MAX_HORNEADA_NOTAS_LEN = 280;
 const MAX_HORNEADA_REGISTRADO_POR_LEN = 80;
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HORA_RE = /^\d{1,2}:\d{2}$/;
+const MAX_TEMPERATURA_HORNEADO_C = 350; // horno doméstico/industrial, tope generoso
+const MAX_TIEMPO_HORNEADO_MIN = 300; // 5h, tope defensivo
+const MAX_MERMA_PCT = 100;
 
 /* Catálogo de productos: vive como constantes estáticas en el HTML del
    catálogo (catalogo.html), no en la base de datos. Se replica aquí como
-   whitelist para no confiar en el nombre/id de producto que mande el
-   cliente al registrar una horneada. Si se agrega un producto nuevo al
-   catálogo, hay que agregarlo también aquí (y en JS/pages/admin.js). */
+   whitelist para no confiar en el nombre/id/categoría de producto que
+   mande el cliente al registrar una horneada. Si se agrega un producto
+   nuevo al catálogo, hay que agregarlo también aquí (con la MISMA
+   categoría que su data-categoria en catalogo.html) y en
+   JS/pages/admin.js. La categoría es la fuente de verdad para Recetas —
+   no se duplica como campo propio ahí, se lee de acá. */
+const CATEGORIAS_PRODUCTO = ['panaderia', 'reposteria', 'bolleria', 'frituras'];
 const PRODUCTOS_CATALOGO = {
-  1: 'Donuts Glaseadas',
-  2: 'Buñuelos',
-  3: 'Roscón de Arequipe',
-  4: 'Croissant',
-  5: 'Almojábanas',
-  6: 'Pandebono',
-  7: 'Pan de Yuca',
-  8: 'Conchas',
-  9: 'Pan mariquiteño',
+  1: { nombre: 'Donuts Glaseadas', categoria: 'frituras' },
+  2: { nombre: 'Buñuelos', categoria: 'frituras' },
+  3: { nombre: 'Roscón de Arequipe', categoria: 'reposteria' },
+  4: { nombre: 'Croissant', categoria: 'bolleria' },
+  5: { nombre: 'Almojábanas', categoria: 'panaderia' },
+  6: { nombre: 'Pandebono', categoria: 'panaderia' },
+  7: { nombre: 'Pan de Yuca', categoria: 'panaderia' },
+  8: { nombre: 'Conchas', categoria: 'reposteria' },
+  9: { nombre: 'Pan mariquiteño', categoria: 'reposteria' },
 };
 
 const AJUSTE_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
@@ -499,10 +506,11 @@ function validarHorneada(datos) {
 
   const { productoId, cantidad, fecha, hora } = datos;
 
-  const productoNombre = PRODUCTOS_CATALOGO[Number(productoId)];
-  if (!productoNombre) {
+  const producto = PRODUCTOS_CATALOGO[Number(productoId)];
+  if (!producto) {
     throw new ValidationError('Producto inválido.');
   }
+  const productoNombre = producto.nombre;
 
   const cantidadNum = Number(cantidad);
   if (!Number.isInteger(cantidadNum) || cantidadNum <= 0 || cantidadNum > MAX_HORNEADA_CANTIDAD) {
@@ -530,6 +538,48 @@ function validarHorneada(datos) {
       ? datos.produccionId.trim()
       : null;
 
+  // Valores REALES de esa tanda horneada (lo que de verdad pasó), para
+  // comparar contra el objetivo de la receta. Todos opcionales: no todas
+  // las horneadas necesitan este nivel de detalle.
+  let temperaturaHorneadoRealC = null;
+  if (
+    datos.temperaturaHorneadoRealC !== undefined &&
+    datos.temperaturaHorneadoRealC !== null &&
+    datos.temperaturaHorneadoRealC !== ''
+  ) {
+    const val = Number(datos.temperaturaHorneadoRealC);
+    if (!Number.isFinite(val) || val <= 0 || val > MAX_TEMPERATURA_HORNEADO_C) {
+      throw new ValidationError('Temperatura de horneado real inválida.');
+    }
+    temperaturaHorneadoRealC = val;
+  }
+
+  let tiempoHorneadoRealMin = null;
+  if (
+    datos.tiempoHorneadoRealMin !== undefined &&
+    datos.tiempoHorneadoRealMin !== null &&
+    datos.tiempoHorneadoRealMin !== ''
+  ) {
+    const val = Number(datos.tiempoHorneadoRealMin);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_TIEMPO_HORNEADO_MIN) {
+      throw new ValidationError('Tiempo de horneado real inválido.');
+    }
+    tiempoHorneadoRealMin = val;
+  }
+
+  let mermaRealPct = null;
+  if (
+    datos.mermaRealPct !== undefined &&
+    datos.mermaRealPct !== null &&
+    datos.mermaRealPct !== ''
+  ) {
+    const val = Number(datos.mermaRealPct);
+    if (!Number.isFinite(val) || val < 0 || val > MAX_MERMA_PCT) {
+      throw new ValidationError('Porcentaje de merma real inválido.');
+    }
+    mermaRealPct = val;
+  }
+
   return {
     productoId: String(Number(productoId)),
     productoNombre,
@@ -539,6 +589,9 @@ function validarHorneada(datos) {
     registradoPor: registradoPorFinal,
     notas: notasFinal,
     produccionId: produccionIdFinal,
+    temperaturaHorneadoRealC,
+    tiempoHorneadoRealMin,
+    mermaRealPct,
   };
 }
 
@@ -557,10 +610,11 @@ function validarAjusteInventario(datos) {
 
   const { productoId, cantidad, motivo, fecha, hora } = datos;
 
-  const productoNombre = PRODUCTOS_CATALOGO[Number(productoId)];
-  if (!productoNombre) {
+  const productoAjuste = PRODUCTOS_CATALOGO[Number(productoId)];
+  if (!productoAjuste) {
     throw new ValidationError('Producto inválido.');
   }
+  const productoNombre = productoAjuste.nombre;
 
   const cantidadNum = Number(cantidad);
   if (!Number.isInteger(cantidadNum) || cantidadNum <= 0 || cantidadNum > MAX_AJUSTE_CANTIDAD) {
@@ -624,6 +678,8 @@ const ETAPA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const MAX_PESO_G = 100000; // 100kg: tope generoso para una sola tanda de masa
 const MAX_INGREDIENTES = 30;
 const MAX_TIEMPO_FERMENTACION_MIN = 1440; // 24h, tope defensivo
+const MAX_TIEMPO_MANO_OBRA_MIN = 1440; // 24h, tope defensivo
+const MAX_RECETA_PASOS_LEN = 2000;
 
 /* Las 8 etapas del proceso de producción (pesado → segunda fermentación).
    La 9na etapa (horneado) la cubre la tabla horneadas, ligada por
@@ -679,10 +735,11 @@ function validarReceta(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const productoNombre = PRODUCTOS_CATALOGO[Number(datos.productoId)];
-  if (!productoNombre) {
+  const producto = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  if (!producto) {
     throw new ValidationError('Producto inválido.');
   }
+  const productoNombre = producto.nombre;
 
   const pesoMasaPorUnidadG = Number(datos.pesoMasaPorUnidadG);
   if (
@@ -706,6 +763,64 @@ function validarReceta(datos) {
     tiempoFermentacionMin = val;
   }
 
+  // Valores OBJETIVO de la ficha técnica (igual que tu hoja de Excel).
+  // Todos opcionales: una receta puede guardarse sin ficha completa y
+  // rellenarse después.
+  let tiempoHorneadoMin = null;
+  if (
+    datos.tiempoHorneadoMin !== undefined &&
+    datos.tiempoHorneadoMin !== null &&
+    datos.tiempoHorneadoMin !== ''
+  ) {
+    const val = Number(datos.tiempoHorneadoMin);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_TIEMPO_HORNEADO_MIN) {
+      throw new ValidationError('Tiempo de horneado inválido.');
+    }
+    tiempoHorneadoMin = val;
+  }
+
+  let temperaturaHorneadoC = null;
+  if (
+    datos.temperaturaHorneadoC !== undefined &&
+    datos.temperaturaHorneadoC !== null &&
+    datos.temperaturaHorneadoC !== ''
+  ) {
+    const val = Number(datos.temperaturaHorneadoC);
+    if (!Number.isFinite(val) || val <= 0 || val > MAX_TEMPERATURA_HORNEADO_C) {
+      throw new ValidationError('Temperatura de horneado inválida.');
+    }
+    temperaturaHorneadoC = val;
+  }
+
+  let tiempoManoObraMin = null;
+  if (
+    datos.tiempoManoObraMin !== undefined &&
+    datos.tiempoManoObraMin !== null &&
+    datos.tiempoManoObraMin !== ''
+  ) {
+    const val = Number(datos.tiempoManoObraMin);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_TIEMPO_MANO_OBRA_MIN) {
+      throw new ValidationError('Tiempo de mano de obra inválido.');
+    }
+    tiempoManoObraMin = val;
+  }
+
+  let mermaCoccionPct = null;
+  if (
+    datos.mermaCoccionPct !== undefined &&
+    datos.mermaCoccionPct !== null &&
+    datos.mermaCoccionPct !== ''
+  ) {
+    const val = Number(datos.mermaCoccionPct);
+    if (!Number.isFinite(val) || val < 0 || val > MAX_MERMA_PCT) {
+      throw new ValidationError('Porcentaje de merma de cocción inválido.');
+    }
+    mermaCoccionPct = val;
+  }
+
+  const pasos =
+    typeof datos.pasos === 'string' ? datos.pasos.trim().slice(0, MAX_RECETA_PASOS_LEN) : '';
+
   const ingredientes = validarIngredienteLista(datos.ingredientes);
 
   const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
@@ -713,8 +828,14 @@ function validarReceta(datos) {
   return {
     productoId: String(Number(datos.productoId)),
     productoNombre,
+    categoria: producto.categoria,
     pesoMasaPorUnidadG,
     tiempoFermentacionMin,
+    tiempoHorneadoMin,
+    temperaturaHorneadoC,
+    tiempoManoObraMin,
+    mermaCoccionPct,
+    pasos,
     ingredientes,
     notas,
   };
@@ -734,10 +855,11 @@ function validarProduccion(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const productoNombre = PRODUCTOS_CATALOGO[Number(datos.productoId)];
-  if (!productoNombre) {
+  const productoProduccion = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  if (!productoProduccion) {
     throw new ValidationError('Producto inválido.');
   }
+  const productoNombre = productoProduccion.nombre;
 
   if (typeof datos.fecha !== 'string' || !FECHA_RE.test(datos.fecha)) {
     throw new ValidationError('Fecha de producción inválida.');
@@ -752,6 +874,21 @@ function validarProduccion(datos) {
     typeof datos.registradoPor === 'string' ? datos.registradoPor.trim().slice(0, 80) : '';
   const notas = typeof datos.notas === 'string' ? datos.notas.trim().slice(0, 280) : '';
 
+  // Mano de obra REAL de la tanda (etapas 1-8), opcional — para comparar
+  // contra el tiempoManoObraMin objetivo que vive en la receta.
+  let tiempoManoObraRealMin = null;
+  if (
+    datos.tiempoManoObraRealMin !== undefined &&
+    datos.tiempoManoObraRealMin !== null &&
+    datos.tiempoManoObraRealMin !== ''
+  ) {
+    const val = Number(datos.tiempoManoObraRealMin);
+    if (!Number.isInteger(val) || val <= 0 || val > MAX_TIEMPO_MANO_OBRA_MIN) {
+      throw new ValidationError('Tiempo de mano de obra real inválido.');
+    }
+    tiempoManoObraRealMin = val;
+  }
+
   return {
     productoId: String(Number(datos.productoId)),
     productoNombre,
@@ -760,6 +897,7 @@ function validarProduccion(datos) {
     ingredientes,
     registradoPor,
     notas,
+    tiempoManoObraRealMin,
   };
 }
 
@@ -807,6 +945,7 @@ module.exports = {
   validarHorneada,
   HORNEADA_ID_RE,
   PRODUCTOS_CATALOGO,
+  CATEGORIAS_PRODUCTO,
   validarAjusteInventario,
   AJUSTE_ID_RE,
   MOTIVOS_AJUSTE,

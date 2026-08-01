@@ -726,10 +726,53 @@ select.form-field__input {
   font-variant-numeric: tabular-nums;
 }
 
+/* Inventario/Stock: la tabla se ajusta a su contenido (no se estira al
+   100% del contenedor) y queda centrada en la página, con columnas y
+   filas compactas — padding de 8px en vez del espacioso var(--space-5)
+   que usan las demás tablas. Todo escopado a #inventario-container para
+   no afectar Insumos/Proveedores/Horneadas/Recetas/Producción, que
+   comparten la misma clase .insumo-table. */
+#inventario-container.insumos {
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow-x: visible; /* .insumos trae overflow-x:auto por defecto (para el
+    fallback de scroll de las demás tablas); acá ya no hace falta porque
+    la tabla se ajusta a su contenido y queda centrada. */
+}
+
+#inventario-container .insumo-table {
+  width: auto;
+}
+
+#inventario-container th,
+#inventario-container td {
+  padding: 10px;
+}
+
+/* +10px adicionales de espacio entre columnas (van sobre los +10px de
+   la vuelta anterior: 13px -> 18px de padding-inline = 5px más por
+   lado). El padding vertical se queda en los 8px de la regla de arriba. */
+#inventario-container th,
+#inventario-container td {
+  padding-inline: 20px;
+}
+
+/* Todos los encabezados centrados, incluido "Producto" (antes se
+   dejaba a la izquierda por defecto; Jorge pidió centrarlo también). */
+#inventario-container th {
+  text-align: center;
+}
+
+/* Sin display:flex: puesto directamente en un <td>, lo saca del layout
+   de tablas (deja de comportarse como celda) y se encoge a su contenido
+   en vez de ocupar toda la columna — eso cortaba el borde inferior de la
+   fila. text-align:center sí respeta el layout de tabla y centra el
+   <input> igual, porque los controles de formulario son inline por
+   defecto. */
 .inventario-table__stock-minimo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  position: relative; /* ancla para el mensaje "Guardado" en posición absoluta */
+  text-align: center;
 }
 .inventario-table__stock-minimo input {
   width: 4.5rem;
@@ -738,8 +781,19 @@ select.form-field__input {
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
   text-align: center;
+  vertical-align: middle;
 }
+/* Posicionado en absoluto (no en el flujo flex) para que no le reste
+   espacio al input y lo descentre — antes ocupaba su ancho aunque
+   estuviera invisible (opacity:0 sigue reservando espacio). Se ubica
+   justo a la derecha del input centrado: 50% + mitad del ancho del
+   input (4.5rem / 2 = 2.25rem) + un pequeño margen. */
 .inventario-table__stock-minimo__guardado {
+  position: absolute;
+  left: calc(50% + 2.25rem + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
   font-size: 0.75rem;
   color: var(--color-accent);
   opacity: 0;
@@ -1099,6 +1153,11 @@ select.form-field__input {
   .insumo-table td {
     padding: var(--space-3);
   }
+
+  /* #inventario-container th/td (8px, definido fuera del media query)
+     le sigue ganando en especificidad a la regla de arriba gracias al
+     #id — no hace falta repetirlo aquí, ya se queda compacto en móvil
+     también. */
 
   /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
      sola columna en vez de que el grid intente encajar 2 columnas
