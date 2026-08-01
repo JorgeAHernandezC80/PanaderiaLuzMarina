@@ -216,15 +216,11 @@ button {
 }
 
 .form-field__input::placeholder {
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .form-field__input option {
-  font-size: 0.9rem;
-}
-
-select.form-field__input {
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .form-error {
@@ -245,10 +241,14 @@ select.form-field__input {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  height: 3rem; /* mismo alto que .form-field__input, para que se alineen
+    cuando comparten fila (ej. el buscador de fecha + sus botones). Los
+    botones compactos de acciones en tablas (.btn--action, .btn--small)
+    lo anulan más abajo — a ellos no les conviene este alto. */
   padding: var(--space-3) var(--space-5);
   border: 2px solid transparent;
   border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   font-family: inherit;
   transition: all var(--transition);
@@ -283,6 +283,8 @@ select.form-field__input {
 }
 
 .btn--action {
+  height: auto; /* botón compacto para filas de tabla, no debe heredar
+    el alto de formulario de .btn */
   padding: var(--space-2) var(--space-3);
   background: var(--color-accent);
   color: white;
@@ -876,6 +878,7 @@ select.form-field__input {
 }
 
 .btn--small {
+  height: auto; /* mismo motivo que .btn--action: es compacto a propósito */
   padding: var(--space-1) var(--space-3);
   font-size: 0.8rem;
 }
@@ -1360,8 +1363,11 @@ select.form-field__input {
      body, así que el botón de menú quedaba más adentro que el título de
      cada pestaña. */
   padding: max(var(--space-3), env(safe-area-inset-top)) 0 var(--space-3);
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  backdrop-filter: blur(10px);
+  /* Antes era semitransparente (88% + blur): al hacer scroll, el título
+     de cada pestaña (ej. "Panel de Pedidos") se alcanzaba a ver
+     "sangrando" a través de la barra al pasar por debajo — se veía como
+     texto roto/superpuesto. Con fondo 100% opaco, lo tapa del todo. */
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border-soft);
   position: sticky;
   top: 0;
@@ -1381,6 +1387,7 @@ select.form-field__input {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
+  margin-left: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -1414,6 +1421,7 @@ select.form-field__input {
 }
 
 .admin-topbar__logout {
+  margin-right: 10px;
   padding: var(--space-2) var(--space-3);
 }
 
