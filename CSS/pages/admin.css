@@ -192,6 +192,11 @@ button {
 .form-field__input {
   width: 100%;
   min-width: 0;
+  height: 3rem; /* mismo alto exacto para <input> y <select>, sin importar que
+    el <select> use font-size 0.9rem y el input 1rem — sin esto, esa
+    diferencia de tamaño de letra hacía que el <select> se calculara un
+    poco más bajo que el <input>. <textarea> se excluye explícitamente
+    más abajo, porque necesita su propio alto de varias líneas. */
   padding: var(--space-3) var(--space-4);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -652,6 +657,8 @@ select.form-field__input {
 }
 
 .insumo-form textarea.form-field__input {
+  height: auto; /* el height:3rem de .form-field__input es para input/select;
+    el textarea define su alto con el atributo rows="2" del HTML. */
   resize: vertical;
 }
 
@@ -726,19 +733,27 @@ select.form-field__input {
   font-variant-numeric: tabular-nums;
 }
 
-/* Inventario/Stock: la tabla se ajusta a su contenido (no se estira al
-   100% del contenedor) y queda centrada en la página, con columnas y
-   filas compactas — padding de 8px en vez del espacioso var(--space-5)
-   que usan las demás tablas. Todo escopado a #inventario-container para
-   no afectar Insumos/Proveedores/Horneadas/Recetas/Producción, que
-   comparten la misma clase .insumo-table. */
-#inventario-container.insumos {
+/* Inventario/Stock: el WRAPPER (.inventario-shell) es quien se ajusta a
+   su contenido y queda centrado — no #inventario-container directamente.
+   Así, el toolbar de fecha (hermano dentro del mismo wrapper) puede
+   estirarse a width:100% y terminar exactamente con el mismo ancho que
+   la tabla, en vez de que cada uno mida lo suyo por separado y sus
+   bordes no coincidan. */
+.inventario-shell {
   width: max-content;
   max-width: 100%;
   margin-inline: auto;
+}
+
+.inventario-shell > [data-component='inventario-toolbar'],
+.inventario-shell > #inventario-container {
+  width: 100%;
+}
+
+#inventario-container.insumos {
   overflow-x: visible; /* .insumos trae overflow-x:auto por defecto (para el
     fallback de scroll de las demás tablas); acá ya no hace falta porque
-    la tabla se ajusta a su contenido y queda centrada. */
+    la tabla se ajusta a su contenido y el wrapper la centra. */
 }
 
 #inventario-container .insumo-table {
@@ -747,7 +762,7 @@ select.form-field__input {
 
 #inventario-container th,
 #inventario-container td {
-  padding: 10px;
+  padding: 8px;
 }
 
 /* +10px adicionales de espacio entre columnas (van sobre los +10px de
@@ -755,7 +770,7 @@ select.form-field__input {
    lado). El padding vertical se queda en los 8px de la regla de arriba. */
 #inventario-container th,
 #inventario-container td {
-  padding-inline: 20px;
+  padding-inline: 18px;
 }
 
 /* Todos los encabezados centrados, incluido "Producto" (antes se
@@ -1093,6 +1108,7 @@ select.form-field__input {
 }
 
 .proveedor-form textarea.form-field__input {
+  height: auto;
   resize: vertical;
 }
 
@@ -1279,6 +1295,44 @@ select.form-field__input {
   .insumo-table__acciones {
     justify-content: flex-end;
   }
+
+  /* Inventario: en desktop el wrapper .inventario-shell se ajusta a su
+     contenido (width: max-content, ver más arriba), pero eso no tiene
+     sentido en la vista de tarjetas — acá debe verse tan ancho como
+     .insumo-form (el formulario "Registrar ajuste" justo debajo). */
+  .inventario-shell {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  /* #inventario-container también pierde su propio fondo/borde/sombra
+     (heredados de .insumos): sin esto, el contenedor forma una "caja"
+     blanca detrás de todas las tarjetas, y el espacio de 10px entre
+     ellas terminaba mostrando el fondo de ESA caja en vez del fondo
+     limpio de la página — se veía como si hubiera color de más entre
+     tarjetas. */
+  #inventario-container.insumos {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Mismo radio y sombra que .insumo-form, para que cada producto se
+     vea como una tarjeta individual con el mismo peso visual que el
+     formulario, no como una fila de tabla disfrazada. Espacio fijo de
+     10px entre tarjetas (en vez de var(--space-3)); sin margen después
+     de la última para no dejar aire de más antes del formulario de
+     ajuste que sigue debajo. */
+  #inventario-container tr {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 10px;
+  }
+
+  #inventario-container tr:last-child {
+    margin-bottom: 0;
+  }
 }
 
 /* ── Refuerzo: grupos que pueden desbordar con contenido largo ── */
@@ -1312,6 +1366,13 @@ select.form-field__input {
   position: sticky;
   top: 0;
   z-index: 40;
+  /* iOS/WebKit: position:sticky + backdrop-filter a veces no se pinta al
+     cargar la página y solo aparece tras el primer scroll (bug de
+     renderizado conocido, no un error de layout). Forzar su propia capa
+     de composición desde el inicio evita que dependa de ese repintado
+     tardío. */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .admin-topbar__menu-btn {

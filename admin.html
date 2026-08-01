@@ -1369,34 +1369,36 @@
           </div>
         </header>
 
-        <section
-          class="horneadas-toolbar"
-          aria-label="Consultar inventario de otra fecha"
-          data-component="inventario-toolbar"
-        >
-          <div class="form-field">
-            <label for="inventario-filtro-fecha" class="form-field__label">Consultar fecha</label>
-            <input type="date" id="inventario-filtro-fecha" class="form-field__input" />
-          </div>
-          <button type="button" id="btn-inventario-filtrar" class="btn btn--ghost">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            Ver esa fecha
-          </button>
-          <button type="button" id="btn-inventario-hoy" class="btn btn--ghost" hidden>
-            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
-            Volver a hoy
-          </button>
-        </section>
+        <div class="inventario-shell">
+          <section
+            class="horneadas-toolbar"
+            aria-label="Consultar inventario de otra fecha"
+            data-component="inventario-toolbar"
+          >
+            <div class="form-field">
+              <label for="inventario-filtro-fecha" class="form-field__label">Consultar fecha</label>
+              <input type="date" id="inventario-filtro-fecha" class="form-field__input" />
+            </div>
+            <button type="button" id="btn-inventario-filtrar" class="btn btn--ghost">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              Ver esa fecha
+            </button>
+            <button type="button" id="btn-inventario-hoy" class="btn btn--ghost" hidden>
+              <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+              Volver a hoy
+            </button>
+          </section>
 
-        <section
-          id="inventario-container"
-          class="insumos"
-          aria-label="Disponible por producto"
-          aria-live="polite"
-          data-component="inventario-list"
-        >
-          <!-- Se inyecta dinámicamente por admin.js -->
-        </section>
+          <section
+            id="inventario-container"
+            class="insumos"
+            aria-label="Disponible por producto"
+            aria-live="polite"
+            data-component="inventario-list"
+          >
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </section>
+        </div>
 
         <h2 class="section-subtitle">Registrar ajuste (merma, error de conteo...)</h2>
 
