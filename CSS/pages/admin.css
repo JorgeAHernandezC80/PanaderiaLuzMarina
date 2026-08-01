@@ -155,7 +155,11 @@ button {
 }
 
 .login-card__title {
-  font-size: 1.5rem;
+  /* clamp(mínimo, preferido, máximo): escala de forma continua entre
+     pantallas de 320px y 1920px+ en vez de saltar de golpe en un
+     breakpoint — mismo principio en dashboard-header__title h1 y
+     stat-card__value, más abajo. */
+  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
   font-weight: 700;
   margin-bottom: var(--space-2);
 }
@@ -320,7 +324,7 @@ button {
 }
 
 .dashboard-header__title h1 {
-  font-size: 1.75rem;
+  font-size: clamp(1.375rem, 1.15rem + 1vw, 2rem);
   margin-bottom: var(--space-1);
 }
 
@@ -371,7 +375,7 @@ button {
 
 .stat-card__value {
   display: block;
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 1.1rem + 1.1vw, 2rem);
   font-weight: 700;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -1122,7 +1126,31 @@ button {
 
 /* ═══════════════════════════════════════════
    15. RESPONSIVE
-   ═══════════════════════════════════════════ */
+   ═══════════════════════════════════════════
+   Escala de breakpoints de todo admin.css (mobile-first: la mayoría de
+   las reglas son max-width porque el layout base ya está pensado para
+   pantallas angostas; el sidebar de la sección 16 usa min-width porque
+   ahí el layout base es el de escritorio). De más pequeño a más grande:
+
+     ≤340px   móviles muy antiguos / gama baja, pantalla plegable cerrada
+     ≤375px   móviles chicos estándar (iPhone SE/mini, Android compactos)
+     ≤480px   móviles grandes / phablets
+     ≤640px   tablas → tarjetas (ver bloque más abajo)
+     ≤768px   tablet vertical — layout de una sola columna
+     ≤899px   drawer de navegación (ver sección 16)
+     ≥900px   sidebar fijo de navegación (ver sección 16)
+     900–1279px  laptop pequeño / tablet horizontal — sidebar angosto
+     1280–1439px laptop / desktop estándar
+     ≥1440px  desktop grande
+     ≥1600px  monitor grande / Smart TV (ver sección 16)
+     ≥1920px  Full HD y superior — el contenido empieza a crecer
+     ≥2560px  QHD / arranque de monitores ultra-wide
+     ≥3440px  ultra-wide 21:9
+
+   Los breakpoints de contenido (esta sección) y los del sidebar (sección
+   16) se mantienen alineados a propósito — 900/1600 aparecen en ambos —
+   para que el menú y el contenido cambien de "modo" en el mismo punto y
+   no se vean descoordinados a mitad de un resize. */
 
 /* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
    mayoría de los casos, pero las tarjetas de Producción (min 340px) son
@@ -1144,10 +1172,6 @@ button {
 
   .stats > * {
     flex-basis: calc(50% - var(--space-4) / 2);
-  }
-
-  .stat-card__value {
-    font-size: 1.5rem;
   }
 
   .order-table {
@@ -1225,6 +1249,80 @@ button {
 
   #producciones-container > * {
     flex-basis: 100%;
+  }
+}
+
+/* Móviles chicos (iPhone SE/mini, Android compactos ~360-375px): el
+   padding y los tamaños heredados de arriba ya no desbordan (la mayoría
+   de los grids se auto-encogen con minmax()), pero se ven con demasiado
+   aire — aquí se comprime lo justo para aprovechar mejor el ancho real
+   sin que nada se sienta apretado ni difícil de tocar con el dedo. */
+@media (max-width: 375px) {
+  body {
+    padding: var(--space-4);
+  }
+
+  .login-card {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .insumo-form,
+  .proveedor-form,
+  #producciones-container .produccion-card {
+    padding: var(--space-4);
+  }
+
+  .insumo-form__group,
+  .proveedor-form__group {
+    padding: var(--space-3);
+  }
+
+  /* Botones que suelen ir en fila (acciones de tarjeta, toolbar de
+     fecha): en un móvil chico se leen y se tocan mejor apilados a
+     ancho completo que apretados unos junto a otros. */
+  .insumo-form__actions .btn,
+  .produccion-card__header .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Piso de seguridad para gama muy baja / plegables cerrados (~320px y
+   menos): nada aquí es indispensable si lo de arriba ya funciona bien,
+   pero recorta el último margen de aire para que ni un formulario con
+   labels largos fuerce scroll horizontal. */
+@media (max-width: 340px) {
+  body {
+    padding: var(--space-3);
+  }
+
+  .stat-card {
+    padding: var(--space-4);
+  }
+
+  .btn {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* Teléfono en horizontal con poca altura (teclado abierto incluido):
+   la tarjeta de login es lo único con altura fija que puede no caber
+   —el resto de las vistas ya hace scroll vertical con normalidad. */
+@media (max-width: 900px) and (max-height: 480px) and (orientation: landscape) {
+  .view--login {
+    min-height: auto;
+    padding-block: var(--space-5);
+  }
+
+  .login-card {
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .login-card__header {
+    margin-bottom: var(--space-4);
+  }
+
+  .login-card__icon {
+    display: none;
   }
 }
 
@@ -1342,6 +1440,82 @@ button {
 .order-group__meta,
 .produccion-card__header {
   flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ESCRITORIO GRANDE Y MONITORES ULTRA-WIDE
+   El sidebar (sección 16) ya escala su propio ancho y tipografía en
+   1600px/2400px. Esta parte hace lo mismo con el CONTENIDO: en vez de
+   dejar .view/.admin fijos en 1400px/1200px para siempre (que en un
+   monitor de 27"-34" deja un río de espacio vacío a los lados), su
+   ancho máximo crece de forma controlada — nunca a pantalla completa,
+   porque una tabla o un formulario estirados a 3000px son tan
+   incómodos de leer como uno demasiado angosto. ═══════════════════════════════════════════════════════════ */
+
+/* 1024–1279px: laptops pequeños / tablets horizontales grandes. El
+   layout de escritorio (sidebar + grids auto-fit) ya funciona bien acá
+   sin cambios — se documenta el tramo para que quede explícito que no
+   es un hueco sin cubrir, sino una zona ya resuelta por el resto de
+   las reglas de esta hoja. */
+
+/* Desktop grande: .view (con sidebar) y .admin (login, sin sidebar)
+   pueden crecer más allá de su tope actual. clamp() evita un salto
+   brusco al cruzar el breakpoint y limita el máximo para no perder
+   longitud de línea legible en formularios y tablas de texto. */
+@media (min-width: 1440px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(1400px, 78vw, 1680px);
+  }
+
+  .admin:not(:has(.admin-nav--sidebar:not([hidden]))) {
+    max-width: clamp(1200px, 62vw, 1440px);
+  }
+}
+
+/* QHD / arranque de ultra-wide: los grids de tarjetas (Insumos,
+   Producción) pueden permitirse columnas algo más anchas — con el
+   minmax() base (200-340px) a este ancho ya caben 6-7 columnas
+   angostas, que se ven más como una lista que como tarjetas. */
+@media (min-width: 2560px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(1680px, 70vw, 2000px);
+  }
+
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  #producciones-container > * {
+    flex-basis: 380px;
+  }
+}
+
+/* Ultra-wide 21:9 (34" y similares): mismo criterio, un poco más de
+   aire sin llegar a ocupar todo el ancho físico del monitor. */
+@media (min-width: 3440px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(2000px, 60vw, 2400px);
+  }
+}
+
+/* Quienes piden menos movimiento en el sistema operativo: la sección 16
+   ya cubre el sidebar/drawer; esto hace lo mismo con el resto de las
+   animaciones del contenido (entrada de vista, hover de tarjetas). */
+@media (prefers-reduced-motion: reduce) {
+  .view {
+    animation: none;
+  }
+
+  .stat-card,
+  .btn {
+    transition-duration: 1ms;
+  }
+
+  .stat-card:hover {
+    transform: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
