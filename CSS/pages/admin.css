@@ -1,5 +1,38 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PANEL ADMIN · PANADERÍA LUZ MARINA
+   admin.css — arquitectura por capas, mobile-first
+
+   Índice:
+     ✅ Variables
+      1. Reset
+      2. Layout
+      3. Header (topbar)
+      4. Sidebar
+      5. Cards
+      6. Dashboard
+      7. Tablas
+      8. Formularios
+      9. Botones
+     10. Inputs
+     11. Modales
+     12. Alertas
+     13. Responsive (320px → 4K)
+     14. Animaciones
+     15. Modo oscuro
+
+   Convenciones:
+     · BEM-ish (bloque__elemento--modificador) sobre las clases ya
+       existentes en admin.html — esta hoja NO renombra ninguna clase,
+       así que no requiere tocar HTML ni JS.
+     · Todo color/espaciado/radio/sombra sale de las variables de la
+       sección 1 — nada de valores sueltos repetidos por el archivo.
+     · Mobile-first: la base es la pantalla angosta; los media query
+       min-width van "hacia arriba" en vez de max-width "hacia abajo"
+       donde el componente lo permite (sidebar, secciones 4 y 13).
+   ═══════════════════════════════════════════════════════════════════ */
+
 /* ═══════════════════════════════════════════
-   1. TOKENS DE DISEÑO
+   ✅ VARIABLES
    ═══════════════════════════════════════════ */
 :root {
   /* Paleta */
@@ -13,18 +46,22 @@
   --color-primary-hover: #4a3d28;
   --color-accent: #27ae60;
   --color-accent-hover: #229954;
-  --color-accent-bg: #e8f8ef;
-  --color-danger: #c0392b;
-  --color-success: #27ae60;
+  --color-accent-bg: rgba(39, 174, 96, 0.12);
+  --color-success: var(--color-accent); /* mismo verde que accent — alias semántico */
   --color-success-bg: #e8f5e9;
+  --color-danger: #c0392b;
+  --color-danger-bg: #fdecea;
   --color-warning: #b8720a;
   --color-warning-bg: #fff4e0;
+  --color-stock-bajo-bg: #fdf3e7;
+  --color-info: #2f6fa8;
+  --color-info-bg: #e7f1fa;
   --color-soft-bg: #faf6ee;
+  --color-overlay: rgba(20, 16, 8, 0.5);
 
   /* Tipografía */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SF Mono', Consolas, monospace;
-  --font-display: 'Montserrat', var(--font-sans);
 
   /* Espaciado (grid 8px) */
   --space-1: 0.25rem;
@@ -47,10 +84,33 @@
 
   /* Transiciones */
   --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Escala de z-index — un solo lugar para no adivinar "¿va 40 o 60?"
+     cada vez que se agrega un elemento superpuesto. */
+  --z-sticky: 40; /* topbar */
+  --z-nav: 50; /* sidebar / drawer */
+  --z-overlay: 55; /* fondo oscuro detrás del drawer/modal */
+  --z-modal: 60; /* modal y tooltips de la sidebar colapsada */
+  --z-toast: 70; /* alertas flotantes, si se agregan a futuro */
+
+  /* Efecto glass (sidebar, topbar) — un solo par claro/oscuro para que
+     ambos componentes se vean consistentes entre sí. */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(16px) saturate(160%);
+
+  /* Sidebar — valores por defecto; la sección 4 los reescribe según
+     el tamaño de pantalla (rail colapsado, TV/monitor grande, etc). */
+  --nav-width: clamp(15rem, 20vw, 18.5rem);
+  --nav-rail-width: 5rem;
+  --nav-item-size: 2.25rem;
+  --nav-font: 0.9rem;
+  --nav-accent: var(--color-accent);
 }
 
 /* ═══════════════════════════════════════════
-   2. RESET & BASE
+   1. RESET
    ═══════════════════════════════════════════ */
 *,
 *::before,
@@ -108,7 +168,7 @@ button {
 }
 
 /* ═══════════════════════════════════════════
-   3. LAYOUT
+   2. LAYOUT
    ═══════════════════════════════════════════ */
 .admin {
   max-width: 1200px;
@@ -116,23 +176,12 @@ button {
 }
 
 .view {
+  /* @keyframes fadeIn está declarado en la sección 14 (Animaciones),
+     junto con el resto de las animaciones del archivo. */
   animation: fadeIn 280ms ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ═══════════════════════════════════════════
-   4. LOGIN
-   ═══════════════════════════════════════════ */
+/* ── Login (única vista sin sidebar) ── */
 .view--login {
   display: flex;
   align-items: center;
@@ -164,7 +213,7 @@ button {
   /* clamp(mínimo, preferido, máximo): escala de forma continua entre
      pantallas de 320px y 1920px+ en vez de saltar de golpe en un
      breakpoint — mismo principio en dashboard-header__title h1 y
-     stat-card__value, más abajo. */
+     stat-card__value (sección 6). */
   font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
   font-weight: 700;
   margin-bottom: var(--space-2);
@@ -182,1383 +231,54 @@ button {
 }
 
 /* ═══════════════════════════════════════════
-   5. FORMULARIOS
-   ═══════════════════════════════════════════ */
-.form-field {
-  margin-bottom: var(--space-4);
-  min-width: 0; /* permite que se encoja dentro de un grid/flex — sin esto,
-                   un <input type="date"/"time"> nativo fuerza su ancho
-                   mínimo de contenido y desborda el contenedor en móvil */
-}
-
-.form-field__label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: var(--space-2);
-  color: var(--color-text);
-}
-
-.form-field__input {
-  width: 100%;
-  min-width: 0;
-  height: 3rem; /* mismo alto exacto para <input> y <select>, sin importar que
-    el <select> use font-size 0.9rem y el input 1rem — sin esto, esa
-    diferencia de tamaño de letra hacía que el <select> se calculara un
-    poco más bajo que el <input>. <textarea> se excluye explícitamente
-    más abajo, porque necesita su propio alto de varias líneas. */
-  padding: var(--space-3) var(--space-4);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-family: inherit;
-  background: var(--color-surface);
-  color: var(--color-text);
-  transition:
-    border-color var(--transition),
-    box-shadow var(--transition);
-}
-
-.form-field__input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.12);
-}
-
-.form-field__input::placeholder {
-  font-size: 1rem;
-}
-
-.form-field__input option {
-  font-size: 1rem;
-}
-
-.form-error {
-  display: block;
-  color: var(--color-danger);
-  font-size: 0.875rem;
-  padding: var(--space-2) var(--space-3);
-  background: #fdecea;
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-4);
-}
-
-/* ═══════════════════════════════════════════
-   6. BOTONES
-   ═══════════════════════════════════════════ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 3rem; /* mismo alto que .form-field__input, para que se alineen
-    cuando comparten fila (ej. el buscador de fecha + sus botones). Los
-    botones compactos de acciones en tablas (.btn--action, .btn--small)
-    lo anulan más abajo — a ellos no les conviene este alto. */
-  padding: var(--space-3) var(--space-5);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: inherit;
-  transition: all var(--transition);
-  text-decoration: none;
-}
-
-.btn:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.btn--primary {
-  background: var(--color-primary);
-  color: white;
-}
-.btn--primary:hover {
-  background: var(--color-primary-hover);
-}
-
-.btn--full {
-  width: 100%;
-}
-
-.btn--ghost {
-  background: transparent;
-  border-color: var(--color-border);
-  color: var(--color-text);
-}
-.btn--ghost:hover {
-  background: var(--color-surface);
-  border-color: var(--color-primary);
-}
-
-.btn--action {
-  height: auto; /* botón compacto para filas de tabla, no debe heredar
-    el alto de formulario de .btn */
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-accent);
-  color: white;
-  font-size: 0.85rem;
-  border-radius: var(--radius-sm);
-}
-.btn--action:hover {
-  background: var(--color-accent-hover);
-}
-
-.btn--action[disabled] {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-}
-
-.btn--error {
-  background: var(--color-danger) !important;
-  color: white !important;
-  cursor: pointer;
-}
-
-/* ═══════════════════════════════════════════
-   7. DASHBOARD
-   ═══════════════════════════════════════════ */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-
-.dashboard-header__title h1 {
-  font-size: clamp(1.375rem, 1.15rem + 1vw, 2rem);
-  margin-bottom: var(--space-1);
-}
-
-.dashboard-header__subtitle {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-}
-
-/* ═══════════════════════════════════════════
-   8. STATS
-   ═══════════════════════════════════════════ */
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-}
-
-.stats > * {
-  flex: 1 1 200px;
-}
-
-.stat-card {
-  background: var(--color-surface);
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border-soft);
-  transition:
-    transform var(--transition),
-    box-shadow var(--transition);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.stat-card__label {
-  display: block;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  font-weight: 600;
-  margin-bottom: var(--space-2);
-}
-
-.stat-card__value {
-  display: block;
-  font-size: clamp(1.4rem, 1.1rem + 1.1vw, 2rem);
-  font-weight: 700;
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-card--accent {
-  background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-  border-color: transparent;
-}
-.stat-card--accent .stat-card__label,
-.stat-card--accent .stat-card__value {
-  color: white;
-}
-
-/* ═══════════════════════════════════════════
-   9. GRUPOS DE PEDIDOS
-   ═══════════════════════════════════════════ */
-.orders {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.order-group {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border-soft);
-}
-
-.order-group__header {
-  background: var(--color-primary);
-  color: white;
-  padding: var(--space-4) var(--space-5);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.order-group__time {
-  font-size: 1.25rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.order-group__meta {
-  display: flex;
-  gap: var(--space-4);
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-
-.order-group__body {
-  overflow-x: auto;
-}
-
-/* ═══════════════════════════════════════════
-   10. TABLA DE PEDIDOS
-   ═══════════════════════════════════════════ */
-.order-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.925rem;
-}
-
-.order-table thead {
-  background: var(--color-soft-bg);
-}
-
-.order-table th {
-  padding: var(--space-3) var(--space-5);
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  font-weight: 700;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.order-table td {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border-soft);
-  vertical-align: middle;
-}
-
-.order-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.order-table__id {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-}
-
-.order-table__telefono a {
-  color: var(--color-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-.order-table__telefono a:hover {
-  text-decoration: underline;
-}
-
-.order-table__productos {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  max-width: 280px;
-}
-
-.order-table__total {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Fila de pedido ya preparado */
-.order-row--done {
-  background: #e8f5e9;
-}
-.order-row--done td {
-  color: var(--color-text-muted);
-}
-.order-row--done .order-table__productos,
-.order-row--done .order-table__total {
-  text-decoration: line-through;
-}
-
-/* Fila de pedido en preparación: resalte suave, sin tachar nada todavía */
-.order-row--in-progress {
-  background: var(--color-accent-bg);
-}
-
-.order-table__estado {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.order-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-.order-status--done {
-  color: var(--color-accent);
-}
-.order-status--pendiente {
-  color: var(--color-text-muted);
-}
-.order-status--en-preparacion {
-  color: var(--color-accent);
-}
-.order-status--preparada {
-  color: var(--color-success);
-}
-
-/* ═══════════════════════════════════════════
-   11. ESTADO VACÍO
-   ═══════════════════════════════════════════ */
-.empty-state {
-  text-align: center;
-  padding: var(--space-8) var(--space-5);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  border: 2px dashed var(--color-border);
-}
-
-.empty-state__icon {
-  font-size: 3rem;
-  margin-bottom: var(--space-3);
-  display: block;
-}
-
-.empty-state__title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--space-2);
-}
-
-.empty-state__text {
-  font-size: 0.9rem;
-}
-
-/* ═══════════════════════════════════════════
-   12. NAV DE SECCIONES
+   3. HEADER (topbar)
    ═══════════════════════════════════════════
-   El layout real (sidebar fijo en desktop, drawer en móvil) vive en el
-   bloque "SIDEBAR + DRAWER" al final del archivo — aquí solo queda la
-   apariencia base de los botones, reutilizada por ambos contextos. */
-.admin-nav__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-  transition: all var(--transition);
-}
-
-.admin-nav__btn:hover {
-  border-color: var(--color-primary);
-}
-
-.admin-nav__btn.is-active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
-}
-
-.admin-nav__count {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  background: var(--color-soft-bg);
-  color: var(--color-text);
-}
-
-/* Cuando el conteo representa algo que requiere atención (ej. productos con
-   stock bajo en Inventario), no solo un total informativo. */
-.admin-nav__count--alerta:not(:empty) {
-  background: var(--color-danger);
-  color: white;
-}
-.admin-nav__count--alerta[data-zero] {
-  background: var(--color-soft-bg);
-  color: var(--color-text);
-}
-
-.section-subtitle {
-  margin: var(--space-6) 0 var(--space-3);
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-/* ═══════════════════════════════════════════
-   13. INSUMOS
+   Nota honesta: el HTML actual de admin.html no trae avatar ni
+   buscador dentro del header — eso vive en el buscador de la Sidebar
+   (sección 4, .admin-nav__search). Esta sección deja el topbar (menú +
+   título + logout, visible en móvil/tablet) con el mismo acabado
+   "app SaaS" que pediste: sticky, glass, sombra al hacer scroll y
+   acciones bien alineadas. Si más adelante agregas avatar/buscador al
+   <header id="admin-topbar"> en el HTML, sus estilos van aquí mismo.
    ═══════════════════════════════════════════ */
-/* Grid en vez de flex a propósito: con minmax(200px, 1fr) todas las
-   columnas miden EXACTAMENTE lo mismo entre sí (uniformidad) y además se
-   reparten el espacio sobrante del contenedor en partes iguales
-   (aprovechamiento de espacio) — a diferencia de flex-grow, que daba
-   anchos distintos según cuántos campos cayeran en cada fila. */
-.insumo-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0 var(--space-4);
-  background: var(--color-surface);
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--space-6);
-}
-
-/* Los campos/fieldsets ocupan su columna tal cual — grid ya los hace
-   uniformes, no necesitan flex-basis. Los "anchos" (Ingredientes, Notas)
-   y los fieldsets (que agrupan su propio sub-grid) sí deben ocupar la
-   fila completa sin importar cuántas columnas haya. */
-.insumo-form > .insumo-form__group,
-.insumo-form > .form-field.insumo-form__wide,
-.insumo-form > .insumo-form__wide {
-  grid-column: 1 / -1;
-}
-
-.insumo-form__actions {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.insumo-form textarea.form-field__input {
-  height: auto; /* el height:3rem de .form-field__input es para input/select;
-    el textarea define su alto con el atributo rows="2" del HTML. */
-  resize: vertical;
-}
-
-.insumos {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-sm);
-  overflow-x: auto;
-}
-
-.insumos .empty-state {
-  border: none;
-  box-shadow: none;
-}
-
-.insumo-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.925rem;
-}
-
-.insumo-table thead {
-  background: var(--color-soft-bg);
-}
-
-.insumo-table th {
-  padding: var(--space-3) var(--space-5);
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  font-weight: 700;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.insumo-table td {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border-soft);
-  vertical-align: middle;
-}
-
-.insumo-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.insumo-table__nombre {
-  font-weight: 600;
-}
-
-.insumo-table__acciones {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.insumo-row--bajo-stock {
-  background: #fdf3e7;
-}
-
-/* Celdas numéricas de la tabla de Inventario (horneado/preparado/vendido/ajustes) */
-.inventario-table__num {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.inventario-table__disponible {
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Inventario/Stock: el WRAPPER (.inventario-shell) es quien se ajusta a
-   su contenido y queda centrado — no #inventario-container directamente.
-   Así, el toolbar de fecha (hermano dentro del mismo wrapper) puede
-   estirarse a width:100% y terminar exactamente con el mismo ancho que
-   la tabla, en vez de que cada uno mida lo suyo por separado y sus
-   bordes no coincidan. */
-.inventario-shell {
-  width: max-content;
-  max-width: 100%;
-  margin-inline: auto;
-}
-
-.inventario-shell > [data-component='inventario-toolbar'],
-.inventario-shell > #inventario-container {
-  width: 100%;
-}
-
-#inventario-container.insumos {
-  overflow-x: visible; /* .insumos trae overflow-x:auto por defecto (para el
-    fallback de scroll de las demás tablas); acá ya no hace falta porque
-    la tabla se ajusta a su contenido y el wrapper la centra. */
-}
-
-#inventario-container .insumo-table {
-  width: auto;
-}
-
-#inventario-container th,
-#inventario-container td {
-  padding: 8px;
-}
-
-/* +10px adicionales de espacio entre columnas (van sobre los +10px de
-   la vuelta anterior: 13px -> 18px de padding-inline = 5px más por
-   lado). El padding vertical se queda en los 8px de la regla de arriba. */
-#inventario-container th,
-#inventario-container td {
-  padding-inline: 18px;
-}
-
-/* Todos los encabezados centrados, incluido "Producto" (antes se
-   dejaba a la izquierda por defecto; Jorge pidió centrarlo también). */
-#inventario-container th {
-  text-align: center;
-}
-
-/* Sin display:flex: puesto directamente en un <td>, lo saca del layout
-   de tablas (deja de comportarse como celda) y se encoge a su contenido
-   en vez de ocupar toda la columna — eso cortaba el borde inferior de la
-   fila. text-align:center sí respeta el layout de tabla y centra el
-   <input> igual, porque los controles de formulario son inline por
-   defecto. */
-.inventario-table__stock-minimo {
-  position: relative; /* ancla para el mensaje "Guardado" en posición absoluta */
-  text-align: center;
-}
-.inventario-table__stock-minimo input {
-  width: 4.5rem;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  vertical-align: middle;
-}
-/* Posicionado en absoluto (no en el flujo flex) para que no le reste
-   espacio al input y lo descentre — antes ocupaba su ancho aunque
-   estuviera invisible (opacity:0 sigue reservando espacio). Se ubica
-   justo a la derecha del input centrado: 50% + mitad del ancho del
-   input (4.5rem / 2 = 2.25rem) + un pequeño margen. */
-.inventario-table__stock-minimo__guardado {
-  position: absolute;
-  left: calc(50% + 2.25rem + var(--space-2));
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  font-size: 0.75rem;
-  color: var(--color-accent);
-  opacity: 0;
-  transition: opacity var(--transition);
-}
-.inventario-table__stock-minimo__guardado--visible {
-  opacity: 1;
-}
-
-.insumo-badge {
-  display: inline-block;
-  margin-top: var(--space-1);
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.insumo-badge--bajo-stock {
-  background: #fdecea;
-  color: var(--color-danger);
-}
-
-.insumo-badge--por-vencer {
-  background: #fff4e0;
-  color: #b8720a;
-}
-
-.insumo-badge--info {
-  background: var(--color-accent-bg);
-  color: var(--color-accent);
-}
-
-.horneadas-toolbar {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-4);
-}
-
-/* Mismo ancho para el campo de fecha y los dos botones — flex-basis:0
-   hace que se repartan el espacio disponible en partes iguales sin
-   importar cuánto contenido tenga cada uno. min-width evita que se
-   aplasten demasiado antes de saltar a la siguiente línea. */
-.horneadas-toolbar > * {
-  flex: 1 1 0;
-  min-width: 160px;
-}
-
-.horneadas-toolbar .form-field {
-  margin-bottom: 0;
-}
-
-.btn--danger {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-.btn--danger:hover {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: white;
-}
-
-.btn--small {
-  height: auto; /* mismo motivo que .btn--action: es compacto a propósito */
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.8rem;
-}
-
-/* ═══════════════════════════════════════════
-   14. RECETAS
-   ═══════════════════════════════════════════ */
-.receta-form__ingredientes-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.receta-form__ingredientes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.receta-ingrediente-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr auto;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.produccion-ingrediente-row__nombre {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.produccion-form__hint {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-/* ═══════════════════════════════════════════
-   15. PRODUCCIÓN
-   ═══════════════════════════════════════════ */
-#producciones-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-}
-
-#producciones-container > * {
-  flex: 1 1 340px;
-}
-
-#producciones-container .empty-state {
-  grid-column: 1 / -1;
-}
-
-.produccion-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.produccion-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.produccion-card__titulo {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0 0 var(--space-1);
-}
-
-.produccion-card__meta {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.produccion-card__etapas {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.etapa-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-soft-bg);
-  font-size: 0.85rem;
-}
-
-.etapa-item--completada {
-  background: var(--color-success-bg, #e8f5e9);
-}
-.etapa-item--completada .etapa-item__nombre {
-  text-decoration: line-through;
-  color: var(--color-text-muted);
-}
-
-.etapa-item--en-curso {
-  background: var(--color-accent-bg);
-}
-
-.etapa-item__nombre {
-  font-weight: 600;
-  flex: 1;
-}
-
-.etapa-item__horas {
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.produccion-card__horneadas h4 {
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-2);
-}
-
-.produccion-card__horneadas-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: 0.85rem;
-}
-
-.horneada-ligada-item {
-  padding: var(--space-1) var(--space-2);
-  background: var(--color-soft-bg);
-  border-radius: var(--radius-sm);
-}
-
-/* ═══════════════════════════════════════════
-   14. PROVEEDORES
-   ═══════════════════════════════════════════ */
-.proveedor-form {
-  background: var(--color-surface);
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-soft);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--space-6);
-}
-
-.proveedor-form__group {
-  border: none;
-  padding: 0;
-  margin: 0 0 var(--space-5);
-}
-
-.proveedor-form__legend {
-  font-family: var(--font-display, inherit);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.proveedor-form__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0 var(--space-4);
-}
-
-.proveedor-form__wide {
-  grid-column: 1 / -1;
-}
-
-.insumo-form__group {
-  border: none;
-  padding: 0;
-  margin: 0 0 var(--space-5);
-}
-
-.insumo-form__legend {
-  font-family: var(--font-display, inherit);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.insumo-form__group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0 var(--space-4);
-}
-
-.insumo-form__checklist {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-}
-.insumo-form__checklist label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 0.9rem;
-  font-weight: 400;
-}
-.insumo-form__hint {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  margin-top: var(--space-1);
-}
-
-.proveedor-form textarea.form-field__input {
-  height: auto;
-  resize: vertical;
-}
-
-.proveedor-table__alias {
-  font-weight: 400;
-  color: var(--color-text-muted);
-}
-
-/* ═══════════════════════════════════════════
-   15. RESPONSIVE
-   ═══════════════════════════════════════════
-   Escala de breakpoints de todo admin.css (mobile-first: la mayoría de
-   las reglas son max-width porque el layout base ya está pensado para
-   pantallas angostas; el sidebar de la sección 16 usa min-width porque
-   ahí el layout base es el de escritorio). De más pequeño a más grande:
-
-     ≤340px   móviles muy antiguos / gama baja, pantalla plegable cerrada
-     ≤375px   móviles chicos estándar (iPhone SE/mini, Android compactos)
-     ≤480px   móviles grandes / phablets
-     ≤640px   tablas → tarjetas (ver bloque más abajo)
-     ≤768px   tablet vertical — layout de una sola columna
-     ≤899px   drawer de navegación (ver sección 16)
-     ≥900px   sidebar fijo de navegación (ver sección 16)
-     900–1279px  laptop pequeño / tablet horizontal — sidebar angosto
-     1280–1439px laptop / desktop estándar
-     ≥1440px  desktop grande
-     ≥1600px  monitor grande / Smart TV (ver sección 16)
-     ≥1920px  Full HD y superior — el contenido empieza a crecer
-     ≥2560px  QHD / arranque de monitores ultra-wide
-     ≥3440px  ultra-wide 21:9
-
-   Los breakpoints de contenido (esta sección) y los del sidebar (sección
-   16) se mantienen alineados a propósito — 900/1600 aparecen en ambos —
-   para que el menú y el contenido cambien de "modo" en el mismo punto y
-   no se vean descoordinados a mitad de un resize. */
-
-/* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
-   mayoría de los casos, pero las tarjetas de Producción (min 340px) son
-   demasiado anchas incluso para muchas tablets en modo vertical. */
-@media (max-width: 900px) {
-  #producciones-container > * {
-    flex-basis: 280px;
-  }
-}
-
-@media (max-width: 768px) {
-  body {
-    padding: var(--space-5);
-  }
-
-  .dashboard-header {
-    flex-direction: column;
-  }
-
-  .stats > * {
-    flex-basis: calc(50% - var(--space-4) / 2);
-  }
-
-  .order-table {
-    font-size: 0.85rem;
-  }
-  .order-table th,
-  .order-table td {
-    padding: var(--space-3);
-  }
-
-  .order-group__header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  /* Tablas de datos: mismo tratamiento que order-table — más compactas,
-     con scroll horizontal de respaldo (.insumos ya tiene overflow-x: auto). */
-  .insumo-table {
-    font-size: 0.85rem;
-  }
-  .insumo-table th,
-  .insumo-table td {
-    padding: var(--space-3);
-  }
-
-  /* #inventario-container th/td (8px, definido fuera del media query)
-     le sigue ganando en especificidad a la regla de arriba gracias al
-     #id — no hace falta repetirlo aquí, ya se queda compacto en móvil
-     también. */
-
-  /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
-     sola columna en vez de que el grid intente encajar 2 columnas
-     angostas e incómodas de usar con el dedo. */
-  .insumo-form,
-  .insumo-form__group-grid,
-  .proveedor-form__grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Fila de ingrediente (select + cantidad + quitar): en una columna se
-     lee mejor que 3 celdas apretadas. */
-  .receta-ingrediente-row {
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
-  }
-
-  /* Encabezados internos con botón a la derecha: que bajen en vez de
-     encimarse cuando no cabe todo en una fila. */
-  .receta-form__ingredientes-header,
-  .produccion-card__header {
-    flex-wrap: wrap;
-  }
-
-  .etapa-item {
-    flex-wrap: wrap;
-  }
-
-  /* Toolbars de fecha (Horneadas/Inventario/Producción): que el selector
-     de fecha y los botones se apilen y ocupen todo el ancho, más fácil
-     de tocar que botones angostos en una fila. */
-  .horneadas-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .horneadas-toolbar .form-field,
-  .horneadas-toolbar .btn {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .stats > * {
-    flex-basis: 100%;
-  }
-
-  #producciones-container > * {
-    flex-basis: 100%;
-  }
-}
-
-/* Móviles chicos (iPhone SE/mini, Android compactos ~360-375px): el
-   padding y los tamaños heredados de arriba ya no desbordan (la mayoría
-   de los grids se auto-encogen con minmax()), pero se ven con demasiado
-   aire — aquí se comprime lo justo para aprovechar mejor el ancho real
-   sin que nada se sienta apretado ni difícil de tocar con el dedo. */
-@media (max-width: 375px) {
-  body {
-    padding: var(--space-4);
-  }
-
-  .login-card {
-    padding: var(--space-6) var(--space-4);
-  }
-
-  .insumo-form,
-  .proveedor-form,
-  #producciones-container .produccion-card {
-    padding: var(--space-4);
-  }
-
-  .insumo-form__group,
-  .proveedor-form__group {
-    padding: var(--space-3);
-  }
-
-  /* Botones que suelen ir en fila (acciones de tarjeta, toolbar de
-     fecha): en un móvil chico se leen y se tocan mejor apilados a
-     ancho completo que apretados unos junto a otros. */
-  .insumo-form__actions .btn,
-  .produccion-card__header .btn {
-    flex: 1 1 100%;
-  }
-}
-
-/* Piso de seguridad para gama muy baja / plegables cerrados (~320px y
-   menos): nada aquí es indispensable si lo de arriba ya funciona bien,
-   pero recorta el último margen de aire para que ni un formulario con
-   labels largos fuerce scroll horizontal. */
-@media (max-width: 340px) {
-  body {
-    padding: var(--space-3);
-  }
-
-  .stat-card {
-    padding: var(--space-4);
-  }
-
-  .btn {
-    padding: var(--space-3) var(--space-4);
-  }
-}
-
-/* Teléfono en horizontal con poca altura (teclado abierto incluido):
-   la tarjeta de login es lo único con altura fija que puede no caber
-   —el resto de las vistas ya hace scroll vertical con normalidad. */
-@media (max-width: 900px) and (max-height: 480px) and (orientation: landscape) {
-  .view--login {
-    min-height: auto;
-    padding-block: var(--space-5);
-  }
-
-  .login-card {
-    padding: var(--space-5) var(--space-6);
-  }
-
-  .login-card__header {
-    margin-bottom: var(--space-4);
-  }
-
-  .login-card__icon {
-    display: none;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   TABLAS → TARJETAS EN MÓVIL
-   Las 6 tablas dinámicas (Pedidos, Insumos, Proveedores,
-   Horneadas, Inventario, Ajustes) ya traen data-label en cada
-   <td> desde sus <template>. Por debajo de 640px, en vez de
-   depender de scroll horizontal sobre una tabla angosta, cada
-   fila se convierte en una tarjeta con "etiqueta: valor".
-   ═══════════════════════════════════════════════════════════ */
-@media (max-width: 640px) {
-  table:has(td[data-label]) {
-    display: block;
-    width: 100%;
-  }
-
-  table:has(td[data-label]) thead {
-    display: none;
-  }
-
-  table:has(td[data-label]) tbody {
-    display: block;
-  }
-
-  table:has(td[data-label]) tr {
-    display: block;
-    margin-bottom: var(--space-3);
-    padding: var(--space-3);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border-soft);
-    border-radius: var(--radius-md);
-  }
-
-  table:has(td[data-label]) tr:last-child {
-    margin-bottom: 0;
-  }
-
-  table:has(td[data-label]) td {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-3);
-    padding: var(--space-2) 0;
-    border: none;
-    text-align: right;
-  }
-
-  table:has(td[data-label]) td:not(:last-child) {
-    border-bottom: 1px solid var(--color-border-soft);
-  }
-
-  table:has(td[data-label]) td::before {
-    content: attr(data-label);
-    flex-shrink: 0;
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: var(--color-text-muted);
-    text-align: left;
-  }
-
-  table:has(td[data-label]) td:empty::before {
-    content: none;
-  }
-
-  /* Columna de acciones: los botones ya se ven bien a la derecha,
-     no necesitan la etiqueta duplicada. */
-  .insumo-table__acciones {
-    justify-content: flex-end;
-  }
-
-  /* Inventario: en desktop el wrapper .inventario-shell se ajusta a su
-     contenido (width: max-content, ver más arriba), pero eso no tiene
-     sentido en la vista de tarjetas — acá debe verse tan ancho como
-     .insumo-form (el formulario "Registrar ajuste" justo debajo). */
-  .inventario-shell {
-    width: 100%;
-    max-width: none;
-    margin-inline: 0;
-  }
-
-  /* #inventario-container también pierde su propio fondo/borde/sombra
-     (heredados de .insumos): sin esto, el contenedor forma una "caja"
-     blanca detrás de todas las tarjetas, y el espacio de 10px entre
-     ellas terminaba mostrando el fondo de ESA caja en vez del fondo
-     limpio de la página — se veía como si hubiera color de más entre
-     tarjetas. */
-  #inventario-container.insumos {
-    background: none;
-    border: none;
-    box-shadow: none;
-  }
-
-  /* Mismo radio y sombra que .insumo-form, para que cada producto se
-     vea como una tarjeta individual con el mismo peso visual que el
-     formulario, no como una fila de tabla disfrazada. Espacio fijo de
-     10px entre tarjetas (en vez de var(--space-3)); sin margen después
-     de la última para no dejar aire de más antes del formulario de
-     ajuste que sigue debajo. */
-  #inventario-container tr {
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 10px;
-  }
-
-  #inventario-container tr:last-child {
-    margin-bottom: 0;
-  }
-}
-
-/* ── Refuerzo: grupos que pueden desbordar con contenido largo ── */
-.order-group__meta,
-.produccion-card__header {
-  flex-wrap: wrap;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   ESCRITORIO GRANDE Y MONITORES ULTRA-WIDE
-   El sidebar (sección 16) ya escala su propio ancho y tipografía en
-   1600px/2400px. Esta parte hace lo mismo con el CONTENIDO: en vez de
-   dejar .view/.admin fijos en 1400px/1200px para siempre (que en un
-   monitor de 27"-34" deja un río de espacio vacío a los lados), su
-   ancho máximo crece de forma controlada — nunca a pantalla completa,
-   porque una tabla o un formulario estirados a 3000px son tan
-   incómodos de leer como uno demasiado angosto. ═══════════════════════════════════════════════════════════ */
-
-/* 1024–1279px: laptops pequeños / tablets horizontales grandes. El
-   layout de escritorio (sidebar + grids auto-fit) ya funciona bien acá
-   sin cambios — se documenta el tramo para que quede explícito que no
-   es un hueco sin cubrir, sino una zona ya resuelta por el resto de
-   las reglas de esta hoja. */
-
-/* Desktop grande: .view (con sidebar) y .admin (login, sin sidebar)
-   pueden crecer más allá de su tope actual. clamp() evita un salto
-   brusco al cruzar el breakpoint y limita el máximo para no perder
-   longitud de línea legible en formularios y tablas de texto. */
-@media (min-width: 1440px) {
-  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
-    max-width: clamp(1400px, 78vw, 1680px);
-  }
-
-  .admin:not(:has(.admin-nav--sidebar:not([hidden]))) {
-    max-width: clamp(1200px, 62vw, 1440px);
-  }
-}
-
-/* QHD / arranque de ultra-wide: los grids de tarjetas (Insumos,
-   Producción) pueden permitirse columnas algo más anchas — con el
-   minmax() base (200-340px) a este ancho ya caben 6-7 columnas
-   angostas, que se ven más como una lista que como tarjetas. */
-@media (min-width: 2560px) {
-  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
-    max-width: clamp(1680px, 70vw, 2000px);
-  }
-
-  .insumo-form,
-  .insumo-form__group-grid,
-  .proveedor-form__grid {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  }
-
-  #producciones-container > * {
-    flex-basis: 380px;
-  }
-}
-
-/* Ultra-wide 21:9 (34" y similares): mismo criterio, un poco más de
-   aire sin llegar a ocupar todo el ancho físico del monitor. */
-@media (min-width: 3440px) {
-  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
-    max-width: clamp(2000px, 60vw, 2400px);
-  }
-}
-
-/* Quienes piden menos movimiento en el sistema operativo: la sección 16
-   ya cubre el sidebar/drawer; esto hace lo mismo con el resto de las
-   animaciones del contenido (entrada de vista, hover de tarjetas). */
-@media (prefers-reduced-motion: reduce) {
-  .view {
-    animation: none;
-  }
-
-  .stat-card,
-  .btn {
-    transition-duration: 1ms;
-  }
-
-  .stat-card:hover {
-    transform: none;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   16. SIDEBAR + DRAWER (nav del panel admin)
-   Un solo componente para todas las pantallas:
-   · < 900px  → drawer deslizante sobre el contenido (+ topbar)
-   · ≥ 900px  → sidebar fijo, colapsable a rail de iconos
-   · ≥ 1600px → escala tipográfica y anchos mayores (TV / monitores 4K)
-   ═══════════════════════════════════════════════════════════ */
-
-/* ── Topbar (solo móvil / tablet) ── */
 .admin-topbar {
   display: none;
   align-items: center;
   gap: var(--space-3);
-  /* Sin padding horizontal propio: el inset lateral lo da solo el padding
-     de body, igual que el resto del contenido (.dashboard-header, cards,
-     etc.). Antes tenía su propio var(--space-4) horizontal ENCIMA del de
-     body, así que el botón de menú quedaba más adentro que el título de
-     cada pestaña. */
+  /* Sin padding horizontal propio: el inset lateral lo da solo el
+     padding de body, igual que el resto del contenido (dashboard,
+     cards, etc.) — evita que el botón de menú quede más adentro que
+     el título de cada pestaña. */
   padding: max(var(--space-3), env(safe-area-inset-top)) 0 var(--space-3);
-  /* Antes era semitransparente (88% + blur): al hacer scroll, el título
-     de cada pestaña (ej. "Panel de Pedidos") se alcanzaba a ver
-     "sangrando" a través de la barra al pasar por debajo — se veía como
-     texto roto/superpuesto. Con fondo 100% opaco, lo tapa del todo. */
-  background: var(--color-surface);
+  /* Glass real, pero con opacidad alta (97%) a propósito: una versión
+     anterior con 88% + blur dejaba "sangrar" el título de la pestaña
+     a través de la barra durante el scroll en iOS. Si eso vuelve a
+     pasar, la salida segura es quitar backdrop-filter y dejar
+     background: var(--color-surface) 100% opaco. */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--color-border-soft);
   position: sticky;
   top: 0;
-  z-index: 40;
-  /* iOS/WebKit: position:sticky + backdrop-filter a veces no se pinta al
-     cargar la página y solo aparece tras el primer scroll (bug de
-     renderizado conocido, no un error de layout). Forzar su propia capa
-     de composición desde el inicio evita que dependa de ese repintado
-     tardío. */
+  z-index: var(--z-sticky);
+  /* iOS/WebKit: position:sticky + backdrop-filter a veces no se pinta
+     al cargar la página y solo aparece tras el primer scroll (bug de
+     renderizado conocido). Forzar su propia capa de composición desde
+     el inicio evita que dependa de ese repintado tardío. */
   transform: translateZ(0);
   will-change: transform;
+  transition: box-shadow var(--transition);
+}
+
+/* Sombra dinámica al hacer scroll: la clase la agrega JS (un listener
+   de 6-8 líneas en admin.js que hace scrollY > 0 ? classList.add
+   ('is-scrolled') : remove), CSS solo define cómo se ve. Sin esa
+   clase, el topbar se queda con el borde inferior sutil de arriba —
+   funciona igual de bien, solo sin el efecto de profundidad extra. */
+.admin-topbar.is-scrolled {
+  box-shadow: var(--shadow-sm);
+  border-bottom-color: transparent;
 }
 
 .admin-topbar__menu-btn {
@@ -1600,19 +320,32 @@ button {
   white-space: nowrap;
 }
 
+/* Acciones del lado derecho (hoy solo logout; si se agrega avatar o
+   más botones, este es el contenedor al que sumarles gap). */
 .admin-topbar__logout {
   margin-right: 10px;
   padding: var(--space-2) var(--space-3);
 }
+
+/* ═══════════════════════════════════════════
+   4. SIDEBAR
+   ═══════════════════════════════════════════
+   Componente único para las dos pantallas: en móvil/tablet (<900px)
+   se comporta como drawer deslizante; en desktop (≥900px), como
+   sidebar fijo colapsable a rail de iconos. El código que decide
+   CUÁNDO cambia de modo vive en la sección 13 (Responsive) — acá
+   solo está su apariencia base: colores, glass, hover, ítem activo,
+   buscador, scroll independiente de los grupos y el pie con logout.
+   ═══════════════════════════════════════════ */
 
 /* ── Overlay del drawer ── */
 .admin-nav-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(20, 16, 8, 0.5);
+  background: var(--color-overlay);
   backdrop-filter: blur(2px);
-  z-index: 45;
+  z-index: var(--z-overlay);
   opacity: 0;
   transition: opacity var(--transition);
 }
@@ -1637,17 +370,25 @@ button {
   width: var(--nav-width);
   height: 100vh;
   height: 100dvh;
-  background:
-    linear-gradient(180deg, var(--color-surface) 0%, var(--color-soft-bg) 100%),
-    var(--color-surface);
-  border-right: 1px solid var(--color-border-soft);
+  /* Glass: gradiente translúcido + blur de lo que quede detrás. En
+     desktop (al lado del contenido) el efecto es sutil; en el drawer
+     móvil (superpuesto sobre la vista + overlay oscuro) es donde más
+     se nota — look "panel flotante" en vez de un rectángulo opaco. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-soft-bg) 92%, transparent) 100%
+  );
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
   box-shadow: 1px 0 0 rgba(44, 36, 22, 0.02);
   padding: var(--space-4) 0 0;
   position: sticky;
   top: 0;
   align-self: flex-start;
   flex-shrink: 0;
-  z-index: 50;
+  z-index: var(--z-nav);
   overflow: hidden;
   transition:
     width 240ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -1978,7 +719,1496 @@ button {
   margin-left: 0;
 }
 
-/* ═══ Modo rail (sidebar colapsado, solo desktop) ═══ */
+/* ═══════════════════════════════════════════
+   5. CARDS
+   ═══════════════════════════════════════════
+   .stat-card, .produccion-card, .insumo-form y .proveedor-form usaban
+   la MISMA superficie (fondo, borde, radio, sombra, padding) copiada
+   cuatro veces. Se declara una sola vez acá; cada uno agrega debajo
+   solo lo que de verdad lo distingue (grid, flex, hover, margen). */
+.stat-card,
+.produccion-card,
+.insumo-form,
+.proveedor-form {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+
+.stat-card {
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card--accent {
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  border-color: transparent;
+}
+.stat-card--accent .stat-card__label,
+.stat-card--accent .stat-card__value {
+  color: white;
+}
+
+.produccion-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ═══════════════════════════════════════════
+   6. DASHBOARD
+   ═══════════════════════════════════════════ */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-header__title h1 {
+  font-size: clamp(1.375rem, 1.15rem + 1vw, 2rem);
+  margin-bottom: var(--space-1);
+}
+
+.dashboard-header__subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* Subtítulo de sección reutilizado dentro de varias vistas (Inventario,
+   Producción...) — no es parte del header de arriba, es un separador
+   de contenido genérico, por eso vive aquí y no dentro de dashboard-header. */
+.section-subtitle {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* ── Stats ── */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.stats > * {
+  flex: 1 1 200px;
+}
+
+.stat-card__label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.stat-card__value {
+  display: block;
+  /* clamp(): escala continua, ver nota en .login-card__title (sección 2). */
+  font-size: clamp(1.4rem, 1.1rem + 1.1vw, 2rem);
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Grupos de pedidos ── */
+.orders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.order-group {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border-soft);
+}
+
+.order-group__header {
+  background: var(--color-primary);
+  color: white;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.order-group__time {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.order-group__meta {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 0.9rem;
+  opacity: 0.9;
+  flex-wrap: wrap; /* contenido largo (varios teléfonos, notas) no debe desbordar */
+}
+
+.order-group__body {
+  overflow-x: auto;
+}
+
+/* ── Producción (tarjetas) ── */
+#producciones-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+#producciones-container > * {
+  flex: 1 1 340px;
+}
+
+#producciones-container .empty-state {
+  grid-column: 1 / -1;
+}
+
+.produccion-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap; /* antes vivía aparte como "refuerzo"; se integra acá
+    directo para no dejar dos reglas separadas para el mismo selector */
+}
+
+.produccion-card__titulo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+}
+
+.produccion-card__meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.produccion-card__etapas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.etapa-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-soft-bg);
+  font-size: 0.85rem;
+}
+
+.etapa-item--completada {
+  background: var(--color-success-bg);
+}
+.etapa-item--completada .etapa-item__nombre {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.etapa-item--en-curso {
+  background: var(--color-accent-bg);
+}
+
+.etapa-item__nombre {
+  font-weight: 600;
+  flex: 1;
+}
+
+.etapa-item__horas {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.produccion-card__horneadas h4 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+.produccion-card__horneadas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.85rem;
+}
+
+.horneada-ligada-item {
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+}
+
+/* ═══════════════════════════════════════════
+   7. TABLAS
+   ═══════════════════════════════════════════
+   Un solo patrón visual (.order-table, .insumo-table e
+   #inventario-container comparten la misma receta de th/td) reforzado
+   con lo que pediste: encabezado sticky dentro de su contenedor con
+   scroll, cebra sutil y hover de fila. En móvil (≤640px) estas mismas
+   tablas se transforman en tarjetas — esa transformación depende del
+   viewport, así que su código vive en la sección 13 (Responsive) en
+   vez de acá, para no mezclar "cómo se ve" con "cuándo cambia de
+   forma".
+   ═══════════════════════════════════════════ */
+
+/* ── Pedidos ── */
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.order-table thead {
+  background: var(--color-soft-bg);
+}
+
+.order-table th {
+  padding: var(--space-3) var(--space-5);
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-soft);
+  vertical-align: middle;
+}
+
+.order-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.order-table__id {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.order-table__telefono a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.order-table__telefono a:hover {
+  text-decoration: underline;
+}
+
+.order-table__productos {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.order-table__total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fila de pedido ya preparado */
+.order-row--done {
+  background: var(--color-success-bg);
+}
+.order-row--done td {
+  color: var(--color-text-muted);
+}
+.order-row--done .order-table__productos,
+.order-row--done .order-table__total {
+  text-decoration: line-through;
+}
+
+/* Fila de pedido en preparación: resalte suave, sin tachar nada todavía */
+.order-row--in-progress {
+  background: var(--color-accent-bg);
+}
+
+.order-table__estado {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.order-status--done {
+  color: var(--color-accent);
+}
+.order-status--pendiente {
+  color: var(--color-text-muted);
+}
+.order-status--en-preparacion {
+  color: var(--color-accent);
+}
+.order-status--preparada {
+  color: var(--color-success);
+}
+
+/* ── Estado vacío (reutilizado por todas las tablas/listas) ── */
+.empty-state {
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--color-border);
+}
+
+.empty-state__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-3);
+  display: block;
+}
+
+.empty-state__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.empty-state__text {
+  font-size: 0.9rem;
+}
+
+/* ── Insumos / Proveedores / Horneadas / Inventario ── */
+.insumos {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-soft);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.insumos .empty-state {
+  border: none;
+  box-shadow: none;
+}
+
+.insumo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.insumo-table thead {
+  background: var(--color-soft-bg);
+}
+
+.insumo-table th {
+  padding: var(--space-3) var(--space-5);
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.insumo-table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-soft);
+  vertical-align: middle;
+}
+
+.insumo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.insumo-table__nombre {
+  font-weight: 600;
+}
+
+.insumo-table__acciones {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* .insumo-row--bajo-stock: color de fondo definido en la sección 12
+   (Alertas), junto con los demás estados de advertencia. */
+
+/* Celdas numéricas de la tabla de Inventario (horneado/preparado/vendido/ajustes) */
+.inventario-table__num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.inventario-table__disponible {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inventario/Stock: el WRAPPER (.inventario-shell) es quien se ajusta a
+   su contenido y queda centrado — no #inventario-container directamente.
+   Así, el toolbar de fecha (hermano dentro del mismo wrapper) puede
+   estirarse a width:100% y terminar exactamente con el mismo ancho que
+   la tabla, en vez de que cada uno mida lo suyo por separado y sus
+   bordes no coincidan. */
+.inventario-shell {
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.inventario-shell > [data-component='inventario-toolbar'],
+.inventario-shell > #inventario-container {
+  width: 100%;
+}
+
+#inventario-container.insumos {
+  overflow-x: visible; /* .insumos trae overflow-x:auto por defecto (para el
+    fallback de scroll de las demás tablas); acá ya no hace falta porque
+    la tabla se ajusta a su contenido y el wrapper la centra. */
+}
+
+#inventario-container .insumo-table {
+  width: auto;
+}
+
+/* Padding compacto en Inventario: 8px vertical, 18px horizontal (más
+   espacio entre columnas que las demás tablas, que usan var(--space-*)
+   por defecto — acá se ve mejor con números fijos y cortos). */
+#inventario-container th,
+#inventario-container td {
+  padding: 8px 18px;
+}
+
+/* Todos los encabezados centrados, incluido "Producto" (antes se
+   dejaba a la izquierda por defecto; Jorge pidió centrarlo también). */
+#inventario-container th {
+  text-align: center;
+}
+
+/* Sin display:flex: puesto directamente en un <td>, lo saca del layout
+   de tablas (deja de comportarse como celda) y se encoge a su contenido
+   en vez de ocupar toda la columna — eso cortaba el borde inferior de la
+   fila. text-align:center sí respeta el layout de tabla y centra el
+   <input> igual, porque los controles de formulario son inline por
+   defecto. */
+.inventario-table__stock-minimo {
+  position: relative; /* ancla para el mensaje "Guardado" en posición absoluta */
+  text-align: center;
+}
+.inventario-table__stock-minimo input {
+  width: 4.5rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  vertical-align: middle;
+}
+/* Posicionado en absoluto (no en el flujo flex) para que no le reste
+   espacio al input y lo descentre — antes ocupaba su ancho aunque
+   estuviera invisible (opacity:0 sigue reservando espacio). Se ubica
+   justo a la derecha del input centrado: 50% + mitad del ancho del
+   input (4.5rem / 2 = 2.25rem) + un pequeño margen. */
+.inventario-table__stock-minimo__guardado {
+  position: absolute;
+  left: calc(50% + 2.25rem + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.inventario-table__stock-minimo__guardado--visible {
+  opacity: 1;
+}
+
+.proveedor-table__alias {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ── Encabezado sticky, cebra y hover ──
+   Aplica a las tres tablas de datos (Pedidos, Insumos/Proveedores/
+   Horneadas, Inventario) porque las tres comparten estructura th/td.
+   El sticky funciona porque cada tabla vive dentro de un contenedor
+   con su propio scroll (.insumos, .order-group__body tienen
+   overflow-x/y) — sin eso, `top: 0` no tendría de qué "pegarse". */
+.order-table thead th,
+.insumo-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.order-table tbody tr:hover,
+.insumo-table tbody tr:hover {
+  background: var(--color-soft-bg);
+}
+
+/* Cebra: se salta las filas que ya tienen su propio color de estado
+   (done/in-progress/bajo-stock) para no pelear con esos fondos. */
+.order-table tbody tr:nth-child(even):not(.order-row--done):not(.order-row--in-progress),
+.insumo-table tbody tr:nth-child(even):not(.insumo-row--bajo-stock) {
+  background: color-mix(in srgb, var(--color-soft-bg) 55%, var(--color-surface));
+}
+
+.order-table tbody tr:nth-child(even):hover,
+.insumo-table tbody tr:nth-child(even):hover {
+  background: var(--color-soft-bg);
+}
+/* ═══════════════════════════════════════════
+   8. FORMULARIOS
+   ═══════════════════════════════════════════
+   .proveedor-form__legend/__grid/__group eran copias literales de
+   .insumo-form__legend/__group-grid/__group (mismo CSS, dos nombres) —
+   se fusionan acá en un solo selector agrupado. Todos los formularios
+   grandes (Insumos, Proveedores, Horneadas, Recetas, Producción) usan
+   el mismo patrón: grid con columnas fluidas (auto-fit + minmax), así
+   que se comprimen o se apilan solos sin necesitar una sola media
+   query — eso es lo que hace a un formulario "completamente fluido".
+   ═══════════════════════════════════════════ */
+
+/* ── Insumos: grid raíz del formulario ── */
+.insumo-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.insumo-form > .insumo-form__group,
+.insumo-form > .form-field.insumo-form__wide,
+.insumo-form > .insumo-form__wide {
+  grid-column: 1 / -1;
+}
+
+.insumo-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.insumo-form textarea.form-field__input,
+.proveedor-form textarea.form-field__input {
+  height: auto; /* el height:3rem de .form-field__input es para input/select;
+    el textarea define su alto con el atributo rows="2" del HTML. */
+  resize: vertical;
+}
+
+/* ── Proveedores: margen de tarjeta (el resto de la superficie ya
+   sale de la sección 5, junto con .insumo-form) ── */
+.proveedor-form {
+  margin-bottom: var(--space-6);
+}
+
+/* ── Fieldsets — compartidos por Insumos y Proveedores ── */
+.insumo-form__group,
+.proveedor-form__group {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-5);
+}
+
+.insumo-form__legend,
+.proveedor-form__legend {
+  font-family: var(--font-display, inherit);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.insumo-form__group-grid,
+.proveedor-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 var(--space-4);
+}
+
+.proveedor-form__wide {
+  grid-column: 1 / -1;
+}
+
+.insumo-form__checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.insumo-form__checklist label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+.insumo-form__hint,
+.produccion-form__hint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.insumo-form__hint {
+  margin-top: var(--space-1);
+}
+.produccion-form__hint {
+  font-style: italic;
+}
+
+/* ── Recetas / Producción: fila de ingrediente ── */
+
+.receta-form__ingredientes-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.receta-form__ingredientes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.receta-ingrediente-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.produccion-ingrediente-row__nombre {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* ── Toolbar de fecha (Horneadas / Inventario / Producción) ── */
+.horneadas-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+/* Mismo ancho para el campo de fecha y los dos botones — flex-basis:0
+   hace que se repartan el espacio disponible en partes iguales sin
+   importar cuánto contenido tenga cada uno. min-width evita que se
+   aplasten demasiado antes de saltar a la siguiente línea. */
+.horneadas-toolbar > * {
+  flex: 1 1 0;
+  min-width: 160px;
+}
+
+.horneadas-toolbar .form-field {
+  margin-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════
+   9. BOTONES
+   ═══════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 3rem; /* mismo alto que .form-field__input, para que se alineen
+    cuando comparten fila (ej. el buscador de fecha + sus botones). Los
+    botones compactos de acciones en tablas (.btn--action, .btn--small)
+    lo anulan más abajo — a ellos no les conviene este alto. */
+  padding: var(--space-3) var(--space-5);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition);
+  text-decoration: none;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: white;
+}
+.btn--primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+.btn--ghost:hover {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.btn--action {
+  height: auto; /* botón compacto para filas de tabla, no debe heredar
+    el alto de formulario de .btn */
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent);
+  color: white;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+}
+.btn--action:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn--action[disabled] {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.btn--error {
+  background: var(--color-danger) !important;
+  color: white !important;
+  cursor: pointer;
+}
+.btn--danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.btn--danger:hover {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: white;
+}
+
+.btn--small {
+  height: auto; /* mismo motivo que .btn--action: es compacto a propósito */
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════
+   10. INPUTS
+   ═══════════════════════════════════════════ */
+.form-field {
+  margin-bottom: var(--space-4);
+  min-width: 0; /* permite que se encoja dentro de un grid/flex — sin esto,
+                   un <input type="date"/"time"> nativo fuerza su ancho
+                   mínimo de contenido y desborda el contenedor en móvil */
+}
+
+.form-field__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+}
+
+.form-field__input {
+  width: 100%;
+  min-width: 0;
+  height: 3rem; /* mismo alto exacto para <input> y <select>, sin importar que
+    el <select> use font-size 0.9rem y el input 1rem — sin esto, esa
+    diferencia de tamaño de letra hacía que el <select> se calculara un
+    poco más bajo que el <input>. <textarea> se excluye explícitamente
+    en la sección 8, porque necesita su propio alto de varias líneas. */
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.form-field__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.12);
+}
+
+.form-field__input::placeholder {
+  font-size: 1rem;
+}
+
+.form-field__input option {
+  font-size: 1rem;
+}
+
+/* Checkboxes (checklist de alérgenos en Insumos): el navegador ya los
+   dibuja accesibles y funcionan sin nada de CSS — accent-color es un
+   único valor, sin reconstruir el control a mano, que los pinta con
+   el color de marca en vez del azul/gris por defecto del sistema. */
+.insumo-form__checklist input[type='checkbox'] {
+  accent-color: var(--color-primary);
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+/* ═══════════════════════════════════════════
+   11. MODALES
+   ═══════════════════════════════════════════
+   admin.html no tiene ningún modal todavía — nada de esto se ve hasta
+   que agregues el HTML (overlay + panel con estas clases) y el JS que
+   le suma/quita la clase `is-open`. Queda listo para ese momento, con
+   el mismo lenguaje visual del resto del panel (superficie, radios,
+   sombras y colores de variables.css) para que no desentone cuando lo
+   conectes.
+
+   HTML de referencia:
+     <div class="modal-overlay" id="mi-modal">
+       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mi-modal-title">
+         <header class="modal__header">
+           <h2 class="modal__title" id="mi-modal-title">Título</h2>
+           <button type="button" class="modal__close" aria-label="Cerrar">
+             <i class="fa-solid fa-xmark"></i>
+           </button>
+         </header>
+         <div class="modal__body">...</div>
+         <footer class="modal__footer">
+           <button class="btn btn--ghost">Cancelar</button>
+           <button class="btn btn--primary">Guardar</button>
+         </footer>
+       </div>
+     </div>
+   JS mínimo para abrir/cerrar: overlay.classList.toggle('is-open') +
+   Escape para cerrar + trap de foco (el mismo patrón que ya usa el
+   drawer de la sidebar para su overlay, ver sección 4).
+   ═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--color-overlay);
+  backdrop-filter: blur(2px);
+  z-index: var(--z-modal);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+.modal-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal {
+  /* ancho dinámico: se ajusta al contenido hasta un tope, nunca pegado
+     a los bordes en móvil (padding del overlay) ni gigante en desktop */
+  width: 100%;
+  max-width: var(--modal-width, 32rem);
+  /* altura máxima + scroll interno: un formulario largo (ej. Insumos)
+     nunca corta contenido ni empuja los botones fuera de la pantalla */
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(12px) scale(0.98);
+  transition: transform var(--transition-slow);
+}
+
+.modal-overlay.is-open .modal {
+  transform: none;
+}
+
+.modal--sm {
+  --modal-width: 24rem;
+}
+.modal--lg {
+  --modal-width: 44rem;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border-soft);
+  flex-shrink: 0;
+}
+
+.modal__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+.modal__close:hover {
+  background: var(--color-soft-bg);
+  color: var(--color-text);
+}
+.modal__close:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Scroll interno: es este contenedor el que se desborda, no el modal
+   completo — así header y footer se quedan fijos arriba/abajo. */
+.modal__body {
+  padding: var(--space-5);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border-soft);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════
+   12. ALERTAS
+   ═══════════════════════════════════════════
+   .form-error ya existía como una alerta roja de un solo uso; se
+   generaliza acá en un componente .alert con variantes de color
+   (reutilizando los tokens --color-danger/warning/info/success de
+   variables.css), y .form-error se deja funcionando exactamente
+   igual que antes — es un alias de .alert--danger, así que ningún
+   HTML existente se rompe. ═══════════════════════════════════════════ */
+.alert {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-4);
+}
+
+.alert--danger,
+.form-error {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.alert--warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.alert--info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.alert--success {
+  color: var(--color-accent);
+  background: var(--color-success-bg);
+}
+
+/* ── Badges de estado (Insumos) ── */
+.insumo-badge {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.insumo-badge--bajo-stock {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.insumo-badge--por-vencer {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.insumo-badge--info {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.insumo-row--bajo-stock {
+  background: var(--color-stock-bajo-bg);
+}
+
+/* ── Contador de alerta en la sidebar (ej. stock bajo en Inventario) ── */
+.admin-nav__count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-soft-bg);
+  color: var(--color-text);
+}
+
+.admin-nav__count--alerta:not(:empty) {
+  background: var(--color-danger);
+  color: white;
+}
+.admin-nav__count--alerta[data-zero] {
+  background: var(--color-soft-bg);
+  color: var(--color-text);
+}
+
+/* ═══════════════════════════════════════════
+   13. RESPONSIVE
+   ═══════════════════════════════════════════
+   Escala de breakpoints de todo admin.css (mobile-first: la mayoría de
+   las reglas son max-width porque el layout base ya está pensado para
+   pantallas angostas; el sidebar de la sección 4 usa min-width porque
+   ahí el layout base es el de escritorio). De más pequeño a más grande:
+
+     ≤340px   móviles muy antiguos / gama baja, pantalla plegable cerrada
+     ≤375px   móviles chicos estándar (iPhone SE/mini, Android compactos)
+     ≤480px   móviles grandes / phablets
+     ≤640px   tablas → tarjetas (ver bloque más abajo)
+     ≤768px   tablet vertical — layout de una sola columna
+     ≤899px   drawer de navegación (ver sección 4)
+     ≥900px   sidebar fijo de navegación (ver sección 4)
+     900–1279px  laptop pequeño / tablet horizontal — sidebar angosto
+     1280–1439px laptop / desktop estándar
+     ≥1440px  desktop grande
+     ≥1600px  monitor grande / Smart TV (ver sección 4)
+     ≥1920px  Full HD y superior — el contenido empieza a crecer
+     ≥2560px  QHD / arranque de monitores ultra-wide
+     ≥3440px  ultra-wide 21:9
+     ≥3840px  4K
+
+   Los breakpoints de contenido (esta sección) y los del sidebar (sección
+   16) se mantienen alineados a propósito — 900/1600 aparecen en ambos —
+   para que el menú y el contenido cambien de "modo" en el mismo punto y
+   no se vean descoordinados a mitad de un resize. */
+
+/* Tablet: los grids con minmax() ya se auto-encogen por sí solos en la
+   mayoría de los casos, pero las tarjetas de Producción (min 340px) son
+   demasiado anchas incluso para muchas tablets en modo vertical. */
+@media (max-width: 900px) {
+  #producciones-container > * {
+    flex-basis: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: var(--space-5);
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+  }
+
+  .stats > * {
+    flex-basis: calc(50% - var(--space-4) / 2);
+  }
+
+  .order-table {
+    font-size: 0.85rem;
+  }
+  .order-table th,
+  .order-table td {
+    padding: var(--space-3);
+  }
+
+  .order-group__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Tablas de datos: mismo tratamiento que order-table — más compactas,
+     con scroll horizontal de respaldo (.insumos ya tiene overflow-x: auto). */
+  .insumo-table {
+    font-size: 0.85rem;
+  }
+  .insumo-table th,
+  .insumo-table td {
+    padding: var(--space-3);
+  }
+
+  /* #inventario-container th/td (8px, definido fuera del media query)
+     le sigue ganando en especificidad a la regla de arriba gracias al
+     #id — no hace falta repetirlo aquí, ya se queda compacto en móvil
+     también. */
+
+  /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
+     sola columna en vez de que el grid intente encajar 2 columnas
+     angostas e incómodas de usar con el dedo. */
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Fila de ingrediente (select + cantidad + quitar): en una columna se
+     lee mejor que 3 celdas apretadas. */
+  .receta-ingrediente-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  /* Encabezados internos con botón a la derecha: que bajen en vez de
+     encimarse cuando no cabe todo en una fila. */
+  .receta-form__ingredientes-header,
+  .produccion-card__header {
+    flex-wrap: wrap;
+  }
+
+  .etapa-item {
+    flex-wrap: wrap;
+  }
+
+  /* Toolbars de fecha (Horneadas/Inventario/Producción): que el selector
+     de fecha y los botones se apilen y ocupen todo el ancho, más fácil
+     de tocar que botones angostos en una fila. */
+  .horneadas-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .horneadas-toolbar .form-field,
+  .horneadas-toolbar .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats > * {
+    flex-basis: 100%;
+  }
+
+  #producciones-container > * {
+    flex-basis: 100%;
+  }
+}
+
+/* Móviles chicos (iPhone SE/mini, Android compactos ~360-375px): el
+   padding y los tamaños heredados de arriba ya no desbordan (la mayoría
+   de los grids se auto-encogen con minmax()), pero se ven con demasiado
+   aire — aquí se comprime lo justo para aprovechar mejor el ancho real
+   sin que nada se sienta apretado ni difícil de tocar con el dedo. */
+@media (max-width: 375px) {
+  body {
+    padding: var(--space-4);
+  }
+
+  .login-card {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .insumo-form,
+  .proveedor-form,
+  #producciones-container .produccion-card {
+    padding: var(--space-4);
+  }
+
+  .insumo-form__group,
+  .proveedor-form__group {
+    padding: var(--space-3);
+  }
+
+  /* Botones que suelen ir en fila (acciones de tarjeta, toolbar de
+     fecha): en un móvil chico se leen y se tocan mejor apilados a
+     ancho completo que apretados unos junto a otros. */
+  .insumo-form__actions .btn,
+  .produccion-card__header .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Piso de seguridad para gama muy baja / plegables cerrados (~320px y
+   menos): nada aquí es indispensable si lo de arriba ya funciona bien,
+   pero recorta el último margen de aire para que ni un formulario con
+   labels largos fuerce scroll horizontal. */
+@media (max-width: 340px) {
+  body {
+    padding: var(--space-3);
+  }
+
+  .stat-card {
+    padding: var(--space-4);
+  }
+
+  .btn {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* Teléfono en horizontal con poca altura (teclado abierto incluido):
+   la tarjeta de login es lo único con altura fija que puede no caber
+   —el resto de las vistas ya hace scroll vertical con normalidad. */
+@media (max-width: 900px) and (max-height: 480px) and (orientation: landscape) {
+  .view--login {
+    min-height: auto;
+    padding-block: var(--space-5);
+  }
+
+  .login-card {
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .login-card__header {
+    margin-bottom: var(--space-4);
+  }
+
+  .login-card__icon {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLAS → TARJETAS EN MÓVIL
+   Las 6 tablas dinámicas (Pedidos, Insumos, Proveedores,
+   Horneadas, Inventario, Ajustes) ya traen data-label en cada
+   <td> desde sus <template>. Por debajo de 640px, en vez de
+   depender de scroll horizontal sobre una tabla angosta, cada
+   fila se convierte en una tarjeta con "etiqueta: valor".
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  table:has(td[data-label]) {
+    display: block;
+    width: 100%;
+  }
+
+  table:has(td[data-label]) thead {
+    display: none;
+  }
+
+  table:has(td[data-label]) tbody {
+    display: block;
+  }
+
+  table:has(td[data-label]) tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+  }
+
+  table:has(td[data-label]) tr:last-child {
+    margin-bottom: 0;
+  }
+
+  table:has(td[data-label]) td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  table:has(td[data-label]) td:not(:last-child) {
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  table:has(td[data-label]) td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  table:has(td[data-label]) td:empty::before {
+    content: none;
+  }
+
+  /* Columna de acciones: los botones ya se ven bien a la derecha,
+     no necesitan la etiqueta duplicada. */
+  .insumo-table__acciones {
+    justify-content: flex-end;
+  }
+
+  /* Inventario: en desktop el wrapper .inventario-shell se ajusta a su
+     contenido (width: max-content, ver más arriba), pero eso no tiene
+     sentido en la vista de tarjetas — acá debe verse tan ancho como
+     .insumo-form (el formulario "Registrar ajuste" justo debajo). */
+  .inventario-shell {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  /* #inventario-container también pierde su propio fondo/borde/sombra
+     (heredados de .insumos): sin esto, el contenedor forma una "caja"
+     blanca detrás de todas las tarjetas, y el espacio de 10px entre
+     ellas terminaba mostrando el fondo de ESA caja en vez del fondo
+     limpio de la página — se veía como si hubiera color de más entre
+     tarjetas. */
+  #inventario-container.insumos {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Mismo radio y sombra que .insumo-form, para que cada producto se
+     vea como una tarjeta individual con el mismo peso visual que el
+     formulario, no como una fila de tabla disfrazada. Espacio fijo de
+     10px entre tarjetas (en vez de var(--space-3)); sin margen después
+     de la última para no dejar aire de más antes del formulario de
+     ajuste que sigue debajo. */
+  #inventario-container tr {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 10px;
+  }
+
+  #inventario-container tr:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* ── Refuerzo: grupos que pueden desbordar con contenido largo ── */
+.order-group__meta,
+.produccion-card__header {
+  flex-wrap: wrap;
+}
+
+/* ── Móvil / tablet: drawer ── */
+@media (max-width: 899px) {
+  .admin-topbar:not([hidden]) {
+    display: flex;
+  }
+
+  /* iOS hace zoom automático al enfocar un input con font-size < 16px */
+  .admin-nav__search-input {
+    font-size: 16px;
+  }
+
+  .admin-nav--sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(20rem, 86vw);
+    height: 100%;
+    height: 100dvh;
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    transform: translateX(-105%);
+    box-shadow: var(--shadow-lg);
+    border-right: none;
+  }
+
+  .admin-nav--sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .admin-nav--sidebar[hidden] {
+    display: none !important;
+  }
+
+  .admin-nav--sidebar:not([hidden]) {
+    display: flex;
+  }
+}
+
+/* Pantallas táctiles: objetivos de toque más generosos */
+@media (hover: none) {
+  .admin-nav--sidebar .admin-nav__btn {
+    min-height: 3rem;
+  }
+
+  .admin-nav--sidebar .admin-nav__btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Móvil bajo (o teclado abierto): compactar para que quepa todo */
+@media (max-height: 620px) and (max-width: 899px) {
+  .admin-nav__brand {
+    padding-bottom: var(--space-3);
+  }
+
+  .admin-nav--sidebar .admin-nav__btn {
+    min-height: 2.5rem;
+  }
+
+  .admin-nav__groups {
+    gap: var(--space-3);
+  }
+}
+
 @media (min-width: 900px) {
   .admin-nav--sidebar.is-collapsed {
     --nav-width: var(--nav-rail-width);
@@ -2071,7 +2301,7 @@ button {
     transition:
       opacity var(--transition),
       transform var(--transition);
-    z-index: 60;
+    z-index: var(--z-modal);
   }
 
   .admin-nav--sidebar.is-collapsed .admin-nav__btn:hover::after,
@@ -2079,10 +2309,9 @@ button {
     opacity: 1;
     transform: translateY(-50%) scale(1);
   }
-}
 
-/* ── Shell: sidebar al lado del contenido (desktop) ── */
-@media (min-width: 900px) {
+  /* ── Shell: sidebar al lado del contenido (desktop) ── */
+
   /* El padding del body dejaría al sidebar (100dvh) sobresaliendo del
      viewport y cortando el botón de cerrar sesión: el espaciado lo pone
      cada .view. */
@@ -2121,6 +2350,7 @@ button {
 }
 
 /* Portátiles / tablets horizontales: sidebar algo más estrecho */
+
 @media (min-width: 900px) and (max-width: 1279px) {
   .admin-nav--sidebar {
     --nav-width: 15rem;
@@ -2129,6 +2359,42 @@ button {
 }
 
 /* Smart TV y monitores grandes: todo un poco más grande y legible a distancia */
+
+/* ═══════════════════════════════════════════════════════════
+   ESCRITORIO GRANDE Y MONITORES ULTRA-WIDE
+   El sidebar (sección 4) ya escala su propio ancho y tipografía en
+   1600px/2400px. Esta parte hace lo mismo con el CONTENIDO: en vez de
+   dejar .view/.admin fijos en 1400px/1200px para siempre (que en un
+   monitor de 27"-34" deja un río de espacio vacío a los lados), su
+   ancho máximo crece de forma controlada — nunca a pantalla completa,
+   porque una tabla o un formulario estirados a 3000px son tan
+   incómodos de leer como uno demasiado angosto. ═══════════════════════════════════════════════════════════ */
+
+/* 1024–1279px: laptops pequeños / tablets horizontales grandes. El
+   layout de escritorio (sidebar + grids auto-fit) ya funciona bien acá
+   sin cambios — se documenta el tramo para que quede explícito que no
+   es un hueco sin cubrir, sino una zona ya resuelta por el resto de
+   las reglas de esta hoja. */
+
+/* Desktop grande: .view (con sidebar) y .admin (login, sin sidebar)
+   pueden crecer más allá de su tope actual. clamp() evita un salto
+   brusco al cruzar el breakpoint y limita el máximo para no perder
+   longitud de línea legible en formularios y tablas de texto. */
+@media (min-width: 1440px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(1400px, 78vw, 1680px);
+  }
+
+  .admin:not(:has(.admin-nav--sidebar:not([hidden]))) {
+    max-width: clamp(1200px, 62vw, 1440px);
+  }
+}
+
+/* QHD / arranque de ultra-wide: los grids de tarjetas (Insumos,
+   Producción) pueden permitirse columnas algo más anchas — con el
+   minmax() base (200-340px) a este ancho ya caben 6-7 columnas
+   angostas, que se ven más como una lista que como tarjetas. */
+
 @media (min-width: 1600px) {
   .admin-nav--sidebar {
     --nav-width: clamp(18rem, 16vw, 22rem);
@@ -2150,6 +2416,7 @@ button {
   }
 }
 
+/* Smart TV grandes: mismo tramo que arriba, la sidebar sigue creciendo */
 @media (min-width: 2400px) {
   .admin-nav--sidebar {
     --nav-width: 24rem;
@@ -2162,71 +2429,57 @@ button {
   }
 }
 
-/* ── Móvil / tablet: drawer ── */
-@media (max-width: 899px) {
-  .admin-topbar:not([hidden]) {
-    display: flex;
+/* QHD / arranque de ultra-wide: los grids de tarjetas (Insumos,
+   Producción) pueden permitirse columnas algo más anchas. */
+@media (min-width: 2560px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(1680px, 70vw, 2000px);
   }
 
-  /* iOS hace zoom automático al enfocar un input con font-size < 16px */
-  .admin-nav__search-input {
-    font-size: 16px;
+  .insumo-form,
+  .insumo-form__group-grid,
+  .proveedor-form__grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   }
 
-  .admin-nav--sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(20rem, 86vw);
-    height: 100%;
-    height: 100dvh;
-    padding-top: max(var(--space-4), env(safe-area-inset-top));
-    transform: translateX(-105%);
-    box-shadow: var(--shadow-lg);
-    border-right: none;
-  }
-
-  .admin-nav--sidebar.is-open {
-    transform: translateX(0);
-  }
-
-  .admin-nav--sidebar[hidden] {
-    display: none !important;
-  }
-
-  .admin-nav--sidebar:not([hidden]) {
-    display: flex;
+  #producciones-container > * {
+    flex-basis: 380px;
   }
 }
 
-/* Pantallas táctiles: objetivos de toque más generosos */
-@media (hover: none) {
-  .admin-nav--sidebar .admin-nav__btn {
-    min-height: 3rem;
+@media (min-width: 3440px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: clamp(2000px, 60vw, 2400px);
+  }
+}
+
+/* 4K y superiores: el contenido ya alcanzó un ancho cómodo en 3440px;
+   acá solo se asegura que la sidebar (que si sigue en modo rail/expandida
+   normal) no se vea perdida — sin cambios de layout, solo un tope de
+   ancho ligeramente mayor para pantallas verdaderamente enormes. */
+@media (min-width: 3840px) {
+  .admin:has(.admin-nav--sidebar:not([hidden])) > .view {
+    max-width: 2600px;
+  }
+}
+
+/* Quienes piden menos movimiento en el sistema operativo: un solo
+   query para todo el archivo (antes eran dos, uno para la sidebar y
+   otro para el contenido). */
+@media (prefers-reduced-motion: reduce) {
+  .view {
+    animation: none;
   }
 
-  .admin-nav--sidebar .admin-nav__btn:hover:not(:disabled) {
+  .stat-card,
+  .btn {
+    transition-duration: 1ms;
+  }
+
+  .stat-card:hover {
     transform: none;
   }
-}
 
-/* Móvil bajo (o teclado abierto): compactar para que quepa todo */
-@media (max-height: 620px) and (max-width: 899px) {
-  .admin-nav__brand {
-    padding-bottom: var(--space-3);
-  }
-
-  .admin-nav--sidebar .admin-nav__btn {
-    min-height: 2.5rem;
-  }
-
-  .admin-nav__groups {
-    gap: var(--space-3);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
   .admin-nav--sidebar,
   .admin-nav--sidebar .admin-nav__btn,
   .admin-nav--sidebar .admin-nav__btn::before,
@@ -2236,67 +2489,90 @@ button {
     transition-duration: 1ms;
   }
 }
+/* ═══════════════════════════════════════════
+   14. ANIMACIONES
+   ═══════════════════════════════════════════
+   Todos los @keyframes del archivo en un solo lugar. Las transiciones
+   (hover, focus, colapso de sidebar, modal) se quedan declaradas junto
+   a cada componente porque dependen de sus propios `transition:` — acá
+   solo van las animaciones con fotogramas, que si vivieran repartidas
+   por el archivo serían más difíciles de encontrar y de ajustar todas
+   juntas si el ritmo general se siente muy rápido o muy lento. */
 
-/* ═══════════════════════════════════════════════════════════
-   17. REFUERZOS RESPONSIVE EXTRA
-   ═══════════════════════════════════════════════════════════ */
-
-/* Evita overflow horizontal en cualquier viewport */
-html,
-body {
-  overflow-x: hidden;
-}
-
-/* Inputs nativos de date/time que a veces desbordan en iOS */
-input[type='date'],
-input[type='time'] {
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* Asegura que los fieldsets no rompan el grid en pantallas muy estrechas */
-.insumo-form__group,
-.proveedor-form__group {
-  min-width: 0;
-}
-
-/* Stats: en pantallas intermedias (tablets landscape) que no se vean demasiado estrechas */
-@media (min-width: 641px) and (max-width: 899px) {
-  .stats > * {
-    flex: 1 1 calc(33.333% - var(--space-4));
-    min-width: 140px;
+/* Entrada de cada vista al cambiar de pestaña (.view, sección 2) */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Formularios de horneadas / inventario / producción:
-   en tablets el toolbar se ve mejor en 2 columnas que en 1 */
-@media (min-width: 481px) and (max-width: 768px) {
-  .horneadas-toolbar {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-3);
-  }
-  .horneadas-toolbar .form-field {
-    grid-column: 1 / -1;
-  }
-}
+/* ═══════════════════════════════════════════
+   15. MODO OSCURO (opcional)
+   ═══════════════════════════════════════════
+   Dato importante: `theme-init.js` YA corre en admin.html y puede
+   activar `data-theme="dark"` en <html> automáticamente si el sistema
+   operativo del usuario está en modo oscuro (o si ya eligió oscuro en
+   el sitio público, guardado en localStorage) — pero admin.css nunca
+   tuvo una sola regla para ese atributo. En la práctica: cualquiera
+   con el SO en modo oscuro ya estaba viendo el atributo activado sin
+   que pasara nada. Este bloque lo completa.
 
-/* Ultra-wide: evita que las tablas de pedidos se estiren demasiado */
-@media (min-width: 2560px) {
-  .order-table {
-    max-width: 1800px;
-    margin-inline: auto;
-  }
-}
+   No se reutiliza la paleta dorada del sitio público (CSS/base/
+   _variables.css) porque admin.css es un archivo aparte con su propia
+   identidad (acento verde, no dorado) — este es su propio modo oscuro,
+   consistente consigo mismo. Redefine únicamente los tokens de la
+   sección 1 (Variables); como el resto de la hoja SOLO usa var(...) y
+   ningún color está escrito a mano, todo el panel se adapta solo, sin
+   tocar ninguna otra sección.
 
-/* Safe-area para notch / Dynamic Island en iPhone */
-@supports (padding: max(0px)) {
-  .admin-topbar {
-    padding-left: max(0px, env(safe-area-inset-left));
-    padding-right: max(0px, env(safe-area-inset-right));
-  }
+   Ojo con --color-primary: en vez de invertirlo a un tono claro (lo
+   típico en dark mode), se queda oscuro a propósito — mismo valor que
+   --color-primary-hover del modo claro (#4a3d28), un café ya probado
+   ahí. Muchos botones y estados activos escriben `color: white` fijo
+   sobre var(--color-primary) (login, ítem activo de la sidebar,
+   encabezado de grupo de pedidos); si --color-primary se aclarara,
+   ese texto blanco perdería contraste. Recomiendo revisar con
+   capturas de pantalla reales antes de dar esto por terminado — un
+   cambio de paleta tan grande conviene verlo, no solo leerlo. */
+[data-theme='dark'] {
+  --color-bg: #1a1712;
+  --color-surface: #241f18;
+  --color-text: #f0e8d8;
+  --color-text-muted: #a89a82;
+  --color-border: #3a3226;
+  --color-border-soft: #2c2620;
 
-  .admin-nav--sidebar {
-    padding-left: max(0px, env(safe-area-inset-left));
-  }
+  --color-primary: #4a3d28;
+  --color-primary-hover: #6b5a3f;
+
+  --color-accent: #3ecf76;
+  --color-accent-hover: #34b568;
+  --color-accent-bg: rgba(62, 207, 118, 0.14);
+  --color-success: var(--color-accent);
+  --color-success-bg: rgba(62, 207, 118, 0.14);
+
+  --color-danger: #e5786c;
+  --color-danger-bg: rgba(229, 120, 108, 0.14);
+
+  --color-warning: #e0a542;
+  --color-warning-bg: rgba(224, 165, 66, 0.14);
+  --color-stock-bajo-bg: rgba(224, 165, 66, 0.1);
+
+  --color-info: #7ab0e0;
+  --color-info-bg: rgba(122, 176, 224, 0.14);
+
+  --color-soft-bg: #2c2620;
+  --color-overlay: rgba(0, 0, 0, 0.6);
+
+  --glass-bg: rgba(36, 31, 24, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
