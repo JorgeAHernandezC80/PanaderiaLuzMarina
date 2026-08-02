@@ -23,6 +23,19 @@ function hoyHouston() {
   return new Date().toLocaleDateString('en-CA', { timeZone: HOUSTON_TZ });
 }
 
+/* SQLite guarda datetime('now') como "AAAA-MM-DD HH:MM:SS" en UTC, pero SIN
+   la 'Z' ni ningún indicador de zona horaria. Si eso se manda tal cual al
+   navegador y se le pasa a `new Date(...)`, el navegador lo interpreta como
+   hora LOCAL del usuario, no UTC — el mismo tipo de bug de zona horaria que
+   ya se corrigió antes para "hoy" (ver hoyHouston arriba), pero acá con
+   hora y minutos en vez de solo la fecha. Se convierte a ISO 8601 real
+   (con 'T' y 'Z') antes de exponerlo, para que `new Date()` del lado del
+   cliente lo lea bien sin importar en qué zona horaria esté el navegador. */
+function sqliteDatetimeAIso(valor) {
+  if (!valor) return null;
+  return `${valor.replace(' ', 'T')}Z`;
+}
+
 const {
   validarOrden,
   ValidationError,
@@ -396,6 +409,8 @@ app.get('/ordenes', requireAuth, (req, res) => {
       items: JSON.parse(r.items_json),
       total: r.total,
       estado: r.estado,
+      creadoEn: sqliteDatetimeAIso(r.creado_en),
+      actualizadoEn: sqliteDatetimeAIso(r.actualizado_en),
     }));
     res.json(ordenes);
   } catch (err) {
@@ -416,7 +431,9 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   }
 
   try {
-    const info = db.prepare('UPDATE ordenes SET estado = ? WHERE numero = ?').run(estado, numero);
+    const info = db
+      .prepare("UPDATE ordenes SET estado = ?, actualizado_en = datetime('now') WHERE numero = ?")
+      .run(estado, numero);
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Orden no encontrada.' });
     }

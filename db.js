@@ -15,18 +15,40 @@ try {
   db.pragma('foreign_keys = ON');
   db.pragma('journal_mode = WAL');
 
+  /* Migración: agregar actualizado_en a ordenes (insumos/horneadas/
+     producciones ya lo tenían; ordenes se quedó atrás). Sin esto, el
+     Reporte Clínico no tiene forma de calcular cuánto tardó una orden en
+     pasar de "pendiente" a "entregada" — solo existe el momento de
+     creación, nunca el de la última actualización de estado. */
+  const ordenesExiste = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'ordenes'")
+    .get();
+  if (ordenesExiste) {
+    const columnasActuales = db
+      .prepare('PRAGMA table_info(ordenes)')
+      .all()
+      .map((c) => c.name);
+    if (!columnasActuales.includes('actualizado_en')) {
+      console.log('[db] Agregando columna ordenes.actualizado_en (migración)...');
+      db.exec(
+        "ALTER TABLE ordenes ADD COLUMN actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))",
+      );
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS ordenes (
-      numero      TEXT PRIMARY KEY,
-      fecha_iso   TEXT NOT NULL,
-      fecha_texto TEXT NOT NULL,
-      cliente     TEXT NOT NULL,
-      telefono    TEXT NOT NULL,
-      retiro      TEXT NOT NULL,
-      items_json  TEXT NOT NULL,
-      total       REAL NOT NULL,
-      estado      TEXT NOT NULL DEFAULT 'pendiente',
-      creado_en   TEXT NOT NULL DEFAULT (datetime('now'))
+      numero        TEXT PRIMARY KEY,
+      fecha_iso     TEXT NOT NULL,
+      fecha_texto   TEXT NOT NULL,
+      cliente       TEXT NOT NULL,
+      telefono      TEXT NOT NULL,
+      retiro        TEXT NOT NULL,
+      items_json    TEXT NOT NULL,
+      total         REAL NOT NULL,
+      estado        TEXT NOT NULL DEFAULT 'pendiente',
+      creado_en     TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
 

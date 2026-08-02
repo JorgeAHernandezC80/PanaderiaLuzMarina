@@ -409,6 +409,64 @@
           </article>
         </section>
 
+        <!-- Diagnóstico de Pedidos: salud del flujo (completación, tiempo de
+             entrega, retrasos) — separado de las tarjetas de arriba porque
+             esas son conteos simples y esto son métricas calculadas. -->
+        <section aria-labelledby="diagnostico-pedidos-title" data-component="diagnostico-pedidos">
+          <h2 id="diagnostico-pedidos-title" class="section-subtitle">Diagnóstico de pedidos</h2>
+
+          <div class="stats" aria-label="Métricas de diagnóstico">
+            <article class="stat-card" aria-labelledby="stat-label-diag-total">
+              <span id="stat-label-diag-total" class="stat-card__label">Pedidos totales</span>
+              <data id="diag-total" class="stat-card__value" value="0">0</data>
+            </article>
+
+            <article
+              class="stat-card stat-card--accent"
+              aria-labelledby="stat-label-diag-completacion"
+            >
+              <span id="stat-label-diag-completacion" class="stat-card__label"
+                >Tasa de completación</span
+              >
+              <data id="diag-completacion" class="stat-card__value" value="0">0%</data>
+            </article>
+
+            <article class="stat-card" aria-labelledby="stat-label-diag-tiempo">
+              <span id="stat-label-diag-tiempo" class="stat-card__label"
+                >Tiempo promedio de entrega</span
+              >
+              <data id="diag-tiempo" class="stat-card__value" value="0">—</data>
+            </article>
+
+            <article class="stat-card" aria-labelledby="stat-label-diag-retrasados">
+              <span id="stat-label-diag-retrasados" class="stat-card__label"
+                >Pedidos retrasados</span
+              >
+              <data id="diag-retrasados" class="stat-card__value" value="0">0</data>
+            </article>
+          </div>
+
+          <div class="insumos">
+            <table class="order-table">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Retiro</th>
+                  <th>Diagnóstico</th>
+                </tr>
+              </thead>
+              <tbody id="diagnostico-pedidos-tbody">
+                <!-- Se inyecta dinámicamente por admin.js -->
+              </tbody>
+            </table>
+            <p id="diagnostico-pedidos-vacio" class="empty-state" hidden>
+              No hay pedidos para diagnosticar en esta fecha.
+            </p>
+          </div>
+        </section>
+
         <!-- Grupos de pedidos -->
         <section
           id="orders-container"

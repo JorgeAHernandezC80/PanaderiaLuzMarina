@@ -17,6 +17,25 @@ function hoyHouston() {
   return new Date().toLocaleDateString('en-CA', { timeZone: HOUSTON_TZ });
 }
 
+/** "HH:MM" de ahora mismo en hora de Houston — mismo criterio que
+ *  hoyHouston(), para comparar contra `retiro` (que también es hora de
+ *  Houston, no UTC) al calcular pedidos retrasados. */
+function ahoraHoraHouston() {
+  return new Date()
+    .toLocaleTimeString('en-GB', { timeZone: HOUSTON_TZ, hour12: false })
+    .slice(0, 5);
+}
+
+/** Suma minutos a una hora "HH:MM" (sin cruzar más de un día — de sobra
+ *  para el margen de espera de retiro, que son 15 min). */
+function sumarMinutosAHora(horaHHMM, minutos) {
+  const [h, m] = horaHHMM.split(':').map(Number);
+  const total = h * 60 + m + minutos;
+  const hh = String(Math.floor((total % 1440) / 60)).padStart(2, '0');
+  const mm = String(total % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 /* Ciclo de vida de una orden: Recibida → En Preparación → Preparada →
    Entregada. El valor interno (clave) es el que viaja al backend en
    `estado`; `label` y `siguiente` (próximo estado + texto del botón de
@@ -81,6 +100,12 @@ const CONFIG = Object.freeze({
     statPend: '#stat-pendientes',
     statEnPreparacion: '#stat-en-preparacion',
     statEntregadas: '#stat-entregadas',
+    diagTotal: '#diag-total',
+    diagCompletacion: '#diag-completacion',
+    diagTiempo: '#diag-tiempo',
+    diagRetrasados: '#diag-retrasados',
+    diagTbody: '#diagnostico-pedidos-tbody',
+    diagVacio: '#diagnostico-pedidos-vacio',
     orders: '#orders-container',
     tplGroup: '#tpl-order-group',
     tplRow: '#tpl-order-row',
@@ -1085,6 +1110,88 @@ const Render = {
     this._setStat(CONFIG.SELECTORS.statEntregadas, contarPor('entregada'));
   },
 
+  /** Diagnóstico de pedidos: completación, tiempo promedio de entrega
+   *  (creadoEn -> actualizadoEn de los ya entregados) y retrasados —
+   *  "retrasado" usa la regla de negocio real del proyecto (retiro + 15
+   *  min de espera máxima), no un número inventado. Se calcula del mismo
+   *  array de `orders` que ya trae refresh(), sin pedir nada aparte. */
+  renderDiagnosticoPedidos(orders) {
+    const lista = orders || [];
+    const hoy = hoyHouston();
+    const horaLimite = ahoraHoraHouston();
+
+    const total = lista.length;
+    const entregadas = lista.filter((o) => o.estado === 'entregada');
+    const completacion = total > 0 ? Math.round((entregadas.length / total) * 100) : 0;
+
+    const duracionesMin = entregadas
+      .map((o) => {
+        if (!o.creadoEn || !o.actualizadoEn) return null;
+        const ms = new Date(o.actualizadoEn) - new Date(o.creadoEn);
+        return Number.isFinite(ms) && ms >= 0 ? ms / 60000 : null;
+      })
+      .filter((min) => min !== null);
+    const tiempoPromedio =
+      duracionesMin.length > 0
+        ? Math.round(duracionesMin.reduce((s, m) => s + m, 0) / duracionesMin.length)
+        : null;
+
+    const diagnostico = (orden) => {
+      if (orden.estado === 'entregada') {
+        return { texto: 'Saludable', clase: 'insumo-badge--exito' };
+      }
+      // Un pedido de un día ANTERIOR que nunca se entregó ya está
+      // retrasado sin importar la hora — no hace falta comparar horas.
+      const esDeOtroDia = orden.fechaISO < hoy;
+      const pasoLaHoraLimite =
+        orden.fechaISO === hoy && horaLimite > sumarMinutosAHora(orden.retiro, 15);
+      if (esDeOtroDia || pasoLaHoraLimite) {
+        return { texto: 'Retrasado', clase: 'insumo-badge--bajo-stock' };
+      }
+      return { texto: 'En proceso', clase: 'insumo-badge--neutral' };
+    };
+
+    const retrasados = lista.filter((o) => diagnostico(o).clase === 'insumo-badge--bajo-stock');
+
+    this._setStat(CONFIG.SELECTORS.diagTotal, total);
+    this._setStat(CONFIG.SELECTORS.diagCompletacion, `${completacion}%`, completacion);
+    this._setStat(
+      CONFIG.SELECTORS.diagTiempo,
+      tiempoPromedio === null ? '—' : `${tiempoPromedio} min`,
+      tiempoPromedio ?? 0,
+    );
+    this._setStat(CONFIG.SELECTORS.diagRetrasados, retrasados.length);
+
+    const tbody = document.querySelector(CONFIG.SELECTORS.diagTbody);
+    const vacio = document.querySelector(CONFIG.SELECTORS.diagVacio);
+    if (!tbody) return;
+
+    if (total === 0) {
+      tbody.innerHTML = '';
+      if (vacio) vacio.hidden = false;
+      return;
+    }
+    if (vacio) vacio.hidden = true;
+
+    tbody.innerHTML = lista
+      .map((orden) => {
+        const diag = diagnostico(orden);
+        const estadoLabel = ORDER_STATE_FLOW[orden.estado]?.label || orden.estado;
+        return `
+          <tr>
+            <td data-label="Pedido">${escapeHTML(orden.numero)}</td>
+            <td data-label="Cliente">${escapeHTML(orden.cliente)}</td>
+            <td data-label="Estado">${escapeHTML(estadoLabel)}</td>
+            <td data-label="Retiro">${escapeHTML(orden.retiro)}</td>
+            <td data-label="Diagnóstico">
+              <span class="insumo-badge ${diag.clase}">${diag.texto}</span>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+  },
+
   _setStat(selector, displayValue, rawValue) {
     const el = document.querySelector(selector);
     if (!el) return;
@@ -2056,6 +2163,7 @@ const App = {
     }
 
     Render.updateStats(orders);
+    Render.renderDiagnosticoPedidos(orders);
     Render.renderOrders(orders);
 
     if (orders !== null && !this._liveConnected) {

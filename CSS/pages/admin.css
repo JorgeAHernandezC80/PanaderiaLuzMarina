@@ -1830,6 +1830,18 @@ button {
   color: var(--color-accent);
 }
 
+/* Reutilizadas por el Diagnóstico de Pedidos — mismos tokens de color que
+   el resto del panel, ninguno inventado a propósito para esta sección. */
+.insumo-badge--exito {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.insumo-badge--neutral {
+  background: var(--color-soft-bg);
+  color: var(--color-text-muted);
+}
+
 .insumo-row--bajo-stock {
   background: var(--color-stock-bajo-bg);
 }
