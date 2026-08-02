@@ -19,10 +19,27 @@ const WA_BUSINESS = '12817703825';
 
 /* ---- Trazabilidad ---- */
 
+/* Zona horaria de referencia del negocio (Houston). El resto del proyecto
+   (admin.js, server.js) ya calcula "hoy" con esto — checkout.js se había
+   quedado usando ahora.toISOString(), que da la fecha en UTC: cualquier
+   pedido hecho después de las ~7pm hora Houston (Houston va 5-6h detrás
+   de UTC) quedaba guardado con la fecha del día SIGUIENTE, y el panel
+   admin (que sí filtra en hora Houston) nunca lo mostraba en "hoy". */
+const HOUSTON_TZ = 'America/Chicago';
+
+/** "YYYY-MM-DDTHH:MM:SS" en hora de Houston — mismo formato que espera
+ *  ISO_DATE_RE en el backend, pero con el día/hora correctos en vez de
+ *  los de UTC. */
+function fechaISOHouston(date) {
+  const fecha = date.toLocaleDateString('en-CA', { timeZone: HOUSTON_TZ }); // YYYY-MM-DD
+  const hora = date.toLocaleTimeString('en-GB', { timeZone: HOUSTON_TZ, hour12: false }); // HH:MM:SS
+  return `${fecha}T${hora}`;
+}
+
 /** Genera número de orden único: LM-YYYYMMDD-XXXX */
 function generarNumeroOrden() {
   const ahora = new Date();
-  const fecha = ahora.toISOString().slice(0, 10).replace(/-/g, '');
+  const fecha = fechaISOHouston(ahora).slice(0, 10).replace(/-/g, '');
   const sufijo = String(Math.floor(1000 + Math.random() * 9000));
   return `LM-${fecha}-${sufijo}`;
 }
@@ -263,7 +280,7 @@ function initForm() {
     /* Crear objeto de orden con trazabilidad */
     const orden = {
       numero: generarNumeroOrden(),
-      fechaISO: ahora.toISOString(),
+      fechaISO: fechaISOHouston(ahora),
       fechaTexto: formatearFechaHora(ahora),
       cliente: datos.nombre,
       telefono: datos.telefono,
