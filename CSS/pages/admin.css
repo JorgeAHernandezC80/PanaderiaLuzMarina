@@ -1596,6 +1596,22 @@ button {
   font-size: 1rem;
 }
 
+/* Bug de iOS Safari: <input type="date"> y type="time"> calculan un
+   ancho mínimo propio a partir de su control nativo (el selector de
+   fecha/hora) e ignoran width:100% — el input se dibuja más ancho que
+   su contenedor sin importar el padre (grid, flex, min-width:0, nada
+   de eso alcanza porque el problema es interno al control, no del
+   layout externo). Quitarle el "chrome" nativo con appearance:none lo
+   fuerza a comportarse como una caja de texto normal que sí respeta
+   su ancho — se ve igual, solo dibuja el triángulo/calendario propio
+   del sistema en vez de forzar su propio ancho mínimo por dentro. */
+.form-field__input[type='date'],
+.form-field__input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+}
+
 /* Checkboxes (checklist de alérgenos en Insumos): el navegador ya los
    dibuja accesibles y funcionan sin nada de CSS — accent-color es un
    único valor, sin reconstruir el control a mano, que los pinta con
