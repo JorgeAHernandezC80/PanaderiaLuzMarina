@@ -41,8 +41,14 @@ const MOTIVO_AJUSTE_LABELS = {
 /* Las 8 etapas de Producción (pesado → segunda fermentación), en el mismo
    orden y con las mismas claves internas que ETAPAS_PRODUCCION en
    validation.js. La 9na etapa (horneado) la cubre Horneadas. */
+/* Las 8 etapas de Producción (pesado → segunda fermentación), más
+   autólisis (opcional, antes del amasado) y retardación en frío
+   (opcional, después de la segunda fermentación) — mismo orden y mismas
+   claves internas que ETAPAS_PRODUCCION en validation.js. La 9na etapa
+   fija (horneado) la cubre Horneadas. */
 const ETAPAS_PRODUCCION_LABELS = {
   pesado_dosificacion: 'Pesado y Dosificación',
+  autolisis: 'Autólisis',
   amasado: 'Amasado',
   primera_fermentacion: 'Primera Fermentación',
   division_pesado: 'División y Pesado',
@@ -50,6 +56,7 @@ const ETAPAS_PRODUCCION_LABELS = {
   reposo_mesa: 'Reposo en Mesa',
   formado_definitivo: 'Formado Definitivo',
   segunda_fermentacion: 'Segunda Fermentación',
+  retardacion_frio: 'Retardación en Frío',
 };
 const ETAPAS_PRODUCCION_ORDEN = Object.keys(ETAPAS_PRODUCCION_LABELS);
 
@@ -142,6 +149,10 @@ const CONFIG = Object.freeze({
     horneadaHora: '#horneada-hora',
     horneadaRegistradoPor: '#horneada-registrado-por',
     horneadaNotas: '#horneada-notas',
+    horneadaTemperaturaPisoHorno: '#horneada-temperatura-piso-horno',
+    horneadaPesoPanCocido: '#horneada-peso-pan-cocido',
+    horneadaCostoEnergia: '#horneada-costo-energia',
+    horneadaUnidadesSegundaCalidad: '#horneada-unidades-segunda-calidad',
     horneadaError: '#horneada-error',
     horneadaErrorMsg: '#horneada-error [data-horneada-error-msg]',
     horneadaSubmitBtn: '#btn-horneada-submit',
@@ -188,6 +199,12 @@ const CONFIG = Object.freeze({
     recetaProducto: '#receta-producto',
     recetaPesoUnidad: '#receta-peso-unidad',
     recetaFermentacion: '#receta-fermentacion',
+    recetaHidratacion: '#receta-hidratacion',
+    recetaTiempoHorneado: '#receta-tiempo-horneado',
+    recetaTemperaturaHorneado: '#receta-temperatura-horneado',
+    recetaManoObra: '#receta-mano-obra',
+    recetaMermaCoccion: '#receta-merma-coccion',
+    recetaPasos: '#receta-pasos',
     recetaIngredientesLista: '#receta-ingredientes-lista',
     btnRecetaAgregarIngrediente: '#btn-receta-agregar-ingrediente',
     recetaNotas: '#receta-notas',
@@ -209,6 +226,8 @@ const CONFIG = Object.freeze({
     produccionFecha: '#produccion-fecha',
     produccionHoraInicio: '#produccion-hora-inicio',
     produccionRegistradoPor: '#produccion-registrado-por',
+    produccionTemperaturaAmbiente: '#produccion-temperatura-ambiente',
+    produccionTemperaturaAgua: '#produccion-temperatura-agua',
     produccionIngredientesLista: '#produccion-ingredientes-lista',
     produccionNotas: '#produccion-notas',
     produccionError: '#produccion-error',
@@ -2231,6 +2250,16 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.recetaPesoUnidad).value = receta.pesoMasaPorUnidadG;
     document.querySelector(CONFIG.SELECTORS.recetaFermentacion).value =
       receta.tiempoFermentacionMin ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaHidratacion).value =
+      receta.hidratacionObjetivoPorcentaje ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaTiempoHorneado).value =
+      receta.tiempoHorneadoMin ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaTemperaturaHorneado).value =
+      receta.temperaturaHorneadoC ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaManoObra).value = receta.tiempoManoObraMin ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaMermaCoccion).value =
+      receta.mermaCoccionPct ?? '';
+    document.querySelector(CONFIG.SELECTORS.recetaPasos).value = receta.pasos || '';
     document.querySelector(CONFIG.SELECTORS.recetaNotas).value = receta.notas || '';
 
     document.querySelector(CONFIG.SELECTORS.recetaIngredientesLista).innerHTML = '';
@@ -2316,6 +2345,15 @@ const App = {
       pesoMasaPorUnidadG: Number(pesoMasaPorUnidadG),
       tiempoFermentacionMin:
         document.querySelector(CONFIG.SELECTORS.recetaFermentacion).value || null,
+      hidratacionObjetivoPorcentaje:
+        document.querySelector(CONFIG.SELECTORS.recetaHidratacion).value || null,
+      tiempoHorneadoMin:
+        document.querySelector(CONFIG.SELECTORS.recetaTiempoHorneado).value || null,
+      temperaturaHorneadoC:
+        document.querySelector(CONFIG.SELECTORS.recetaTemperaturaHorneado).value || null,
+      tiempoManoObraMin: document.querySelector(CONFIG.SELECTORS.recetaManoObra).value || null,
+      mermaCoccionPct: document.querySelector(CONFIG.SELECTORS.recetaMermaCoccion).value || null,
+      pasos: document.querySelector(CONFIG.SELECTORS.recetaPasos).value.trim(),
       notas: document.querySelector(CONFIG.SELECTORS.recetaNotas).value.trim(),
       ingredientes,
     };
@@ -2519,6 +2557,10 @@ const App = {
       horaInicio,
       registradoPor: document.querySelector(CONFIG.SELECTORS.produccionRegistradoPor).value.trim(),
       notas: document.querySelector(CONFIG.SELECTORS.produccionNotas).value.trim(),
+      temperaturaAmbienteC:
+        document.querySelector(CONFIG.SELECTORS.produccionTemperaturaAmbiente).value || null,
+      temperaturaAguaC:
+        document.querySelector(CONFIG.SELECTORS.produccionTemperaturaAgua).value || null,
       ingredientes,
     };
 
@@ -2689,6 +2731,14 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.horneadaRegistradoPor).value =
       horneada.registradoPor || '';
     document.querySelector(CONFIG.SELECTORS.horneadaNotas).value = horneada.notas || '';
+    document.querySelector(CONFIG.SELECTORS.horneadaTemperaturaPisoHorno).value =
+      horneada.temperaturaPisoHornoC ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaPesoPanCocido).value =
+      horneada.pesoPanCocidoTotalG ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaCostoEnergia).value =
+      horneada.costoEstimadoEnergiaLote ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaUnidadesSegundaCalidad).value =
+      horneada.unidadesSegundaCalidad ?? '';
 
     this._actualizarSelectProduccionParaHorneada().then(() => {
       const selectProduccion = document.querySelector(CONFIG.SELECTORS.horneadaProduccion);
@@ -2782,6 +2832,14 @@ const App = {
       registradoPor: document.querySelector(CONFIG.SELECTORS.horneadaRegistradoPor).value.trim(),
       notas: document.querySelector(CONFIG.SELECTORS.horneadaNotas).value.trim(),
       produccionId: document.querySelector(CONFIG.SELECTORS.horneadaProduccion)?.value || null,
+      temperaturaPisoHornoC:
+        document.querySelector(CONFIG.SELECTORS.horneadaTemperaturaPisoHorno).value || null,
+      pesoPanCocidoTotalG:
+        document.querySelector(CONFIG.SELECTORS.horneadaPesoPanCocido).value || null,
+      costoEstimadoEnergiaLote:
+        document.querySelector(CONFIG.SELECTORS.horneadaCostoEnergia).value || null,
+      unidadesSegundaCalidad:
+        document.querySelector(CONFIG.SELECTORS.horneadaUnidadesSegundaCalidad).value || null,
     };
 
     const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);

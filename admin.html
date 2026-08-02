@@ -857,7 +857,7 @@
 
               <div class="form-field">
                 <label for="proveedor-identificacion-fiscal" class="form-field__label">
-                  Identificación fiscal
+                  Identificación fiscal (NIT / RFC / RUT / CUIT / NIF / EIN)
                 </label>
                 <input
                   type="text"
@@ -1278,6 +1278,76 @@
             </select>
           </div>
 
+          <fieldset class="insumo-form__group insumo-form__wide">
+            <legend class="insumo-form__legend">Resultado (opcional)</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="horneada-temperatura-piso-horno" class="form-field__label"
+                  >Temperatura piso horno (°C)</label
+                >
+                <input
+                  type="number"
+                  id="horneada-temperatura-piso-horno"
+                  name="temperaturaPisoHornoC"
+                  class="form-field__input"
+                  min="50"
+                  max="500"
+                  step="1"
+                  placeholder="Ej. 230"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="horneada-peso-pan-cocido" class="form-field__label"
+                  >Peso pan cocido total (g)</label
+                >
+                <input
+                  type="number"
+                  id="horneada-peso-pan-cocido"
+                  name="pesoPanCocidoTotalG"
+                  class="form-field__input"
+                  min="0.01"
+                  step="0.1"
+                  placeholder="Ej. 4200"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="horneada-costo-energia" class="form-field__label"
+                  >Costo estimado de energía ($)</label
+                >
+                <input
+                  type="number"
+                  id="horneada-costo-energia"
+                  name="costoEstimadoEnergiaLote"
+                  class="form-field__input"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ej. 3500"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="horneada-unidades-segunda-calidad" class="form-field__label"
+                  >Unidades de segunda calidad</label
+                >
+                <input
+                  type="number"
+                  id="horneada-unidades-segunda-calidad"
+                  name="unidadesSegundaCalidad"
+                  class="form-field__input"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <p class="insumo-form__hint">
+              El peso del pan cocido no puede ser mayor o igual al peso de la masa cruda de la
+              producción de origen (si hay una vinculada) — el sistema lo valida al guardar.
+            </p>
+          </fieldset>
+
           <div class="form-field insumo-form__wide">
             <label for="horneada-notas" class="form-field__label">Notas</label>
             <textarea
@@ -1580,6 +1650,103 @@
             />
           </div>
 
+          <div class="form-field">
+            <label for="receta-hidratacion" class="form-field__label"
+              >Hidratación objetivo (%)</label
+            >
+            <input
+              type="number"
+              id="receta-hidratacion"
+              name="hidratacionObjetivoPorcentaje"
+              class="form-field__input"
+              min="1"
+              max="150"
+              step="0.1"
+              placeholder="Ej. 65"
+            />
+          </div>
+
+          <fieldset class="insumo-form__group insumo-form__wide">
+            <legend class="insumo-form__legend">Ficha técnica de horneado (opcional)</legend>
+            <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="receta-tiempo-horneado" class="form-field__label"
+                  >Tiempo de horneado (min)</label
+                >
+                <input
+                  type="number"
+                  id="receta-tiempo-horneado"
+                  name="tiempoHorneadoMin"
+                  class="form-field__input"
+                  min="1"
+                  max="300"
+                  step="1"
+                  placeholder="Ej. 25"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="receta-temperatura-horneado" class="form-field__label"
+                  >Temperatura de horneado (°C)</label
+                >
+                <input
+                  type="number"
+                  id="receta-temperatura-horneado"
+                  name="temperaturaHorneadoC"
+                  class="form-field__input"
+                  min="1"
+                  max="350"
+                  step="1"
+                  placeholder="Ej. 220"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="receta-mano-obra" class="form-field__label"
+                  >Tiempo de mano de obra (min)</label
+                >
+                <input
+                  type="number"
+                  id="receta-mano-obra"
+                  name="tiempoManoObraMin"
+                  class="form-field__input"
+                  min="1"
+                  max="1440"
+                  step="1"
+                  placeholder="Ej. 40"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="receta-merma-coccion" class="form-field__label"
+                  >Merma de cocción esperada (%)</label
+                >
+                <input
+                  type="number"
+                  id="receta-merma-coccion"
+                  name="mermaCoccionPct"
+                  class="form-field__input"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder="Ej. 12"
+                />
+              </div>
+            </div>
+
+            <div class="form-field insumo-form__wide">
+              <label for="receta-pasos" class="form-field__label">Pasos (opcional)</label>
+              <textarea
+                id="receta-pasos"
+                name="pasos"
+                class="form-field__input"
+                rows="4"
+                placeholder="Ej. 1. Mezclar harina y agua, reposar 20 min (autólisis)…"
+                maxlength="2000"
+              ></textarea>
+            </div>
+          </fieldset>
+
           <div class="form-field insumo-form__wide">
             <div class="receta-form__ingredientes-header">
               <span class="form-field__label">Ingredientes (peso en gramos)</span>
@@ -1733,6 +1900,38 @@
               class="form-field__input"
               placeholder="Opcional · nombre de quien registra"
               maxlength="80"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="produccion-temperatura-ambiente" class="form-field__label"
+              >Temperatura ambiente (°C)</label
+            >
+            <input
+              type="number"
+              id="produccion-temperatura-ambiente"
+              name="temperaturaAmbienteC"
+              class="form-field__input"
+              min="-10"
+              max="50"
+              step="0.1"
+              placeholder="Opcional · ej. 24"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="produccion-temperatura-agua" class="form-field__label"
+              >Temperatura del agua (°C)</label
+            >
+            <input
+              type="number"
+              id="produccion-temperatura-agua"
+              name="temperaturaAguaC"
+              class="form-field__input"
+              min="0"
+              max="60"
+              step="0.1"
+              placeholder="Opcional · ej. 20"
             />
           </div>
 
