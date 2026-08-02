@@ -194,6 +194,21 @@ try {
       temperatura_horneado_real_c: 'REAL',
       tiempo_horneado_real_min: 'INTEGER',
       merma_real_pct: 'REAL',
+      // Nuevas (medición/análisis/resultados de horneado artesanal). Todas
+      // opcionales (NULL permitido) — no toda horneada necesita este nivel
+      // de detalle. Rangos generosos pero reales, mismo criterio que las
+      // columnas de arriba (ver MAX_* equivalentes en validation.js).
+      temperatura_piso_horno_c:
+        'INTEGER CHECK (temperatura_piso_horno_c IS NULL OR (temperatura_piso_horno_c >= 50 AND temperatura_piso_horno_c <= 500))',
+      peso_pan_cocido_total_g:
+        'REAL CHECK (peso_pan_cocido_total_g IS NULL OR peso_pan_cocido_total_g > 0)',
+      costo_estimado_energia_lote:
+        'REAL CHECK (costo_estimado_energia_lote IS NULL OR costo_estimado_energia_lote >= 0)',
+      // Cruce con la MISMA fila (SQLite sí puede validar esto en un CHECK,
+      // a diferencia de comparar contra otra tabla): no puede haber más
+      // panes de segunda calidad que panes horneados en total.
+      unidades_segunda_calidad:
+        'INTEGER CHECK (unidades_segunda_calidad IS NULL OR (unidades_segunda_calidad >= 0 AND unidades_segunda_calidad <= cantidad))',
     };
     for (const [columna, tipo] of Object.entries(columnasNuevas)) {
       if (!columnasActuales.includes(columna)) {
@@ -217,6 +232,10 @@ try {
       temperatura_horneado_real_c   REAL,
       tiempo_horneado_real_min      INTEGER,
       merma_real_pct                REAL,
+      temperatura_piso_horno_c      INTEGER CHECK (temperatura_piso_horno_c IS NULL OR (temperatura_piso_horno_c >= 50 AND temperatura_piso_horno_c <= 500)),
+      peso_pan_cocido_total_g       REAL CHECK (peso_pan_cocido_total_g IS NULL OR peso_pan_cocido_total_g > 0),
+      costo_estimado_energia_lote   REAL CHECK (costo_estimado_energia_lote IS NULL OR costo_estimado_energia_lote >= 0),
+      unidades_segunda_calidad      INTEGER CHECK (unidades_segunda_calidad IS NULL OR (unidades_segunda_calidad >= 0 AND unidades_segunda_calidad <= cantidad)),
       creado_en                     TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en                TEXT NOT NULL DEFAULT (datetime('now'))
     )
@@ -282,6 +301,12 @@ try {
       tiempo_mano_obra_min: 'INTEGER',
       merma_coccion_pct: 'REAL',
       pasos: 'TEXT',
+      // Hidratación OBJETIVO de la ficha técnica (no se deriva de
+      // receta_ingredientes: ese cálculo asumiría cuál ingrediente es
+      // "la harina" y cuál "el agua" por nombre, frágil; esto es un
+      // valor que el panadero define a propósito).
+      hidratacion_objetivo_porcentaje:
+        'REAL CHECK (hidratacion_objetivo_porcentaje IS NULL OR (hidratacion_objetivo_porcentaje > 0 AND hidratacion_objetivo_porcentaje <= 150))',
     };
     for (const [columna, tipo] of Object.entries(columnasNuevas)) {
       if (!columnasActuales.includes(columna)) {
@@ -293,21 +318,95 @@ try {
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS recetas (
-      id                       TEXT PRIMARY KEY,
-      producto_id              TEXT NOT NULL UNIQUE,
-      producto_nombre          TEXT NOT NULL,
-      peso_masa_por_unidad_g   REAL NOT NULL,
-      tiempo_fermentacion_min  INTEGER,
-      tiempo_horneado_min      INTEGER,
-      temperatura_horneado_c   REAL,
-      tiempo_mano_obra_min     INTEGER,
-      merma_coccion_pct        REAL,
-      pasos                    TEXT,
-      notas                    TEXT,
-      creado_en                TEXT NOT NULL DEFAULT (datetime('now')),
-      actualizado_en           TEXT NOT NULL DEFAULT (datetime('now'))
+      id                              TEXT PRIMARY KEY,
+      producto_id                     TEXT NOT NULL UNIQUE,
+      producto_nombre                 TEXT NOT NULL,
+      peso_masa_por_unidad_g          REAL NOT NULL,
+      tiempo_fermentacion_min         INTEGER,
+      tiempo_horneado_min             INTEGER,
+      temperatura_horneado_c          REAL,
+      tiempo_mano_obra_min            INTEGER,
+      merma_coccion_pct               REAL,
+      pasos                           TEXT,
+      hidratacion_objetivo_porcentaje REAL CHECK (hidratacion_objetivo_porcentaje IS NULL OR (hidratacion_objetivo_porcentaje > 0 AND hidratacion_objetivo_porcentaje <= 150)),
+      notas                           TEXT,
+      creado_en                       TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en                  TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  /* Migración: agregar FOREIGN KEY a insumo_id en receta_ingredientes y
+     produccion_ingredientes. Antes era un TEXT suelto sin ninguna relación
+     declarada — se podía borrar un insumo usado en una receta o producción
+     y dejar el registro huérfano sin que nada lo impidiera (a diferencia de
+     receta_id/produccion_id, que sí tenían FK desde el principio).
+     SQLite no permite agregar una FK con ALTER TABLE a una columna ya
+     existente — hay que reconstruir la tabla completa (crear nueva con la
+     FK, copiar filas, borrar la vieja, renombrar), siguiendo el
+     procedimiento que la propia documentación de SQLite recomienda para
+     este tipo de cambio de esquema. */
+  function migrarForeignKeyInsumoId(tabla, columnasDef, indiceSQL) {
+    const existe = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(tabla);
+    if (!existe) return; // Base de datos nueva: el CREATE TABLE de abajo ya la crea bien.
+
+    const yaTieneFk = db
+      .prepare(`PRAGMA foreign_key_list(${tabla})`)
+      .all()
+      .some((fk) => fk.from === 'insumo_id');
+    if (yaTieneFk) return; // Ya migrada en un arranque anterior.
+
+    // Chequeo de seguridad: si ya hay filas con un insumo_id que apunta a
+    // un insumo borrado hace tiempo (de antes de que existiera cualquier
+    // bloqueo), agregar la FK ahora rompería la migración a medio camino
+    // y el servidor no arrancaría más. Se detiene y avisa en el log en vez
+    // de dejar la base de datos en un estado a medio migrar.
+    const huerfanas = db
+      .prepare(`SELECT COUNT(*) AS n FROM ${tabla} WHERE insumo_id NOT IN (SELECT id FROM insumos)`)
+      .get().n;
+    if (huerfanas > 0) {
+      console.error(
+        `[db] ${tabla} tiene ${huerfanas} fila(s) con insumo_id que ya no existe en insumos — ` +
+          `no se puede agregar la Foreign Key hasta resolver eso a mano (revisar y corregir esas ` +
+          `filas, o el insumo que falta). Se omite esta migración por ahora; el resto del arranque ` +
+          `sigue normal.`,
+      );
+      return;
+    }
+
+    console.log(
+      `[db] Reconstruyendo ${tabla} para agregar Foreign Key en insumo_id (migración)...`,
+    );
+    // OJO con esto — verificado a mano antes de escribirlo así: SQLite
+    // ignora en silencio cualquier cambio a `PRAGMA foreign_keys` mientras
+    // hay una transacción abierta. Ponerlo DENTRO de db.transaction() (como
+    // estaba en un borrador anterior de este código) habría dejado las
+    // Foreign Keys de TODA la base de datos apagadas por el resto de la
+    // vida del proceso, no solo las de esta tabla — un bug silencioso y
+    // grave. Por eso el `ON` final va DESPUÉS de que la transacción ya
+    // cerró, no adentro.
+    const migrar = db.transaction(() => {
+      db.exec(`CREATE TABLE ${tabla}_nueva (${columnasDef})`);
+      db.exec(`INSERT INTO ${tabla}_nueva SELECT * FROM ${tabla}`);
+      db.exec(`DROP TABLE ${tabla}`);
+      db.exec(`ALTER TABLE ${tabla}_nueva RENAME TO ${tabla}`);
+      db.exec(indiceSQL);
+    });
+    migrar();
+    db.pragma('foreign_keys = ON');
+  }
+
+  migrarForeignKeyInsumoId(
+    'receta_ingredientes',
+    `id                    TEXT PRIMARY KEY,
+     receta_id             TEXT NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
+     insumo_id             TEXT NOT NULL REFERENCES insumos(id),
+     insumo_nombre         TEXT NOT NULL,
+     gramos                REAL NOT NULL,
+     orden                 INTEGER NOT NULL DEFAULT 0`,
+    'CREATE INDEX IF NOT EXISTS idx_receta_ingredientes_receta ON receta_ingredientes(receta_id)',
+  );
 
   /* Ingredientes de una receta, referenciando el catálogo de Insumos por id
      (no por texto libre) para que el costo y las unidades siempre crucen
@@ -316,7 +415,7 @@ try {
     CREATE TABLE IF NOT EXISTS receta_ingredientes (
       id                    TEXT PRIMARY KEY,
       receta_id             TEXT NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
-      insumo_id             TEXT NOT NULL,
+      insumo_id             TEXT NOT NULL REFERENCES insumos(id),
       insumo_nombre         TEXT NOT NULL,
       gramos                 REAL NOT NULL,
       orden                 INTEGER NOT NULL DEFAULT 0
@@ -333,7 +432,8 @@ try {
      ya la cubre la tabla horneadas, ligada por produccion_id.
      ═══════════════════════════════════════════ */
   /* Migración: agrega a producciones la mano de obra real de la tanda
-     (etapas 1-8) — mismo patrón no destructivo que las anteriores. */
+     (etapas 1-8) y las condiciones ambientales del día — mismo patrón
+     no destructivo que las anteriores. */
   const produccionesExiste = db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'producciones'")
     .get();
@@ -342,9 +442,22 @@ try {
       .prepare('PRAGMA table_info(producciones)')
       .all()
       .map((c) => c.name);
-    if (!columnasActuales.includes('tiempo_mano_obra_real_min')) {
-      console.log('[db] Agregando columna producciones.tiempo_mano_obra_real_min (migración)...');
-      db.exec('ALTER TABLE producciones ADD COLUMN tiempo_mano_obra_real_min INTEGER');
+    const columnasNuevas = {
+      tiempo_mano_obra_real_min: 'INTEGER',
+      // Condiciones REALES de esa tanda (varían día a día — por eso van
+      // en producciones, no en recetas, que es la ficha fija).
+      edad_masa_madre_horas:
+        'INTEGER CHECK (edad_masa_madre_horas IS NULL OR (edad_masa_madre_horas >= 0 AND edad_masa_madre_horas <= 72))',
+      temperatura_ambiente_c:
+        'REAL CHECK (temperatura_ambiente_c IS NULL OR (temperatura_ambiente_c >= -10 AND temperatura_ambiente_c <= 50))',
+      temperatura_agua_c:
+        'REAL CHECK (temperatura_agua_c IS NULL OR (temperatura_agua_c >= 0 AND temperatura_agua_c <= 60))',
+    };
+    for (const [columna, tipo] of Object.entries(columnasNuevas)) {
+      if (!columnasActuales.includes(columna)) {
+        console.log(`[db] Agregando columna producciones.${columna} (migración)...`);
+        db.exec(`ALTER TABLE producciones ADD COLUMN ${columna} ${tipo}`);
+      }
     }
   }
 
@@ -359,6 +472,9 @@ try {
       peso_total_masa_g           REAL NOT NULL,
       unidades_estimadas          INTEGER NOT NULL,
       tiempo_mano_obra_real_min   INTEGER,
+      edad_masa_madre_horas       INTEGER CHECK (edad_masa_madre_horas IS NULL OR (edad_masa_madre_horas >= 0 AND edad_masa_madre_horas <= 72)),
+      temperatura_ambiente_c      REAL CHECK (temperatura_ambiente_c IS NULL OR (temperatura_ambiente_c >= -10 AND temperatura_ambiente_c <= 50)),
+      temperatura_agua_c          REAL CHECK (temperatura_agua_c IS NULL OR (temperatura_agua_c >= 0 AND temperatura_agua_c <= 60)),
       registrado_por              TEXT,
       notas                       TEXT,
       creado_en                   TEXT NOT NULL DEFAULT (datetime('now')),
@@ -369,13 +485,23 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_producciones_fecha ON producciones(fecha)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_producciones_producto ON producciones(producto_id)');
 
+  migrarForeignKeyInsumoId(
+    'produccion_ingredientes',
+    `id             TEXT PRIMARY KEY,
+     produccion_id  TEXT NOT NULL REFERENCES producciones(id) ON DELETE CASCADE,
+     insumo_id      TEXT NOT NULL REFERENCES insumos(id),
+     insumo_nombre  TEXT NOT NULL,
+     gramos         REAL NOT NULL`,
+    'CREATE INDEX IF NOT EXISTS idx_produccion_ingredientes_produccion ON produccion_ingredientes(produccion_id)',
+  );
+
   /* Gramos reales usados en ESA tanda (pueden diferir de la receta base:
      la ejecución diaria es libre aunque la fórmula sea fija). */
   db.exec(`
     CREATE TABLE IF NOT EXISTS produccion_ingredientes (
       id             TEXT PRIMARY KEY,
       produccion_id  TEXT NOT NULL REFERENCES producciones(id) ON DELETE CASCADE,
-      insumo_id      TEXT NOT NULL,
+      insumo_id      TEXT NOT NULL REFERENCES insumos(id),
       insumo_nombre  TEXT NOT NULL,
       gramos         REAL NOT NULL
     )

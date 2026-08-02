@@ -229,7 +229,29 @@ function resetRateLimits() {
    WEBSOCKET Y RUTAS
    ═══════════════════════════════════════════ */
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+// verifyClient corre ANTES de aceptar la conexión (durante el handshake),
+// no después — así una conexión sin token válido nunca llega a entrar a
+// wss.clients ni a recibir los broadcast() con pedidos/producción en vivo.
+// Reutiliza el mismo verifySessionToken que ya protege las rutas REST, en
+// vez de inventar un segundo mecanismo de auth aparte.
+const wss = new WebSocketServer({
+  server,
+  verifyClient: ({ req }, callback) => {
+    if (!ADMIN_TOKEN) {
+      return callback(false, 503, 'Panel admin no configurado.');
+    }
+    let token = '';
+    try {
+      token = new URL(req.url, 'http://localhost').searchParams.get('token') || '';
+    } catch {
+      // req.url malformado — token se queda vacío y verifySessionToken lo rechaza abajo.
+    }
+    if (!verifySessionToken(token)) {
+      return callback(false, 401, 'No autorizado.');
+    }
+    callback(true);
+  },
+});
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
@@ -596,6 +618,15 @@ app.delete('/insumos/:id', requireAuth, (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
+    // insumo_id en receta_ingredientes/produccion_ingredientes tiene FK —
+    // mismo caso que recetas más abajo, un insumo usado en alguna receta o
+    // producción no se puede borrar sin dejar huérfano ese historial.
+    if (err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || err.code === 'SQLITE_CONSTRAINT') {
+      return res.status(409).json({
+        error:
+          'No se puede eliminar: este insumo ya se usó en alguna receta o producción registrada. El historial se conserva a propósito.',
+      });
+    }
     console.error('[DELETE /insumos/:id]', err.message);
     res.status(500).json({ error: 'Error al eliminar el insumo.' });
   }
@@ -804,6 +835,10 @@ function serializeHorneada(row) {
     temperaturaHorneadoRealC: row.temperatura_horneado_real_c,
     tiempoHorneadoRealMin: row.tiempo_horneado_real_min,
     mermaRealPct: row.merma_real_pct,
+    temperaturaPisoHornoC: row.temperatura_piso_horno_c,
+    pesoPanCocidoTotalG: row.peso_pan_cocido_total_g,
+    costoEstimadoEnergiaLote: row.costo_estimado_energia_lote,
+    unidadesSegundaCalidad: row.unidades_segunda_calidad,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
@@ -843,7 +878,7 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
 
   if (datos.produccionId) {
     const produccion = db
-      .prepare('SELECT producto_id FROM producciones WHERE id = ?')
+      .prepare('SELECT producto_id, peso_total_masa_g FROM producciones WHERE id = ?')
       .get(datos.produccionId);
     if (!produccion) {
       return res.status(400).json({ error: 'La producción indicada no existe.' });
@@ -853,6 +888,31 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
         .status(400)
         .json({ error: 'Esta horneada no coincide con el producto de la producción indicada.' });
     }
+    // Una tanda de masa se hornea una sola vez — si ya hay otra horneada
+    // vinculada a esta misma producción, contarla de nuevo duplicaría el
+    // "horneado" en el cálculo de inventario disponible.
+    const yaVinculada = db
+      .prepare('SELECT id FROM horneadas WHERE produccion_id = ?')
+      .get(datos.produccionId);
+    if (yaVinculada) {
+      return res.status(400).json({
+        error:
+          'Esta producción ya tiene una horneada registrada. Cada tanda se hornea una sola vez.',
+      });
+    }
+    // Cruce entre tablas (SQLite no lo puede validar solo con un CHECK,
+    // que no ve más allá de su propia fila): el pan ya horneado pesa
+    // menos que la masa cruda de la que salió (pierde agua al hornear),
+    // nunca más.
+    if (
+      datos.pesoPanCocidoTotalG !== null &&
+      produccion.peso_total_masa_g !== null &&
+      datos.pesoPanCocidoTotalG >= produccion.peso_total_masa_g
+    ) {
+      return res.status(400).json({
+        error: 'El peso del pan cocido debe ser menor al peso de la masa cruda de la producción.',
+      });
+    }
   }
 
   const id = crypto.randomUUID();
@@ -860,9 +920,11 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
     db.prepare(
       `INSERT INTO horneadas (
          id, producto_id, producto_nombre, cantidad, fecha, hora, registrado_por, notas,
-         produccion_id, temperatura_horneado_real_c, tiempo_horneado_real_min, merma_real_pct
+         produccion_id, temperatura_horneado_real_c, tiempo_horneado_real_min, merma_real_pct,
+         temperatura_piso_horno_c, peso_pan_cocido_total_g, costo_estimado_energia_lote,
+         unidades_segunda_calidad
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       datos.productoId,
@@ -876,6 +938,10 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
       datos.temperaturaHorneadoRealC,
       datos.tiempoHorneadoRealMin,
       datos.mermaRealPct,
+      datos.temperaturaPisoHornoC,
+      datos.pesoPanCocidoTotalG,
+      datos.costoEstimadoEnergiaLote,
+      datos.unidadesSegundaCalidad,
     );
     const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
     broadcast({ tipo: 'horneada:nueva', horneada: serializeHorneada(fila) });
@@ -904,7 +970,7 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
 
   if (datos.produccionId) {
     const produccion = db
-      .prepare('SELECT producto_id FROM producciones WHERE id = ?')
+      .prepare('SELECT producto_id, peso_total_masa_g FROM producciones WHERE id = ?')
       .get(datos.produccionId);
     if (!produccion) {
       return res.status(400).json({ error: 'La producción indicada no existe.' });
@@ -913,6 +979,31 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
       return res
         .status(400)
         .json({ error: 'Esta horneada no coincide con el producto de la producción indicada.' });
+    }
+    // Igual que en el POST, pero excluyendo esta misma horneada: si ya
+    // estaba vinculada a esta producción antes de editar, no es un
+    // duplicado nuevo.
+    const yaVinculada = db
+      .prepare('SELECT id FROM horneadas WHERE produccion_id = ? AND id != ?')
+      .get(datos.produccionId, id);
+    if (yaVinculada) {
+      return res.status(400).json({
+        error:
+          'Esta producción ya tiene otra horneada registrada. Cada tanda se hornea una sola vez.',
+      });
+    }
+    // Cruce entre tablas (SQLite no lo puede validar solo con un CHECK,
+    // que no ve más allá de su propia fila): el pan ya horneado pesa
+    // menos que la masa cruda de la que salió (pierde agua al hornear),
+    // nunca más.
+    if (
+      datos.pesoPanCocidoTotalG !== null &&
+      produccion.peso_total_masa_g !== null &&
+      datos.pesoPanCocidoTotalG >= produccion.peso_total_masa_g
+    ) {
+      return res.status(400).json({
+        error: 'El peso del pan cocido debe ser menor al peso de la masa cruda de la producción.',
+      });
     }
   }
 
@@ -923,6 +1014,8 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
          SET producto_id = ?, producto_nombre = ?, cantidad = ?, fecha = ?, hora = ?,
              registrado_por = ?, notas = ?, produccion_id = ?,
              temperatura_horneado_real_c = ?, tiempo_horneado_real_min = ?, merma_real_pct = ?,
+             temperatura_piso_horno_c = ?, peso_pan_cocido_total_g = ?,
+             costo_estimado_energia_lote = ?, unidades_segunda_calidad = ?,
              actualizado_en = datetime('now')
          WHERE id = ?`,
       )
@@ -938,6 +1031,10 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
         datos.temperaturaHorneadoRealC,
         datos.tiempoHorneadoRealMin,
         datos.mermaRealPct,
+        datos.temperaturaPisoHornoC,
+        datos.pesoPanCocidoTotalG,
+        datos.costoEstimadoEnergiaLote,
+        datos.unidadesSegundaCalidad,
         id,
       );
     if (info.changes === 0) {
@@ -1296,6 +1393,7 @@ function serializeReceta(row, ingredientes) {
     temperaturaHorneadoC: row.temperatura_horneado_c,
     tiempoManoObraMin: row.tiempo_mano_obra_min,
     mermaCoccionPct: row.merma_coccion_pct,
+    hidratacionObjetivoPorcentaje: row.hidratacion_objetivo_porcentaje,
     pasos: row.pasos,
     notas: row.notas,
     ingredientes: ingredientes.map((i) => ({
@@ -1374,9 +1472,9 @@ app.post('/recetas', requireAuth, rateLimit, (req, res) => {
         `INSERT INTO recetas (
            id, producto_id, producto_nombre, peso_masa_por_unidad_g, tiempo_fermentacion_min,
            tiempo_horneado_min, temperatura_horneado_c, tiempo_mano_obra_min, merma_coccion_pct,
-           pasos, notas
+           hidratacion_objetivo_porcentaje, pasos, notas
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         datos.productoId,
@@ -1387,6 +1485,7 @@ app.post('/recetas', requireAuth, rateLimit, (req, res) => {
         datos.temperaturaHorneadoC,
         datos.tiempoManoObraMin,
         datos.mermaCoccionPct,
+        datos.hidratacionObjetivoPorcentaje,
         datos.pasos,
         datos.notas,
       );
@@ -1439,7 +1538,8 @@ app.put('/recetas/:id', requireAuth, (req, res) => {
           `UPDATE recetas
            SET producto_id = ?, producto_nombre = ?, peso_masa_por_unidad_g = ?,
                tiempo_fermentacion_min = ?, tiempo_horneado_min = ?, temperatura_horneado_c = ?,
-               tiempo_mano_obra_min = ?, merma_coccion_pct = ?, pasos = ?, notas = ?,
+               tiempo_mano_obra_min = ?, merma_coccion_pct = ?,
+               hidratacion_objetivo_porcentaje = ?, pasos = ?, notas = ?,
                actualizado_en = datetime('now')
            WHERE id = ?`,
         )
@@ -1452,6 +1552,7 @@ app.put('/recetas/:id', requireAuth, (req, res) => {
           datos.temperaturaHorneadoC,
           datos.tiempoManoObraMin,
           datos.mermaCoccionPct,
+          datos.hidratacionObjetivoPorcentaje,
           datos.pasos,
           datos.notas,
           id,
@@ -1495,6 +1596,16 @@ app.delete('/recetas/:id', requireAuth, (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
+    // producciones.receta_id tiene FOREIGN KEY (sin ON DELETE) — con
+    // foreign_keys=ON, SQLite bloquea el DELETE si alguna producción ya
+    // usó esta receta, en vez de dejarla huérfana. Antes esto caía al
+    // catch genérico de abajo y devolvía un 500 sin explicar nada.
+    if (err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY' || err.code === 'SQLITE_CONSTRAINT') {
+      return res.status(409).json({
+        error:
+          'No se puede eliminar: esta receta ya se usó en al menos una producción registrada. El historial de producción se conserva a propósito.',
+      });
+    }
     console.error('[DELETE /recetas/:id]', err.message);
     res.status(500).json({ error: 'Error al eliminar la receta.' });
   }
@@ -1516,6 +1627,9 @@ function serializeProduccion(row, ingredientes, etapas) {
     pesoTotalMasaG: row.peso_total_masa_g,
     unidadesEstimadas: row.unidades_estimadas,
     tiempoManoObraRealMin: row.tiempo_mano_obra_real_min,
+    edadMasaMadreHoras: row.edad_masa_madre_horas,
+    temperaturaAmbienteC: row.temperatura_ambiente_c,
+    temperaturaAguaC: row.temperatura_agua_c,
     registradoPor: row.registrado_por,
     notas: row.notas,
     ingredientes: ingredientes.map((i) => ({
@@ -1608,8 +1722,9 @@ app.post('/producciones', requireAuth, rateLimit, (req, res) => {
       db.prepare(
         `INSERT INTO producciones
            (id, producto_id, producto_nombre, receta_id, fecha, hora_inicio, peso_total_masa_g,
-            unidades_estimadas, tiempo_mano_obra_real_min, registrado_por, notas)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            unidades_estimadas, tiempo_mano_obra_real_min, edad_masa_madre_horas,
+            temperatura_ambiente_c, temperatura_agua_c, registrado_por, notas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         datos.productoId,
@@ -1620,6 +1735,9 @@ app.post('/producciones', requireAuth, rateLimit, (req, res) => {
         pesoTotalMasaG,
         unidadesEstimadas,
         datos.tiempoManoObraRealMin,
+        datos.edadMasaMadreHoras,
+        datos.temperaturaAmbienteC,
+        datos.temperaturaAguaC,
         datos.registradoPor,
         datos.notas,
       );
@@ -1720,6 +1838,28 @@ app.put('/producciones/:id/etapas/:etapaId', requireAuth, (req, res) => {
   }
 
   try {
+    const etapaActual = db
+      .prepare(
+        'SELECT etapa, hora_inicio FROM produccion_etapas WHERE id = ? AND produccion_id = ?',
+      )
+      .get(etapaId, id);
+    if (!etapaActual) {
+      return res.status(404).json({ error: 'Etapa no encontrada.' });
+    }
+
+    // hora_inicio/hora_fin son solo "HH:MM", sin fecha — comparar como texto
+    // funciona para etapas normales (duran minutos, mismo día), pero NO para
+    // retardación en frío, que declaradamente puede durar hasta 72h y cruzar
+    // medianoche/varios días (ver MAX en validation.js). Ahí no hay forma de
+    // saber con solo la hora si "08:00" es el mismo día o dos días después,
+    // así que esa etapa se deja sin este chequeo — corregirlo bien requiere
+    // guardar fecha además de hora en produccion_etapas (pendiente).
+    if (etapaActual.etapa !== 'retardacion_frio' && datos.horaFin <= etapaActual.hora_inicio) {
+      return res.status(400).json({
+        error: 'La hora de fin no puede ser igual o anterior a la hora de inicio de la etapa.',
+      });
+    }
+
     const info = db
       .prepare(
         `UPDATE produccion_etapas SET hora_fin = ?, notas = ?

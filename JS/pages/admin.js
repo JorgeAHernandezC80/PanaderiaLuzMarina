@@ -153,6 +153,9 @@ const CONFIG = Object.freeze({
     horneadaPesoPanCocido: '#horneada-peso-pan-cocido',
     horneadaCostoEnergia: '#horneada-costo-energia',
     horneadaUnidadesSegundaCalidad: '#horneada-unidades-segunda-calidad',
+    horneadaTemperaturaReal: '#horneada-temperatura-real',
+    horneadaTiempoReal: '#horneada-tiempo-real',
+    horneadaMermaReal: '#horneada-merma-real',
     horneadaError: '#horneada-error',
     horneadaErrorMsg: '#horneada-error [data-horneada-error-msg]',
     horneadaSubmitBtn: '#btn-horneada-submit',
@@ -392,10 +395,18 @@ const Api = {
   /** Conexión WebSocket para refresco en vivo. Reintenta sola si se cae,
    *  con backoff exponencial (máx. 30s) para no martillar un servidor caído. */
   connectLive(onMessage) {
-    const wsUrl = API_BASE.replace(/^http/, 'ws');
     let intento = 0;
 
     const connect = () => {
+      // El WebSocket del navegador no permite headers custom en el
+      // handshake (no se puede mandar Authorization: Bearer como en
+      // fetch) — el token va como query param, que es lo único que el
+      // servidor puede leer antes de aceptar la conexión (ver
+      // verifyClient en server.js). Se lee de nuevo en cada intento —no
+      // una sola vez afuera de connect()— porque si el token expira
+      // mientras la pestaña sigue abierta, los reintentos automáticos de
+      // más abajo seguirían mandando uno viejo para siempre.
+      const wsUrl = `${API_BASE.replace(/^http/, 'ws')}?token=${encodeURIComponent(Auth.getToken())}`;
       const socket = new WebSocket(wsUrl);
 
       socket.addEventListener('open', () => {
@@ -525,7 +536,8 @@ const Insumos = {
         return { ok: false, reason: 'unauthorized' };
       }
       if (!res.ok && res.status !== 204) {
-        return { ok: false, reason: 'error' };
+        const cuerpo = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: cuerpo.error };
       }
       return { ok: true };
     } catch (err) {
@@ -918,7 +930,8 @@ const Recetas = {
         return { ok: false, reason: 'unauthorized' };
       }
       if (!res.ok && res.status !== 204) {
-        return { ok: false, reason: 'error' };
+        const cuerpo = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: cuerpo.error };
       }
       return { ok: true };
     } catch (err) {
@@ -2280,7 +2293,7 @@ const App = {
 
   async deleteReceta(id, productoNombre) {
     const confirmado = window.confirm(
-      `¿Eliminar la receta de "${productoNombre}"? Esto no afecta las producciones ya registradas.`,
+      `¿Eliminar la receta de "${productoNombre}"? Si ya se usó en alguna producción registrada, no se podrá eliminar (para no perder ese historial).`,
     );
     if (!confirmado) return;
 
@@ -2291,7 +2304,9 @@ const App = {
       return;
     }
     if (!resultado.ok) {
-      window.alert('No se pudo eliminar la receta. Intenta de nuevo en unos segundos.');
+      window.alert(
+        resultado.message || 'No se pudo eliminar la receta. Intenta de nuevo en unos segundos.',
+      );
       return;
     }
     this.refreshRecetas();
@@ -2604,17 +2619,66 @@ const App = {
     const fechaEl = document.querySelector(CONFIG.SELECTORS.horneadaFecha);
     const fecha = fechaEl?.value || hoyHouston();
 
-    const producciones = await Producciones.listar(fecha);
+    // Una producción solo se hornea una vez (el backend ya lo bloquea) — acá
+    // se filtra en la UI para no dejar elegir algo que el servidor rechazaría
+    // de todas formas. La horneada que se está editando (si hay una) es la
+    // excepción: su propia producción vinculada debe seguir apareciendo.
+    const idHorneadaEnEdicion = document.querySelector(CONFIG.SELECTORS.horneadaId)?.value || null;
+
+    const [producciones, horneadasDelDia] = await Promise.all([
+      Producciones.listar(fecha),
+      Horneadas.listar(fecha),
+    ]);
     if (!Array.isArray(producciones)) return;
 
+    const produccionesYaUsadas = new Set(
+      Array.isArray(horneadasDelDia)
+        ? horneadasDelDia
+            .filter((h) => h.produccionId && h.id !== idHorneadaEnEdicion)
+            .map((h) => h.produccionId)
+        : [],
+    );
+
     producciones
-      .filter((p) => p.productoId === productoId)
+      .filter((p) => p.productoId === productoId && !produccionesYaUsadas.has(p.id))
       .forEach((p) => {
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = `${p.horaInicio} — ${p.pesoTotalMasaG}g (${p.unidadesEstimadas} u. est.)`;
+        opt.dataset.pesoTotalMasaG = p.pesoTotalMasaG ?? '';
         selectProduccion.appendChild(opt);
       });
+
+    this._recalcularMermaReal();
+  },
+
+  /** Recalcula % Merma = ((Masa Cruda − Pan Cocido) / Masa Cruda) × 100 cada
+   *  vez que cambia el peso del pan cocido o la producción de origen
+   *  elegida. Sin producción vinculada no hay masa cruda con qué comparar,
+   *  así que el campo se deja vacío en vez de mostrar un cero engañoso. */
+  _recalcularMermaReal() {
+    const selectProduccion = document.querySelector(CONFIG.SELECTORS.horneadaProduccion);
+    const inputPesoPanCocido = document.querySelector(CONFIG.SELECTORS.horneadaPesoPanCocido);
+    const inputMerma = document.querySelector(CONFIG.SELECTORS.horneadaMermaReal);
+    if (!selectProduccion || !inputPesoPanCocido || !inputMerma) return;
+
+    const opcionElegida = selectProduccion.selectedOptions[0];
+    const pesoMasaCruda = Number(opcionElegida?.dataset.pesoTotalMasaG);
+    const pesoPanCocido = Number(inputPesoPanCocido.value);
+
+    if (
+      !opcionElegida?.value ||
+      !Number.isFinite(pesoMasaCruda) ||
+      pesoMasaCruda <= 0 ||
+      !Number.isFinite(pesoPanCocido) ||
+      pesoPanCocido <= 0
+    ) {
+      inputMerma.value = '';
+      return;
+    }
+
+    const merma = ((pesoMasaCruda - pesoPanCocido) / pesoMasaCruda) * 100;
+    inputMerma.value = Math.round(merma * 10) / 10;
   },
 
   startEditProveedor(id) {
@@ -2739,12 +2803,20 @@ const App = {
       horneada.costoEstimadoEnergiaLote ?? '';
     document.querySelector(CONFIG.SELECTORS.horneadaUnidadesSegundaCalidad).value =
       horneada.unidadesSegundaCalidad ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaTemperaturaReal).value =
+      horneada.temperaturaHorneadoRealC ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaTiempoReal).value =
+      horneada.tiempoHorneadoRealMin ?? '';
+    document.querySelector(CONFIG.SELECTORS.horneadaMermaReal).value = horneada.mermaRealPct ?? '';
 
     this._actualizarSelectProduccionParaHorneada().then(() => {
       const selectProduccion = document.querySelector(CONFIG.SELECTORS.horneadaProduccion);
       if (selectProduccion && horneada.produccionId) {
         selectProduccion.value = horneada.produccionId;
       }
+      // Asignar .value por JS no dispara 'change', así que el recálculo
+      // automático de merma no se activaría solo — se llama a mano acá.
+      this._recalcularMermaReal();
     });
 
     const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
@@ -2840,6 +2912,11 @@ const App = {
         document.querySelector(CONFIG.SELECTORS.horneadaCostoEnergia).value || null,
       unidadesSegundaCalidad:
         document.querySelector(CONFIG.SELECTORS.horneadaUnidadesSegundaCalidad).value || null,
+      temperaturaHorneadoRealC:
+        document.querySelector(CONFIG.SELECTORS.horneadaTemperaturaReal).value || null,
+      tiempoHorneadoRealMin:
+        document.querySelector(CONFIG.SELECTORS.horneadaTiempoReal).value || null,
+      mermaRealPct: document.querySelector(CONFIG.SELECTORS.horneadaMermaReal).value || null,
     };
 
     const submitBtn = document.querySelector(CONFIG.SELECTORS.horneadaSubmitBtn);
@@ -3068,7 +3145,9 @@ const App = {
       return;
     }
     if (!resultado.ok) {
-      window.alert('No se pudo eliminar el insumo. Intenta de nuevo en unos segundos.');
+      window.alert(
+        resultado.message || 'No se pudo eliminar el insumo. Intenta de nuevo en unos segundos.',
+      );
       return;
     }
 
@@ -3224,6 +3303,15 @@ const App = {
     document
       .querySelector(CONFIG.SELECTORS.horneadaFecha)
       ?.addEventListener('change', () => this._actualizarSelectProduccionParaHorneada());
+
+    // Recalcular % merma real cada vez que cambia el peso del pan cocido o
+    // la producción de origen elegida (ver _recalcularMermaReal).
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaProduccion)
+      ?.addEventListener('change', () => this._recalcularMermaReal());
+    document
+      .querySelector(CONFIG.SELECTORS.horneadaPesoPanCocido)
+      ?.addEventListener('input', () => this._recalcularMermaReal());
   },
 
   async _handleInsumoSubmit() {

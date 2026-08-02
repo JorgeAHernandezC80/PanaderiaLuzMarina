@@ -1279,8 +1279,42 @@
           </div>
 
           <fieldset class="insumo-form__group insumo-form__wide">
-            <legend class="insumo-form__legend">Resultado (opcional)</legend>
+            <legend class="insumo-form__legend">
+              Resultado y comparación con la receta (opcional)
+            </legend>
             <div class="insumo-form__group-grid">
+              <div class="form-field">
+                <label for="horneada-temperatura-real" class="form-field__label"
+                  >Temperatura real de horneado (°C)</label
+                >
+                <input
+                  type="number"
+                  id="horneada-temperatura-real"
+                  name="temperaturaHorneadoRealC"
+                  class="form-field__input"
+                  min="1"
+                  max="350"
+                  step="1"
+                  placeholder="Ej. 220"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="horneada-tiempo-real" class="form-field__label"
+                  >Tiempo real de horneado (min)</label
+                >
+                <input
+                  type="number"
+                  id="horneada-tiempo-real"
+                  name="tiempoHorneadoRealMin"
+                  class="form-field__input"
+                  min="1"
+                  max="300"
+                  step="1"
+                  placeholder="Ej. 28"
+                />
+              </div>
+
               <div class="form-field">
                 <label for="horneada-temperatura-piso-horno" class="form-field__label"
                   >Temperatura piso horno (°C)</label
@@ -1309,6 +1343,21 @@
                   min="0.01"
                   step="0.1"
                   placeholder="Ej. 4200"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="horneada-merma-real" class="form-field__label"
+                  >Merma real (%) — calculada</label
+                >
+                <input
+                  type="number"
+                  id="horneada-merma-real"
+                  name="mermaRealPct"
+                  class="form-field__input"
+                  readonly
+                  tabindex="-1"
+                  placeholder="Se calcula sola con Producción de origen + Peso pan cocido"
                 />
               </div>
 
@@ -1344,7 +1393,10 @@
             </div>
             <p class="insumo-form__hint">
               El peso del pan cocido no puede ser mayor o igual al peso de la masa cruda de la
-              producción de origen (si hay una vinculada) — el sistema lo valida al guardar.
+              producción de origen (si hay una vinculada) — el sistema lo valida al guardar. La
+              merma real solo se calcula sola cuando eliges una "Producción de origen" arriba (sin
+              eso no hay con qué comparar el peso del pan cocido) — con registro suelto, queda vacía
+              y puedes dejarla así.
             </p>
           </fieldset>
 
