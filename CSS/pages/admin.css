@@ -44,6 +44,12 @@
   --color-border-soft: #f0e8d8;
   --color-primary: #2c2416;
   --color-primary-hover: #4a3d28;
+  /* Texto sobre --color-primary: blanco en modo claro (primary es café
+     oscuro), pero en modo oscuro --color-primary pasa a ser el dorado
+     de marca (claro) — mismo patrón que --color-text-inverse del sitio
+     público, para que ningún botón/ítem activo quede con texto blanco
+     sobre un fondo claro. */
+  --color-text-on-primary: white;
   --color-accent: #27ae60;
   --color-accent-hover: #229954;
   --color-accent-bg: rgba(39, 174, 96, 0.12);
@@ -418,7 +424,7 @@ button {
   flex-shrink: 0;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-  color: white;
+  color: var(--color-text-on-primary);
   font-size: 1.05rem;
   box-shadow: var(--shadow-sm);
 }
@@ -501,7 +507,7 @@ button {
 .admin-nav__search-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.08);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .admin-nav__search-input::-webkit-search-cancel-button {
@@ -645,24 +651,24 @@ button {
 .admin-nav--sidebar .admin-nav__btn.is-active:hover:not(:disabled),
 .admin-nav--sidebar .admin-nav__btn.is-active:focus-visible {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-  color: white;
+  color: var(--color-text-on-primary);
   box-shadow: var(--shadow-sm);
   transform: none;
 }
 
 .admin-nav--sidebar .admin-nav__btn.is-active:hover:not(:disabled) i {
-  background: rgba(255, 255, 255, 0.24);
-  color: white;
+  background: color-mix(in srgb, var(--color-text-on-primary) 24%, transparent);
+  color: var(--color-text-on-primary);
 }
 
 .admin-nav--sidebar .admin-nav__btn.is-active i {
-  background: rgba(255, 255, 255, 0.16);
-  color: white;
+  background: color-mix(in srgb, var(--color-text-on-primary) 16%, transparent);
+  color: var(--color-text-on-primary);
 }
 
 .admin-nav--sidebar .admin-nav__btn.is-active .admin-nav__count {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: color-mix(in srgb, var(--color-text-on-primary) 20%, transparent);
+  color: var(--color-text-on-primary);
 }
 
 /* Ítems futuros */
@@ -684,8 +690,8 @@ button {
 }
 
 .admin-nav__btn.is-active .admin-nav__soon {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: color-mix(in srgb, var(--color-text-on-primary) 20%, transparent);
+  color: var(--color-text-on-primary);
 }
 
 /* Conteos */
@@ -847,7 +853,7 @@ button {
 
 .order-group__header {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text-on-primary);
   padding: var(--space-4) var(--space-5);
   display: flex;
   justify-content: space-between;
@@ -1484,7 +1490,7 @@ button {
 
 .btn--primary {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text-on-primary);
 }
 .btn--primary:hover {
   background: var(--color-primary-hover);
@@ -1585,7 +1591,7 @@ button {
 .form-field__input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(44, 36, 22, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .form-field__input::placeholder {
@@ -2316,7 +2322,7 @@ button {
     padding: 0.35em 0.7em;
     border-radius: var(--radius-sm);
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-on-primary);
     font-size: 0.78rem;
     font-weight: 600;
     white-space: nowrap;
@@ -2547,42 +2553,50 @@ button {
    con el SO en modo oscuro ya estaba viendo el atributo activado sin
    que pasara nada. Este bloque lo completa.
 
-   No se reutiliza la paleta dorada del sitio público (CSS/base/
-   _variables.css) porque admin.css es un archivo aparte con su propia
-   identidad (acento verde, no dorado) — este es su propio modo oscuro,
-   consistente consigo mismo. Redefine únicamente los tokens de la
-   sección 1 (Variables); como el resto de la hoja SOLO usa var(...) y
-   ningún color está escrito a mano, todo el panel se adapta solo, sin
-   tocar ninguna otra sección.
+   Coordinado con la paleta oscura real de index.html (CSS/base/
+   _variables.css, mismo bloque [data-theme='dark']): fondo, superficie,
+   texto, bordes, sombras y overlay son EXACTAMENTE los mismos valores.
+   El acento pasa de verde (modo claro del admin) a dorado — el color
+   de marca del sitio en dark — así que --color-primary (botón
+   principal, ítem activo de la sidebar, encabezado de grupo de
+   pedidos) ahora sí se aclara.
 
-   Ojo con --color-primary: en vez de invertirlo a un tono claro (lo
-   típico en dark mode), se queda oscuro a propósito — mismo valor que
-   --color-primary-hover del modo claro (#4a3d28), un café ya probado
-   ahí. Muchos botones y estados activos escriben `color: white` fijo
-   sobre var(--color-primary) (login, ítem activo de la sidebar,
-   encabezado de grupo de pedidos); si --color-primary se aclarara,
-   ese texto blanco perdería contraste. Recomiendo revisar con
-   capturas de pantalla reales antes de dar esto por terminado — un
-   cambio de paleta tan grande conviene verlo, no solo leerlo. */
+   Eso significaba texto blanco fijo sobre un fondo claro en varios
+   lugares (mismo problema que el sitio ya resolvió con
+   --color-text-inverse) — se agregó --color-text-on-primary en la
+   sección 1 y se actualizaron esos 9 puntos para usarlo en vez de
+   `color: white` fijo, así que el contraste se mantiene correcto acá
+   también. Recomiendo revisar con capturas reales antes de dar esto
+   por terminado — un cambio de paleta así conviene verlo, no solo
+   leerlo. */
 [data-theme='dark'] {
-  --color-bg: #1a1712;
-  --color-surface: #241f18;
-  --color-text: #f0e8d8;
-  --color-text-muted: #a89a82;
-  --color-border: #3a3226;
-  --color-border-soft: #2c2620;
+  --color-bg: #111009;
+  --color-surface: #1c1a16;
+  --color-text: #f5f0e8;
+  --color-text-muted: #c4b8a8;
+  --color-border: #332e26;
+  --color-border-soft: #252119;
 
-  --color-primary: #4a3d28;
-  --color-primary-hover: #6b5a3f;
+  /* Acento dorado del sitio — mismo valor que index.html */
+  --color-primary: #d4ae78;
+  --color-primary-hover: #ecd49a;
+  --color-text-on-primary: #111009; /* mismo criterio que --color-text-inverse del sitio */
 
-  --color-accent: #3ecf76;
-  --color-accent-hover: #34b568;
-  --color-accent-bg: rgba(62, 207, 118, 0.14);
+  /* El admin usa un segundo acento (verde) para éxito/positivo, algo
+     que el sitio no necesita — se mantiene como color funcional propio.
+     Nota: el verde "success" del sitio (#56c48e) da solo 2.17:1 de
+     contraste con texto blanco (falla el mínimo de accesibilidad de
+     3:1) — se usa una variante más oscura de la misma familia para
+     fondos sólidos con texto blanco encima (stat-card--accent,
+     btn--action), que sube a 4.27:1. */
+  --color-accent: #2f8a5f;
+  --color-accent-hover: #257048;
+  --color-accent-bg: rgba(86, 196, 142, 0.14);
   --color-success: var(--color-accent);
-  --color-success-bg: rgba(62, 207, 118, 0.14);
+  --color-success-bg: rgba(86, 196, 142, 0.12);
 
-  --color-danger: #e5786c;
-  --color-danger-bg: rgba(229, 120, 108, 0.14);
+  --color-danger: #e87070;
+  --color-danger-bg: rgba(232, 112, 112, 0.12);
 
   --color-warning: #e0a542;
   --color-warning-bg: rgba(224, 165, 66, 0.14);
@@ -2591,13 +2605,13 @@ button {
   --color-info: #7ab0e0;
   --color-info-bg: rgba(122, 176, 224, 0.14);
 
-  --color-soft-bg: #2c2620;
-  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-soft-bg: #252119;
+  --color-overlay: rgba(17, 16, 9, 0.88);
 
-  --glass-bg: rgba(36, 31, 24, 0.72);
+  --glass-bg: rgba(28, 26, 22, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
 }
