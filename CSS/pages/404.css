@@ -1,0 +1,330 @@
+/* ============================================================
+   PÁGINA 404 — composición animada
+   Adaptada de un snippet de Uiverse.io (autor: chase2k25). Cambios
+   respecto al original:
+   1) Colores de marca (café/terracota/dorado) en vez del azul-rojo-
+      amarillo-verde tipo juguete — si prefieres los colores originales,
+      solo cambia las 3 variables --pix-digit-*.
+   2) Texto en español y con el tono del resto del sitio, en vez de
+      "Sync Lost"/"Retry" en inglés genérico.
+   3) Tamaños con clamp() en vez de valores fijos (320px la esfera,
+      8.5rem los números) — el original asumía un contenedor de demo
+      de tamaño fijo; acá es una página real que tiene que verse bien
+      desde 320px de celular hasta un monitor grande.
+   4) main-content ya no fuerza min-height:100vh completo (el header y
+      footer del sitio ya ocupan espacio arriba/abajo).
+   ============================================================ */
+.pix-world {
+  --c-bg-bright: var(--color-bg);
+  --c-glass: rgba(255, 255, 255, 0.5);
+  --c-text-main: var(--color-text);
+  --pix-digit-1: #8b5e3c; /* café tostado (--color-accent) */
+  --pix-digit-1-shadow: #5c3d27;
+  --pix-digit-2: #d4ae78; /* dorado */
+  --pix-digit-2-shadow: #a67c43;
+  --pix-digit-3: #b07d56; /* café claro (--color-accent-light) */
+  --pix-digit-3-shadow: #7a5539;
+  --font-soft: ui-rounded, 'Segoe UI', Roboto, sans-serif;
+
+  width: 100%;
+  min-height: calc(100vh - 340px);
+  background: radial-gradient(
+    circle at 50% 35%,
+    var(--c-bg-bright) 0%,
+    var(--color-surface-alt) 100%
+  );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-soft);
+  padding: var(--space-10) var(--space-4);
+}
+
+.pix-ambient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(212, 174, 120, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(139, 94, 60, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.8), transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tilt-engine {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  z-index: 10;
+}
+
+.t-cell {
+  position: relative;
+  z-index: 10;
+}
+
+.composition {
+  position: absolute;
+  inset: 0;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+  pointer-events: none;
+  z-index: 20;
+  --rx: 0deg;
+  --ry: 0deg;
+}
+
+/* El tilt 3D es solo para mouse — en celular/tablet (sin hover) los
+   :hover de abajo simplemente nunca se activan, y la composición se
+   queda quieta en su posición neutra; nada se rompe. */
+.t-cell:nth-child(5n + 1):hover ~ .composition {
+  --ry: -22deg;
+}
+.t-cell:nth-child(5n + 2):hover ~ .composition {
+  --ry: -11deg;
+}
+.t-cell:nth-child(5n + 3):hover ~ .composition {
+  --ry: 0deg;
+}
+.t-cell:nth-child(5n + 4):hover ~ .composition {
+  --ry: 11deg;
+}
+.t-cell:nth-child(5n + 5):hover ~ .composition {
+  --ry: 22deg;
+}
+.t-cell:nth-child(-n + 5):hover ~ .composition {
+  --rx: 18deg;
+}
+.t-cell:nth-child(n + 6):nth-child(-n + 10):hover ~ .composition {
+  --rx: 9deg;
+}
+.t-cell:nth-child(n + 11):nth-child(-n + 15):hover ~ .composition {
+  --rx: 0deg;
+}
+.t-cell:nth-child(n + 16):nth-child(-n + 20):hover ~ .composition {
+  --rx: -9deg;
+}
+.t-cell:nth-child(n + 21):nth-child(-n + 25):hover ~ .composition {
+  --rx: -18deg;
+}
+
+.composition {
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+}
+
+.water-orb {
+  position: relative;
+  width: clamp(200px, 45vw, 320px);
+  height: clamp(200px, 45vw, 320px);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.6), transparent);
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  transform: translateZ(20px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.05),
+    inset 0 0 40px rgba(255, 255, 255, 0.8),
+    inset 0 -10px 20px rgba(139, 94, 60, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.swimmers {
+  display: flex;
+  gap: clamp(4px, 1.5vw, 12px);
+  transform: translateZ(80px);
+}
+
+.num {
+  font-size: clamp(3.2rem, 8vw + 1rem, 8.5rem);
+  font-weight: 950;
+  line-height: 1;
+  color: #ffffff;
+  position: relative;
+  animation: swim-float 4s infinite ease-in-out;
+  transform-style: preserve-3d;
+  text-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.05),
+    0 8px 0 rgba(0, 0, 0, 0.08),
+    0 25px 40px rgba(0, 0, 0, 0.1);
+}
+
+.num:nth-child(1) {
+  animation-delay: 0s;
+  color: var(--pix-digit-1);
+  text-shadow:
+    0 8px 0 var(--pix-digit-1-shadow),
+    0 25px 40px rgba(139, 94, 60, 0.2);
+}
+.num:nth-child(2) {
+  animation-delay: -1.3s;
+  font-size: clamp(2.8rem, 7vw + 1rem, 7.5rem);
+  color: var(--pix-digit-2);
+  text-shadow:
+    0 8px 0 var(--pix-digit-2-shadow),
+    0 25px 40px rgba(212, 174, 120, 0.2);
+}
+.num:nth-child(3) {
+  animation-delay: -2.6s;
+  color: var(--pix-digit-3);
+  text-shadow:
+    0 8px 0 var(--pix-digit-3-shadow),
+    0 25px 40px rgba(176, 125, 86, 0.2);
+}
+
+.num::after {
+  content: attr(data-v);
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.ui-layer {
+  margin-top: -50px;
+  transform: translateZ(140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-inline: var(--space-4);
+}
+
+.ui-layer .heading {
+  font-size: clamp(1rem, 0.85rem + 0.6vw, 1.3rem);
+  color: var(--c-text-main);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-weight: 950;
+  margin-bottom: var(--space-6);
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  padding: 10px 22px;
+  border-radius: 100px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.pix-btn {
+  padding: 14px 30px;
+  background: var(--color-text);
+  color: #ffffff;
+  border-radius: 22px;
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: none;
+  cursor: pointer;
+  box-shadow:
+    0 8px 0 #0f0d0a,
+    0 20px 40px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+}
+
+.pix-btn:hover {
+  transform: translateY(-6px) scale(1.05);
+  background: var(--pix-digit-1);
+  color: #fff;
+  box-shadow:
+    0 12px 0 var(--pix-digit-1-shadow),
+    0 25px 45px rgba(139, 94, 60, 0.3);
+}
+
+.pix-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--pix-digit-1-shadow);
+}
+
+.btn-light {
+  background: #ffffff;
+  color: var(--color-text);
+  box-shadow: 0 8px 0 var(--color-border-dark);
+  border: 1px solid var(--color-border);
+}
+
+.btn-light:hover {
+  background: var(--pix-digit-2);
+  color: #fff;
+  border-color: var(--pix-digit-2);
+  box-shadow:
+    0 12px 0 var(--pix-digit-2-shadow),
+    0 25px 45px rgba(212, 174, 120, 0.25);
+}
+
+@keyframes swim-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-30px) scale(1.1, 0.92) rotate(3deg);
+  }
+  66% {
+    transform: translateY(20px) scale(0.92, 1.08) rotate(-3deg);
+  }
+}
+
+.bubble {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: bubble-rise 7s infinite linear;
+  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(120px) scale(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-450px) scale(2);
+    opacity: 0;
+  }
+}
+
+/* Quienes piden menos movimiento en el sistema operativo: sin la
+   animación de "nadar" ni el tilt 3D — los números y la composición se
+   quedan quietos en su posición neutra, las burbujas dejan de subir. */
+@media (prefers-reduced-motion: reduce) {
+  .num,
+  .composition,
+  .bubble {
+    animation: none !important;
+    transition: none !important;
+  }
+}

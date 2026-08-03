@@ -24,6 +24,11 @@ const translations = {
     nav_us: 'Nosotros',
     nav_contact: 'Contacto',
 
+    /* Página 404 */
+    notfound_title: '¡Se quemó esta página!',
+    notfound_home: 'Volver al inicio',
+    notfound_catalog: 'Ver el catálogo',
+
     /* Hero (inicio) */
     hero_badge: 'Horno Abierto',
     hero_stock_available: 'Hornada de hoy disponible',
@@ -239,6 +244,11 @@ const translations = {
     nav_catalog: 'Catalog',
     nav_us: 'About Us',
     nav_contact: 'Contact',
+
+    /* 404 page */
+    notfound_title: 'This page got burnt!',
+    notfound_home: 'Back to home',
+    notfound_catalog: 'View catalog',
 
     /* Hero (inicio) */
     hero_badge: 'Oven Open',
