@@ -6,6 +6,7 @@
 import { escapeHTML } from '../core/cart.js';
 import { formatPrice, pluralizeEs } from '../core/format.js';
 import { API_BASE, apiFetch } from '../core/api.js';
+import { initTheme } from '../core/theme.js';
 
 /* Zona horaria de referencia del negocio (Houston). Todo lo que necesite
    "la fecha de hoy" debe pasar por hoyHouston(), nunca por
@@ -3860,6 +3861,7 @@ function initAdminTopbarScroll() {
    ═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
+  initTheme();
   initAdminSidebarDrawer();
   initAdminNavSearch();
   initAdminNavCollapse();

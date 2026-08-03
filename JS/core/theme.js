@@ -15,11 +15,12 @@ function getSavedTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-/** Aplica el tema al documento y actualiza el botón */
+/** Aplica el tema al documento y actualiza TODOS los botones de tema que
+ *  haya en la página — normalmente hay uno solo (sitio público), pero
+ *  admin.html tiene dos (topbar móvil + sidebar de escritorio, nunca
+ *  visibles los dos a la vez, pero ambos deben quedar sincronizados). */
 function applyTheme(theme) {
   const html = document.documentElement;
-  const btn = document.querySelector('[data-theme-toggle]');
-  const icon = btn?.querySelector('[data-theme-icon]');
 
   if (theme === 'dark') {
     html.setAttribute('data-theme', 'dark');
@@ -27,34 +28,33 @@ function applyTheme(theme) {
     html.removeAttribute('data-theme');
   }
 
-  if (icon) {
-    /* fa-sun en light, fa-moon en dark */
-    icon.className = theme === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
-  }
-
-  if (btn) {
+  document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
+    const icon = btn.querySelector('[data-theme-icon]');
+    if (icon) {
+      /* fa-sun en light, fa-moon en dark */
+      icon.className = theme === 'dark' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+    }
     btn.setAttribute(
       'aria-label',
       theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
     );
-  }
+  });
 
   localStorage.setItem(STORAGE_KEY, theme);
 }
 
-/** Inicializa el toggle de tema */
+/** Inicializa el/los toggle(s) de tema */
 export function initTheme() {
   /* Aplicar tema guardado inmediatamente para evitar flash */
   const theme = getSavedTheme();
   applyTheme(theme);
 
-  /* Escuchar clic en el botón */
-  const btn = document.querySelector('[data-theme-toggle]');
-  if (!btn) return;
-
-  btn.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+  /* Escuchar clic en CADA botón de tema que haya en la página */
+  document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
   });
 
   /* Reaccionar a cambios del SO en tiempo real */

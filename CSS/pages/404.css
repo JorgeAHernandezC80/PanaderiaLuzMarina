@@ -13,11 +13,20 @@
       desde 320px de celular hasta un monitor grande.
    4) main-content ya no fuerza min-height:100vh completo (el header y
       footer del sitio ya ocupan espacio arriba/abajo).
+   5) Toda la composición usa colores FIJOS (no las variables --color-*
+      que cambian entre modo claro/oscuro) — en un primer intento la
+      píldora y los botones sí usaban var(--color-text), y en modo
+      oscuro esa variable se vuelve clara: texto claro sobre fondo
+      blanco, casi invisible. Esta "escena" siempre se ve clara, sin
+      importar el tema del sitio — misma decisión que ya se tomó con
+      la tarjeta de login (sección aparte, no seguía las variables de
+      tema).
    ============================================================ */
 .pix-world {
-  --c-bg-bright: var(--color-bg);
+  --c-bg-bright: #ffffff;
+  --c-surface-alt: #f4f0ea;
   --c-glass: rgba(255, 255, 255, 0.5);
-  --c-text-main: var(--color-text);
+  --c-text-main: #1a1612;
   --pix-digit-1: #8b5e3c; /* café tostado (--color-accent) */
   --pix-digit-1-shadow: #5c3d27;
   --pix-digit-2: #d4ae78; /* dorado */
@@ -28,11 +37,7 @@
 
   width: 100%;
   min-height: calc(100vh - 340px);
-  background: radial-gradient(
-    circle at 50% 35%,
-    var(--c-bg-bright) 0%,
-    var(--color-surface-alt) 100%
-  );
+  background: radial-gradient(circle at 50% 35%, var(--c-bg-bright) 0%, var(--c-surface-alt) 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -233,7 +238,7 @@
 
 .pix-btn {
   padding: 14px 30px;
-  background: var(--color-text);
+  background: var(--c-text-main);
   color: #ffffff;
   border-radius: 22px;
   text-decoration: none;
@@ -265,9 +270,9 @@
 
 .btn-light {
   background: #ffffff;
-  color: var(--color-text);
-  box-shadow: 0 8px 0 var(--color-border-dark);
-  border: 1px solid var(--color-border);
+  color: var(--c-text-main);
+  box-shadow: 0 8px 0 #c9bfb4;
+  border: 1px solid #e8e0d6;
 }
 
 .btn-light:hover {

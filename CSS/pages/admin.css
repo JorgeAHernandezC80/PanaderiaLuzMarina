@@ -773,9 +773,13 @@ button {
   margin-top: auto;
   border-top: 1px solid var(--color-border-soft);
   background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.admin-nav--sidebar .admin-nav__logout {
+.admin-nav--sidebar .admin-nav__logout,
+.admin-nav--sidebar .admin-nav__theme-toggle {
   width: 100%;
   justify-content: flex-start;
   margin-left: 0;
@@ -2319,6 +2323,7 @@ button {
   .admin-nav--sidebar.is-collapsed .admin-nav__btn-label,
   .admin-nav--sidebar.is-collapsed .admin-nav__soon,
   .admin-nav--sidebar.is-collapsed .admin-nav__logout span,
+  .admin-nav--sidebar.is-collapsed .admin-nav__theme-toggle span,
   .admin-nav--sidebar.is-collapsed .admin-nav__empty {
     display: none;
   }
@@ -2368,7 +2373,8 @@ button {
     box-shadow: 0 0 0 2px var(--color-surface);
   }
 
-  .admin-nav--sidebar.is-collapsed .admin-nav__logout {
+  .admin-nav--sidebar.is-collapsed .admin-nav__logout,
+  .admin-nav--sidebar.is-collapsed .admin-nav__theme-toggle {
     justify-content: center;
   }
 
