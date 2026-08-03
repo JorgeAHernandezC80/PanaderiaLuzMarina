@@ -195,13 +195,61 @@ button {
   min-height: calc(100vh - var(--space-6) * 2);
 }
 
+/* Tarjeta de login con efecto "vidrio esmerilado" — adaptada de un
+   snippet de Uiverse.io (autor: vinodjangid07). Cambios respecto al
+   original:
+   1) El blob de color era azul genérico (rgb(144,161,255)); acá usa el
+      dorado de marca (--login-blob-color) — si prefieres el azul
+      original, cambia solo esa variable.
+   2) Sin el tamaño fijo 220×250px ni el wrapper .cardContainer aparte
+      del original — acá adentro va un formulario de login real, así
+      que .login-card hace las dos cosas a la vez (la tarjeta de vidrio
+      Y el contenedor posicionador del blob), sin agregar un div extra
+      al HTML.
+   3) Blob reescalado y reposicionado (100px/220px de card no alcanzaba
+      para una tarjeta de ~420px de ancho con formulario adentro).
+   La tarjeta es oscura A PROPÓSITO, sin importar si el resto del panel
+   está en modo claro u oscuro — es la pantalla de bienvenida antes de
+   entrar, no parte del panel en sí, así que no usa las variables de
+   tema que sí cambian entre modo claro/oscuro (sección 15). */
 .login-card {
-  background: var(--color-surface);
-  padding: var(--space-8) var(--space-6);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  --login-blob-color: #d4ae78;
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 420px;
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-lg);
+  background-color: rgba(31, 26, 20, 0.45);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: var(--shadow-lg);
+  /* El blob de abajo se sale del borde a propósito (right:-30px) — sin
+     esto, en móvil podría empujar el ancho de toda la página y causar
+     scroll horizontal. Con overflow:hidden, el blob se recorta en el
+     borde redondeado de la tarjeta en vez de escaparse del layout. */
+  overflow: hidden;
+}
+
+/* El blob de color detrás de la tarjeta — el vidrio esmerilado de arriba
+   lo difumina a través suyo. Sin esto, backdrop-filter no tiene mucho
+   que desenfocar sobre un fondo plano y el efecto casi no se nota. */
+.login-card::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--login-blob-color) 25%, transparent);
+  right: -30px;
+  top: 30px;
+  transition: transform 1s;
+}
+
+.login-card:hover::before {
+  transform: translate(-50px, 60px);
 }
 
 .login-card__header {
@@ -213,6 +261,7 @@ button {
   display: inline-block;
   font-size: 2.5rem;
   margin-bottom: var(--space-3);
+  color: #000;
 }
 
 .login-card__title {
@@ -220,20 +269,22 @@ button {
      pantallas de 320px y 1920px+ en vez de saltar de golpe en un
      breakpoint — mismo principio en dashboard-header__title h1 y
      stat-card__value (sección 6). */
-  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.6rem);
-  font-weight: 700;
+  font-size: clamp(1.3rem, 1.2rem + 0.7vw, 1.7rem);
+  font-weight: 750;
   margin-bottom: var(--space-2);
+  color: #f5f0e8;
+  letter-spacing: 0.02em;
 }
 
 .login-card__subtitle {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
+  color: #c4b8a8;
+  font-size: 1rem;
 }
 
 .login-card__footer {
   text-align: center;
   margin-top: var(--space-5);
-  color: var(--color-text-muted);
+  color: #c4b8a8;
 }
 
 /* ═══════════════════════════════════════════
