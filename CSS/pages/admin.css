@@ -137,6 +137,7 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--space-6);
   -webkit-font-smoothing: antialiased;
 }
@@ -192,22 +193,32 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 100vh en móvil a veces cuenta el espacio de la barra de direcciones
+     visible, dando un alto mayor al que realmente se ve — eso generaba
+     scroll aunque la tarjeta cupiera perfecto. 100dvh (alto dinámico
+     real) corrige esto; se declara ANTES el fallback en vh por si el
+     navegador no soporta dvh (lo sobrescribe el dvh si sí lo soporta). */
   min-height: calc(100vh - var(--space-6) * 2);
+  min-height: calc(100dvh - var(--space-6) * 2);
 }
 
-/* Tarjeta de login con efecto "vidrio esmerilado" — adaptada de un
-   snippet de Uiverse.io (autor: vinodjangid07). Cambios respecto al
-   original:
-   1) El blob de color era azul genérico (rgb(144,161,255)); acá usa el
-      dorado de marca (--login-blob-color) — si prefieres el azul
-      original, cambia solo esa variable.
-   2) Sin el tamaño fijo 220×250px ni el wrapper .cardContainer aparte
-      del original — acá adentro va un formulario de login real, así
-      que .login-card hace las dos cosas a la vez (la tarjeta de vidrio
-      Y el contenedor posicionador del blob), sin agregar un div extra
-      al HTML.
-   3) Blob reescalado y reposicionado (100px/220px de card no alcanzaba
-      para una tarjeta de ~420px de ancho con formulario adentro).
+/* Tarjeta de login — adaptada de un snippet de Uiverse.io (autor:
+   Priyanshu02020). Cambios respecto al original:
+   1) Sin el tamaño fijo (315px × 419px) ni el wrapper .login-box
+      aparte de .container — acá adentro va un formulario real, así
+      que .login-card hace las dos cosas (tarjeta + posicionador del
+      borde giratorio), sin agregar divs nuevos al HTML.
+   2) El borde giratorio (antes blanco puro) usa el dorado de marca
+      (--login-blob-color) en vez de un color neutro.
+   3) Sin el botón "Google sign-in" del original — este login es una
+      sola clave compartida, no hay proveedores externos de acceso.
+   4) El "logo" (un ícono de persona dibujado a mano con ::before/
+      ::after) se reemplaza por la misma caja decorativa PERO con el
+      candado que ya tenías (.login-card__icon) adentro — mismo
+      lenguaje visual del original, sin inventar un ícono nuevo que no
+      viene al caso para un panel de administración.
+   5) Colores neutros (#272727, #3a3a3a) recoloreados a la misma
+      familia café oscuro que ya usa el resto del panel.
    La tarjeta es oscura A PROPÓSITO, sin importar si el resto del panel
    está en modo claro u oscuro — es la pantalla de bienvenida antes de
    entrar, no parte del panel en sí, así que no usa las variables de
@@ -220,36 +231,35 @@ button {
   max-width: 420px;
   padding: var(--space-8) var(--space-6);
   border-radius: var(--radius-lg);
-  background-color: rgba(31, 26, 20, 0.45);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: var(--shadow-lg);
-  /* El blob de abajo se sale del borde a propósito (right:-30px) — sin
-     esto, en móvil podría empujar el ancho de toda la página y causar
-     scroll horizontal. Con overflow:hidden, el blob se recorta en el
-     borde redondeado de la tarjeta en vez de escaparse del layout. */
+  background-color: #1f1a14;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    inset 0 40px 60px -8px rgba(255, 255, 255, 0.06),
+    inset 0 0 12px -4px rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
-/* El blob de color detrás de la tarjeta — el vidrio esmerilado de arriba
-   lo difumina a través suyo. Sin esto, backdrop-filter no tiene mucho
-   que desenfocar sobre un fondo plano y el efecto casi no se nota. */
+/* El borde giratorio del original — un conic-gradient que da toda la
+   vuelta detrás de la tarjeta; solo se ve en la franja de 1px que
+   asoma por fuera del fondo opaco de arriba. overflow:hidden en
+   .login-card (arriba) evita que el resto del giro se escape del
+   layout — mismo motivo que ya se documentó para el blob de la
+   versión anterior de esta tarjeta. */
 .login-card::before {
   content: '';
   position: absolute;
-  z-index: -1;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background-color: color-mix(in srgb, var(--login-blob-color) 25%, transparent);
-  right: -30px;
-  top: 30px;
-  transition: transform 1s;
-}
-
-.login-card:hover::before {
-  transform: translate(-50px, 60px);
+  inset: -50px;
+  z-index: -2;
+  background: conic-gradient(
+    from 45deg,
+    transparent 75%,
+    var(--login-blob-color),
+    transparent 100%
+  );
+  animation: spin 4s ease-in-out infinite;
 }
 
 .login-card__header {
@@ -257,11 +267,24 @@ button {
   margin-bottom: var(--space-6);
 }
 
+/* Caja decorativa alrededor del candado — mismo tratamiento "logo" del
+   original (gradiente diagonal + sombra tipo relieve + borde claro),
+   con el ícono que ya tenías adentro en vez de uno nuevo. */
 .login-card__icon {
-  display: inline-block;
-  font-size: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
   margin-bottom: var(--space-3);
-  color: #000;
+  font-size: 1.6rem;
+  color: var(--login-blob-color);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.2));
+  border: 2px solid var(--login-blob-color);
+  border-radius: 20px;
+  box-shadow:
+    8px 8px 16px rgba(0, 0, 0, 0.25),
+    -8px -8px 16px rgba(255, 255, 255, 0.04);
 }
 
 .login-card__title {
@@ -285,6 +308,46 @@ button {
   text-align: center;
   margin-top: var(--space-5);
   color: #c4b8a8;
+}
+
+/* Input y botón oscuros, escapados a .login-form para no afectar el
+   resto de los formularios del panel (Insumos, Proveedores, etc.),
+   que comparten las mismas clases .form-field__input/.btn--primary. */
+.login-form .form-field__label {
+  color: #c4b8a8;
+}
+
+.login-form .form-field__input {
+  background: #2a2319;
+  border: none;
+  border-radius: 12px;
+  color: #f5f0e8;
+}
+
+.login-form .form-field__input::placeholder {
+  color: #7a6a58;
+}
+
+.login-form .form-field__input:focus {
+  border: none;
+  outline: 1px solid var(--login-blob-color);
+  box-shadow: none;
+}
+
+.login-form .btn--primary {
+  background: #332b1f;
+  color: #f5f0e8;
+  box-shadow:
+    inset 0px 3px 6px -4px rgba(255, 255, 255, 0.3),
+    inset 0px -3px 6px -2px rgba(0, 0, 0, 0.6);
+}
+
+.login-form .btn--primary:hover {
+  background: color-mix(in srgb, var(--login-blob-color) 25%, #332b1f);
+  box-shadow:
+    inset 0px 3px 6px rgba(255, 255, 255, 0.3),
+    inset 0px -3px 6px rgba(0, 0, 0, 0.6),
+    0px 0px 8px rgba(212, 174, 120, 0.15);
 }
 
 /* ═══════════════════════════════════════════
@@ -791,7 +854,24 @@ button {
    .stat-card, .produccion-card, .insumo-form y .proveedor-form usaban
    la MISMA superficie (fondo, borde, radio, sombra, padding) copiada
    cuatro veces. Se declara una sola vez acá; cada uno agrega debajo
-   solo lo que de verdad lo distingue (grid, flex, hover, margen). */
+   solo lo que de verdad lo distingue (grid, flex, hover, margen).
+
+   Nota de historial: se probó adaptar acá un snippet de Uiverse.io
+   (autor: iconicchandu) con fondo oscuro fijo + backdrop-filter. Se
+   revirtió por 2 problemas reales que salieron al probarlo:
+   1) El fondo era SIEMPRE oscuro sin importar el tema — a diferencia
+      del login (que sí debe verse igual siempre, es una pantalla de
+      bienvenida aparte del panel), estas tarjetas SÍ son parte del
+      panel y deben respetar el cambio de tema — en modo claro se
+      veían oscuras y no armonizaban con index.html.
+   2) backdrop-filter: blur(20px) sobre un formulario completo con
+      muchos campos es caro de recalcular en cada tecla — se sentía
+      como que el teclado no respondía al escribir en Insumos/
+      Proveedores. Con var(--color-surface) plano (sin blur) no pasa,
+      porque el navegador no tiene que recomponer nada al tipear.
+   Volvió a la superficie simple de var(--color-*), que sí cambia sola
+   entre modo claro/oscuro (sección 15) porque todo el contenido de
+   adentro ya usa esas mismas variables. */
 .stat-card,
 .produccion-card,
 .insumo-form,
@@ -1194,6 +1274,17 @@ button {
 .insumos .empty-state {
   border: none;
   box-shadow: none;
+}
+
+/* El diagnóstico de pedidos reutiliza .insumos como contenedor (mismo
+   fondo/borde/radio/sombra que ya existía) pero .insumos no trae
+   padding propio — sus celdas sí tienen buen padding interno, pero el
+   contenedor toca el borde de la tarjeta directo, se ve apretado.
+   Escapado a [data-component="diagnostico-pedidos"] para no darle
+   padding también a la tabla real de Insumos, que comparte la misma
+   clase .insumos y no lo pidió. */
+[data-component='diagnostico-pedidos'] .insumos {
+  padding: var(--space-2);
 }
 
 .insumo-table {
@@ -2608,6 +2699,13 @@ button {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Borde giratorio de .login-card (sección 2) */
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
   }
 }
 
