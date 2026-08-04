@@ -186,6 +186,46 @@ export function getCartCount() {
   return getCart().reduce((sum, i) => sum + i.cantidad, 0);
 }
 
+/**
+ * Sincroniza el carrito guardado contra el catálogo real del backend
+ * (ver fetchCatalogo en core/api.js): corrige el precio y el nombre de
+ * los items y saca los productos que ya no están activos.
+ *
+ * Sin esto, un carrito armado antes de un cambio de precio en el panel
+ * mandaría el precio viejo y el backend rechazaría el pedido entero
+ * (validarItem cruza cada precio contra la tabla productos) — y como el
+ * envío al backend no bloquea el flujo de WhatsApp, el pedido se
+ * perdería sin que nadie se enterara.
+ *
+ * @param {Array<{ id: number|string, nombre: string, precio: number }>} catalogo
+ * @returns {{ actualizados: number, removidos: number }}
+ */
+export function syncCartWithCatalogo(catalogo) {
+  if (!Array.isArray(catalogo) || catalogo.length === 0) {
+    return { actualizados: 0, removidos: 0 };
+  }
+
+  const porId = new Map(catalogo.map((p) => [String(p.id), p]));
+  const items = getCart();
+  let actualizados = 0;
+
+  const vigentes = items.filter((item) => porId.has(String(item.id)));
+  for (const item of vigentes) {
+    const producto = porId.get(String(item.id));
+    const precio = Number(producto.precio);
+    if (item.precio !== precio || item.nombre !== producto.nombre) {
+      item.precio = precio;
+      item.nombre = producto.nombre;
+      actualizados++;
+    }
+  }
+
+  const removidos = items.length - vigentes.length;
+  if (actualizados > 0 || removidos > 0) saveCart(vigentes);
+
+  return { actualizados, removidos };
+}
+
 /** Total en pesos */
 export function getCartTotal() {
   return getCart().reduce((sum, i) => sum + i.precio * i.cantidad, 0);

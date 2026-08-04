@@ -92,6 +92,109 @@ try {
     }
   }
 
+  /* Migración: activo (0/1) -> estado (activo/borrador/agotado/
+     descontinuado) + sku/descripcion/actualizado_por nuevas. SQLite no
+     permite cambiar el tipo de una columna existente con ALTER TABLE —
+     mismo procedimiento de reconstrucción ya usado para insumo_id
+     (sección de receta_ingredientes/produccion_ingredientes): crear
+     tabla nueva, copiar datos, borrar la vieja, renombrar. Acá no hace
+     falta tocar `PRAGMA foreign_keys` como allá porque ninguna tabla
+     referencia productos(id) — el resto guarda producto_id sin FK.
+     Los productos que estaban activo=0 pasan a 'agotado' (no
+     'descontinuado') — es la lectura más segura de un valor booleano
+     que no decía POR QUÉ estaba desactivado; revísalos y ajústalos a
+     mano si alguno en realidad ya no se vende más. */
+  function migrarProductosEstadoYMetadata() {
+    const existe = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'productos'")
+      .get();
+    if (!existe) return; // base de datos nueva: el CREATE TABLE de abajo ya crea el esquema final
+
+    const columnas = db
+      .prepare('PRAGMA table_info(productos)')
+      .all()
+      .map((c) => c.name);
+    if (columnas.includes('estado')) return; // ya migrada en un arranque anterior
+
+    console.log(
+      '[db] Reconstruyendo productos: activo -> estado + sku/descripcion/actualizado_por (migración)...',
+    );
+    const migrar = db.transaction(() => {
+      db.exec(`
+        CREATE TABLE productos_nueva (
+          id              INTEGER PRIMARY KEY,
+          nombre          TEXT NOT NULL,
+          categoria       TEXT NOT NULL,
+          precio          REAL NOT NULL CHECK (precio > 0 AND precio <= 1000),
+          estado          TEXT NOT NULL DEFAULT 'activo'
+                            CHECK (estado IN ('activo', 'borrador', 'agotado', 'descontinuado')),
+          sku             TEXT UNIQUE,
+          descripcion     TEXT,
+          actualizado_por TEXT,
+          creado_en       TEXT NOT NULL DEFAULT (datetime('now')),
+          actualizado_en  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`
+        INSERT INTO productos_nueva (id, nombre, categoria, precio, estado, creado_en, actualizado_en)
+        SELECT id, nombre, categoria, precio,
+               CASE WHEN activo = 1 THEN 'activo' ELSE 'agotado' END,
+               creado_en, actualizado_en
+        FROM productos
+      `);
+      db.exec('DROP TABLE productos');
+      db.exec('ALTER TABLE productos_nueva RENAME TO productos');
+    });
+    migrar();
+  }
+  migrarProductosEstadoYMetadata();
+
+  /* Productos: antes vivían fijos en código (PRODUCTOS_CATALOGO, en
+     validation.js) — 9 productos con id numérico 1-9, sin precio
+     guardado en ningún lado (el precio real solo existía como texto
+     en catalogo.html, nunca se validaba contra nada del lado del
+     servidor — hueco de seguridad real, cualquiera podía mandar el
+     precio que quisiera en un pedido). Ahora es una tabla real.
+
+     La siembra usa los MISMOS ids 1-9 y los MISMOS precios que ya
+     estaban en catalogo.html — así ninguna receta/producción/
+     horneada/orden/ajuste que ya guardó ese productoId se rompe, y
+     ningún precio cambia solo por migrar de código a base de datos. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS productos (
+      id              INTEGER PRIMARY KEY,
+      nombre          TEXT NOT NULL,
+      categoria       TEXT NOT NULL,
+      precio          REAL NOT NULL CHECK (precio > 0 AND precio <= 1000),
+      estado          TEXT NOT NULL DEFAULT 'activo'
+                        CHECK (estado IN ('activo', 'borrador', 'agotado', 'descontinuado')),
+      sku             TEXT UNIQUE,
+      descripcion     TEXT,
+      actualizado_por TEXT,
+      creado_en       TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  const productosSemilla = [
+    { id: 1, nombre: 'Donuts Glaseadas', categoria: 'frituras', precio: 1.5 },
+    { id: 2, nombre: 'Buñuelos', categoria: 'frituras', precio: 2.5 },
+    { id: 3, nombre: 'Roscón de Arequipe', categoria: 'reposteria', precio: 2.5 },
+    { id: 4, nombre: 'Croissant', categoria: 'bolleria', precio: 2.0 },
+    { id: 5, nombre: 'Almojábanas', categoria: 'panaderia', precio: 2.5 },
+    { id: 6, nombre: 'Pandebono', categoria: 'panaderia', precio: 2.5 },
+    { id: 7, nombre: 'Pan de Yuca', categoria: 'panaderia', precio: 2.5 },
+    { id: 8, nombre: 'Conchas', categoria: 'reposteria', precio: 1.75 },
+    { id: 9, nombre: 'Pan mariquiteño', categoria: 'reposteria', precio: 2.5 },
+  ];
+  const insertarProducto = db.prepare(
+    'INSERT OR IGNORE INTO productos (id, nombre, categoria, precio) VALUES (?, ?, ?, ?)',
+  );
+  const sembrarProductos = db.transaction((filas) => {
+    for (const p of filas) insertarProducto.run(p.id, p.nombre, p.categoria, p.precio);
+  });
+  sembrarProductos(productosSemilla);
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS insumos (
       id                          TEXT PRIMARY KEY,

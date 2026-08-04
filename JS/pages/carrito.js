@@ -14,9 +14,11 @@ import {
   clearCart,
   getCartTotal,
   escapeHTML,
+  syncCartWithCatalogo,
 } from '../core/cart.js';
 import { formatPrice } from '../core/format.js';
 import { t } from '../core/i18n.js';
+import { fetchCatalogo } from '../core/api.js';
 
 /** Devuelve '<count> <palabra>' pluralizando según el idioma activo */
 function pluralizeItems(count) {
@@ -32,6 +34,7 @@ const els = {
   proceder: () => document.querySelector('[data-btn-proceder-pago]'),
   vaciar: () => document.querySelector('[data-btn-vaciar-carrito]'),
   cantidadTexto: () => document.querySelector('[data-carrito-cantidad-texto]'),
+  aviso: () => document.querySelector('[data-carrito-aviso]'),
 };
 
 /** Genera el HTML de un item del carrito */
@@ -83,6 +86,32 @@ function renderCarrito() {
   if (els.vaciar()) els.vaciar().hidden = !hay;
 }
 
+/** Pone la canasta al día con el catálogo real antes de que el cliente
+ *  siga al checkout: si el precio cambió o el producto dejó de venderse,
+ *  el backend rechazaría el pedido completo (ver validarItem en
+ *  validation.js) y, como el envío no bloquea el flujo de WhatsApp, se
+ *  perdería sin aviso. Se le dice al cliente lo que cambió en vez de
+ *  modificarle la canasta en silencio. */
+async function initSyncCatalogo() {
+  const catalogo = await fetchCatalogo();
+  if (!catalogo) return;
+
+  const { actualizados, removidos } = syncCartWithCatalogo(catalogo);
+  if (actualizados === 0 && removidos === 0) return;
+
+  renderCarrito();
+
+  const aviso = els.aviso();
+  if (!aviso) return;
+  aviso.textContent = [
+    actualizados > 0 ? t('cart_sync_precios') : '',
+    removidos > 0 ? t('cart_sync_removidos') : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  aviso.hidden = false;
+}
+
 /** Delegación de eventos en la lista de items */
 function initItemControls() {
   document.addEventListener('click', (e) => {
@@ -129,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initItemControls();
   initVaciar();
   initProceder();
+  initSyncCatalogo();
   window.addEventListener('cart:updated', renderCarrito);
   window.addEventListener('lang:changed', renderCarrito);
 });

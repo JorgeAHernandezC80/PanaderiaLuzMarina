@@ -4,6 +4,13 @@
  * nunca confiar en lo que llega del cliente, validar tipo, rango y longitud.
  */
 
+/* Antes este archivo era "puro" (sin tocar la base de datos) — el único
+   caso que lo necesita es productos: antes vivían fijos en código
+   (un objeto PRODUCTOS_CATALOGO fijo), ahora es una tabla real (ver db.js),
+   así que validarItem puede cruzar el precio real de cada producto
+   contra lo que manda el cliente, en vez de confiar ciegamente en él. */
+const db = require('./db');
+
 const MAX_ITEMS = 50;
 const MAX_NOMBRE_LEN = 120;
 const MAX_CLIENTE_LEN = 80;
@@ -73,26 +80,107 @@ const MAX_TEMPERATURA_HORNEADO_C = 350; // horno doméstico/industrial, tope gen
 const MAX_TIEMPO_HORNEADO_MIN = 300; // 5h, tope defensivo
 const MAX_MERMA_PCT = 100;
 
-/* Catálogo de productos: vive como constantes estáticas en el HTML del
-   catálogo (catalogo.html), no en la base de datos. Se replica aquí como
-   whitelist para no confiar en el nombre/id/categoría de producto que
-   mande el cliente al registrar una horneada. Si se agrega un producto
-   nuevo al catálogo, hay que agregarlo también aquí (con la MISMA
-   categoría que su data-categoria en catalogo.html) y en
-   JS/pages/admin.js. La categoría es la fuente de verdad para Recetas —
-   no se duplica como campo propio ahí, se lee de acá. */
+/* Categorías de producto: whitelist cerrada, igual que las de insumo. El
+   producto en sí ya no vive aquí (ver obtenerProducto), pero su categoría
+   sigue siendo un conjunto fijo — los filtros de catalogo.html y el
+   agrupado de Recetas dependen de que no aparezcan valores nuevos sin
+   que nadie los haya previsto. La categoría es la fuente de verdad para
+   Recetas — no se duplica como campo propio ahí, se lee de acá. */
 const CATEGORIAS_PRODUCTO = ['panaderia', 'reposteria', 'bolleria', 'frituras'];
-const PRODUCTOS_CATALOGO = {
-  1: { nombre: 'Donuts Glaseadas', categoria: 'frituras' },
-  2: { nombre: 'Buñuelos', categoria: 'frituras' },
-  3: { nombre: 'Roscón de Arequipe', categoria: 'reposteria' },
-  4: { nombre: 'Croissant', categoria: 'bolleria' },
-  5: { nombre: 'Almojábanas', categoria: 'panaderia' },
-  6: { nombre: 'Pandebono', categoria: 'panaderia' },
-  7: { nombre: 'Pan de Yuca', categoria: 'panaderia' },
-  8: { nombre: 'Conchas', categoria: 'reposteria' },
-  9: { nombre: 'Pan mariquiteño', categoria: 'reposteria' },
-};
+/* Antes era un objeto fijo con 9 productos hardcodeados, sin precio (el
+   precio real solo vivía como texto en catalogo.html, nunca se validaba
+   del lado del servidor). Ahora consulta la tabla productos (ver db.js)
+   de verdad — mismos ids 1-9 que ya tenían, para no romper ninguna
+   receta/producción/horneada/orden/ajuste existente. */
+function obtenerProducto(id) {
+  return db
+    .prepare(
+      'SELECT id, nombre, categoria, precio, estado, sku, descripcion, actualizado_por FROM productos WHERE id = ?',
+    )
+    .get(id);
+}
+
+const MAX_PRODUCTO_NOMBRE_LEN = 80;
+// Mismo tope que MAX_PRECIO (validarItem) y que el CHECK de la columna
+// precio en db.js: un producto nunca debería costar más de lo que un
+// solo item de pedido puede costar.
+const MAX_PRODUCTO_PRECIO = MAX_PRECIO;
+const ESTADOS_PRODUCTO = ['activo', 'borrador', 'agotado', 'descontinuado'];
+const MAX_PRODUCTO_SKU_LEN = 40;
+const MAX_PRODUCTO_DESCRIPCION_LEN = 300;
+const MAX_PRODUCTO_ACTUALIZADO_POR_LEN = 80; // mismo tope que horneada/ajuste (registradoPor)
+
+/** Valida los campos de un producto para crear/editar. `estado`, `sku`,
+ *  `descripcion` y `actualizadoPor` son opcionales — si no vienen, se
+ *  conserva lo que ya tenía el producto (ver PUT /productos/:id en
+ *  server.js, que hace ese fallback). */
+function validarProducto(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const nombre = typeof datos.nombre === 'string' ? datos.nombre.trim() : '';
+  if (!nombre || nombre.length > MAX_PRODUCTO_NOMBRE_LEN) {
+    throw new ValidationError(
+      `El nombre es obligatorio (máx. ${MAX_PRODUCTO_NOMBRE_LEN} caracteres).`,
+    );
+  }
+
+  if (!CATEGORIAS_PRODUCTO.includes(datos.categoria)) {
+    throw new ValidationError(
+      `Categoría inválida. Debe ser una de: ${CATEGORIAS_PRODUCTO.join(', ')}.`,
+    );
+  }
+
+  const precio = Number(datos.precio);
+  if (!Number.isFinite(precio) || precio <= 0 || precio > MAX_PRODUCTO_PRECIO) {
+    throw new ValidationError(`El precio debe ser mayor a 0 y menor a ${MAX_PRODUCTO_PRECIO}.`);
+  }
+
+  const resultado = { nombre, categoria: datos.categoria, precio: Math.round(precio * 100) / 100 };
+
+  if (datos.estado !== undefined) {
+    if (!ESTADOS_PRODUCTO.includes(datos.estado)) {
+      throw new ValidationError(
+        `Estado inválido. Debe ser uno de: ${ESTADOS_PRODUCTO.join(', ')}.`,
+      );
+    }
+    resultado.estado = datos.estado;
+  }
+
+  if (datos.sku !== undefined) {
+    const sku = typeof datos.sku === 'string' ? datos.sku.trim() : '';
+    if (sku.length > MAX_PRODUCTO_SKU_LEN) {
+      throw new ValidationError(`El SKU no puede superar los ${MAX_PRODUCTO_SKU_LEN} caracteres.`);
+    }
+    // '' -> null: un SKU vacío no debe chocar contra otro vacío por el
+    // UNIQUE de la columna (NULL sí permite varios, '' no lo haría).
+    resultado.sku = sku === '' ? null : sku;
+  }
+
+  if (datos.descripcion !== undefined) {
+    const descripcion = typeof datos.descripcion === 'string' ? datos.descripcion.trim() : '';
+    if (descripcion.length > MAX_PRODUCTO_DESCRIPCION_LEN) {
+      throw new ValidationError(
+        `La descripción no puede superar los ${MAX_PRODUCTO_DESCRIPCION_LEN} caracteres.`,
+      );
+    }
+    resultado.descripcion = descripcion === '' ? null : descripcion;
+  }
+
+  if (datos.actualizadoPor !== undefined) {
+    const actualizadoPor =
+      typeof datos.actualizadoPor === 'string' ? datos.actualizadoPor.trim() : '';
+    if (actualizadoPor.length > MAX_PRODUCTO_ACTUALIZADO_POR_LEN) {
+      throw new ValidationError(
+        `El nombre de quien actualiza no puede superar los ${MAX_PRODUCTO_ACTUALIZADO_POR_LEN} caracteres.`,
+      );
+    }
+    resultado.actualizadoPor = actualizadoPor === '' ? null : actualizadoPor;
+  }
+
+  return resultado;
+}
 
 const AJUSTE_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
 const MAX_AJUSTE_CANTIDAD = 9999;
@@ -136,6 +224,27 @@ function validarItem(item, idx) {
     const productoIdStr = String(item.productoId).trim();
     if (productoIdStr.length > 20) {
       throw new ValidationError(`Item #${idx}: productoId inválido.`);
+    }
+    // Cruce contra el precio real (tabla productos, ver db.js): antes el
+    // único chequeo era que la suma de items coincidiera con el total
+    // declarado — pero ambos números los manda el mismo cliente, así que
+    // alguien podía mandar cualquier precio bajo para todo el pedido y
+    // pasaba la validación igual. Con productoId siempre disponible
+    // (cart.js lo manda desde que existe), ya no hace falta confiar
+    // ciegamente en item.precio.
+    const productoIdNum = Number(productoIdStr);
+    if (Number.isInteger(productoIdNum)) {
+      const producto = obtenerProducto(productoIdNum);
+      if (!producto || producto.estado !== 'activo') {
+        throw new ValidationError(`Item #${idx}: producto no disponible.`);
+      }
+      // Medio centavo de tolerancia: solo para absorber el ruido de coma
+      // flotante al ir y volver por JSON, no para dejar pasar diferencias
+      // reales de precio (un centavo por unidad × 999 unidades × 50 items
+      // ya es dinero).
+      if (Math.abs(precio - producto.precio) > 0.005) {
+        throw new ValidationError(`Item #${idx}: el precio no coincide con el del catálogo.`);
+      }
     }
   }
 }
@@ -506,7 +615,7 @@ function validarHorneada(datos) {
 
   const { productoId, cantidad, fecha, hora } = datos;
 
-  const producto = PRODUCTOS_CATALOGO[Number(productoId)];
+  const producto = obtenerProducto(Number(productoId));
   if (!producto) {
     throw new ValidationError('Producto inválido.');
   }
@@ -610,7 +719,7 @@ function validarAjusteInventario(datos) {
 
   const { productoId, cantidad, motivo, fecha, hora } = datos;
 
-  const productoAjuste = PRODUCTOS_CATALOGO[Number(productoId)];
+  const productoAjuste = obtenerProducto(Number(productoId));
   if (!productoAjuste) {
     throw new ValidationError('Producto inválido.');
   }
@@ -735,7 +844,7 @@ function validarReceta(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const producto = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  const producto = obtenerProducto(Number(datos.productoId));
   if (!producto) {
     throw new ValidationError('Producto inválido.');
   }
@@ -855,7 +964,7 @@ function validarProduccion(datos) {
     throw new ValidationError('Cuerpo de la petición inválido.');
   }
 
-  const productoProduccion = PRODUCTOS_CATALOGO[Number(datos.productoId)];
+  const productoProduccion = obtenerProducto(Number(datos.productoId));
   if (!productoProduccion) {
     throw new ValidationError('Producto inválido.');
   }
@@ -944,8 +1053,10 @@ module.exports = {
   MONEDAS_PROVEEDOR,
   validarHorneada,
   HORNEADA_ID_RE,
-  PRODUCTOS_CATALOGO,
+  obtenerProducto,
+  validarProducto,
   CATEGORIAS_PRODUCTO,
+  ESTADOS_PRODUCTO,
   validarAjusteInventario,
   AJUSTE_ID_RE,
   MOTIVOS_AJUSTE,

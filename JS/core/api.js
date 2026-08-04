@@ -34,3 +34,25 @@ export function apiFetch(path, { timeout, ...options } = {}) {
     clearTimeout(timer),
   );
 }
+
+/**
+ * Trae el catálogo activo (GET /catalogo, público, sin token). Es la fuente
+ * de verdad del precio: el backend rechaza cualquier pedido cuyo precio no
+ * coincida con el de la tabla productos, así que el precio escrito a mano en
+ * catalogo.html solo sirve como respaldo hasta que responde esta petición.
+ * Devuelve null si el backend no responde, para que quien llame decida
+ * (nunca vaciar el catálogo del cliente por un problema de red).
+ *
+ * @returns {Promise<Array<{ id: number, nombre: string, categoria: string, precio: number }> | null>}
+ */
+export async function fetchCatalogo() {
+  try {
+    const res = await apiFetch('/catalogo', { timeout: 8000 });
+    if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+    const { productos } = await res.json();
+    return Array.isArray(productos) ? productos : null;
+  } catch (err) {
+    console.warn('[api] No se pudo obtener el catálogo:', err.message);
+    return null;
+  }
+}
