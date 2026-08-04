@@ -301,7 +301,7 @@ button {
 
 .login-card__subtitle {
   color: #c4b8a8;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .login-card__footer {
@@ -2737,7 +2737,7 @@ button {
    por terminado — un cambio de paleta así conviene verlo, no solo
    leerlo. */
 [data-theme='dark'] {
-  --color-bg: #111009;
+  --color-bg: #f5f0e8;
   --color-surface: #1c1a16;
   --color-text: #f5f0e8;
   --color-text-muted: #c4b8a8;
