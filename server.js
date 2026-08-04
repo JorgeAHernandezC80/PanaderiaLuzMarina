@@ -47,7 +47,8 @@ const {
   PROVEEDOR_ID_RE,
   validarHorneada,
   HORNEADA_ID_RE,
-  PRODUCTOS_CATALOGO,
+  obtenerProducto,
+  validarProducto,
   validarAjusteInventario,
   AJUSTE_ID_RE,
   validarStockMinimo,
@@ -1229,11 +1230,180 @@ app.delete('/ajustes-inventario/:id', requireAuth, (req, res) => {
 });
 
 /* ═══════════════════════════════════════════
+   PRODUCTOS — antes vivían fijos en código (PRODUCTOS_CATALOGO en
+   validation.js); ahora es una tabla real (ver db.js) con precio de
+   verdad, para que validarItem pueda cruzarlo contra lo que manda
+   cada pedido. Sin DELETE a propósito: un producto sale de circulación
+   cambiando su estado a 'descontinuado', nunca borrándolo — ya tiene
+   historial en recetas, producciones, horneadas, ajustes y pedidos, y
+   borrarlo dejaría todo eso huérfano.
+   ═══════════════════════════════════════════ */
+function serializeProducto(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    precio: row.precio,
+    estado: row.estado,
+    sku: row.sku,
+    descripcion: row.descripcion,
+    actualizadoPor: row.actualizado_por,
+    creadoEn: sqliteDatetimeAIso(row.creado_en),
+    actualizadoEn: sqliteDatetimeAIso(row.actualizado_en),
+  };
+}
+
+/** Un producto solo se puede pedir/hornear/producir cuando está activo;
+ *  los demás estados existen para sacarlo de circulación sin borrarlo. */
+function productosActivos() {
+  return db
+    .prepare("SELECT * FROM productos WHERE estado = 'activo' ORDER BY nombre COLLATE NOCASE ASC")
+    .all();
+}
+
+app.get('/productos', requireAuth, (req, res) => {
+  try {
+    const filas = db.prepare('SELECT * FROM productos ORDER BY nombre COLLATE NOCASE ASC').all();
+    res.json(filas.map(serializeProducto));
+  } catch (err) {
+    console.error('[GET /productos]', err.message);
+    res.status(500).json({ error: 'Error al obtener los productos.' });
+  }
+});
+
+app.post('/productos', requireAuth, rateLimit, (req, res) => {
+  let datos;
+  try {
+    datos = validarProducto(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+  try {
+    const info = db
+      .prepare(
+        `INSERT INTO productos (nombre, categoria, precio, estado, sku, descripcion, actualizado_por)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        datos.nombre,
+        datos.categoria,
+        datos.precio,
+        datos.estado ?? 'activo',
+        datos.sku ?? null,
+        datos.descripcion ?? null,
+        datos.actualizadoPor ?? null,
+      );
+    const fila = db.prepare('SELECT * FROM productos WHERE id = ?').get(info.lastInsertRowid);
+    broadcast({ tipo: 'producto:nuevo', producto: serializeProducto(fila) });
+    res.status(201).json(serializeProducto(fila));
+  } catch (err) {
+    if (esConflictoDeSku(err)) {
+      return res.status(409).json({ error: 'Ese SKU ya lo usa otro producto.' });
+    }
+    console.error('[POST /productos]', err.message);
+    res.status(500).json({ error: 'Error al crear el producto.' });
+  }
+});
+
+app.put('/productos/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const idNum = Number(id);
+  if (!Number.isInteger(idNum) || idNum <= 0) {
+    return res.status(400).json({ error: 'Identificador de producto inválido.' });
+  }
+  const existente = obtenerProducto(idNum);
+  if (!existente) {
+    return res.status(404).json({ error: 'Producto no encontrado.' });
+  }
+
+  let datos;
+  try {
+    datos = validarProducto(req.body);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  try {
+    // estado/sku/descripcion/actualizadoPor son opcionales en
+    // validarProducto (ver validation.js) — si no vienen en la
+    // petición, se conserva lo que el producto ya tenía.
+    const estado = datos.estado !== undefined ? datos.estado : existente.estado;
+    const sku = datos.sku !== undefined ? datos.sku : existente.sku;
+    const descripcion = datos.descripcion !== undefined ? datos.descripcion : existente.descripcion;
+    const actualizadoPor =
+      datos.actualizadoPor !== undefined ? datos.actualizadoPor : existente.actualizado_por;
+    db.prepare(
+      `UPDATE productos
+       SET nombre = ?, categoria = ?, precio = ?, estado = ?, sku = ?, descripcion = ?,
+           actualizado_por = ?, actualizado_en = datetime('now')
+       WHERE id = ?`,
+    ).run(
+      datos.nombre,
+      datos.categoria,
+      datos.precio,
+      estado,
+      sku,
+      descripcion,
+      actualizadoPor,
+      idNum,
+    );
+    const fila = db.prepare('SELECT * FROM productos WHERE id = ?').get(idNum);
+    broadcast({ tipo: 'producto:actualizado', producto: serializeProducto(fila) });
+    res.json(serializeProducto(fila));
+  } catch (err) {
+    if (esConflictoDeSku(err)) {
+      return res.status(409).json({ error: 'Ese SKU ya lo usa otro producto.' });
+    }
+    console.error('[PUT /productos/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar el producto.' });
+  }
+});
+
+/** El único UNIQUE de la tabla productos es sku, así que un choque de
+ *  unicidad solo puede venir de ahí. Los demás errores de constraint
+ *  (los CHECK de precio/estado) no son un conflicto de SKU y deben
+ *  seguir su camino normal — validarProducto ya los ataja antes. */
+function esConflictoDeSku(err) {
+  return err.code === 'SQLITE_CONSTRAINT_UNIQUE' || err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY';
+}
+
+/* Catálogo público (sin token): el catálogo del cliente ya no puede
+   depender de los precios escritos a mano en catalogo.html, porque
+   validarItem ahora rechaza cualquier pedido cuyo precio no coincida
+   con el de la tabla productos. Si el HTML quedara desactualizado tras
+   un cambio de precio en el panel, los pedidos se perderían en
+   silencio (checkout.js manda la orden sin bloquear el flujo de
+   WhatsApp). Con este endpoint el precio se sincroniza en el navegador
+   antes de armar el carrito. Devuelve solo lo que el cliente necesita
+   ver — nada de sku, estado ni metadatos internos. */
+app.get('/catalogo', (req, res) => {
+  try {
+    res.json({
+      productos: productosActivos().map((fila) => ({
+        id: fila.id,
+        nombre: fila.nombre,
+        categoria: fila.categoria,
+        precio: fila.precio,
+      })),
+    });
+  } catch (err) {
+    console.error('[GET /catalogo]', err.message);
+    res.status(500).json({ error: 'Error al obtener el catálogo.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
    STOCK MÍNIMO POR PRODUCTO — usado por las alertas de Inventario
    ═══════════════════════════════════════════ */
 app.put('/productos/:id/stock-minimo', requireAuth, (req, res) => {
   const { id } = req.params;
-  if (!PRODUCTOS_CATALOGO[Number(id)]) {
+  if (!obtenerProducto(Number(id))) {
     return res.status(400).json({ error: 'Producto inválido.' });
   }
 
@@ -1270,8 +1440,8 @@ app.put('/productos/:id/stock-minimo', requireAuth, (req, res) => {
    estado preparada que ya reservaron el pan pero aún no salieron. El cruce
    con órdenes es por productoId cuando el item lo trae (checkout.js lo
    manda desde JS/pages/checkout.js), y cae de vuelta al nombre para
-   órdenes creadas antes de ese cambio. Un producto que no exista en
-   PRODUCTOS_CATALOGO no se cuenta.
+   órdenes creadas antes de ese cambio. Un producto inactivo (o que no
+   exista) no se cuenta.
    ═══════════════════════════════════════════ */
 const STOCK_MINIMO_DEFAULT = 5;
 
@@ -1280,21 +1450,23 @@ const STOCK_MINIMO_DEFAULT = 5;
  * (GET /inventario/disponible, solo el número que ve el cliente) para no
  * duplicar la lógica de cruce entre ambos. */
 function calcularInventario(fechaConsulta) {
-  // Arranca con todos los productos del catálogo en cero, para que se
-  // vean incluso los que no tuvieron ningún movimiento ese día. También
-  // se indexa por id, para cruzar por productoId cuando esté disponible.
+  // Arranca con todos los productos ACTIVOS en cero, para que se vean
+  // incluso los que no tuvieron ningún movimiento ese día. También se
+  // indexa por id, para cruzar por productoId cuando esté disponible.
+  // Los productos desactivados no aparecen acá — ya no se venden/
+  // producen, no tiene sentido mostrarlos en el inventario del día.
   const porProducto = new Map();
   const porProductoId = new Map();
-  for (const [id, producto] of Object.entries(PRODUCTOS_CATALOGO)) {
+  for (const { id, nombre } of productosActivos()) {
     const entry = {
       productoId: String(id),
-      productoNombre: producto.nombre,
+      productoNombre: nombre,
       horneado: 0,
       preparado: 0,
       vendido: 0,
       ajustes: 0,
     };
-    porProducto.set(producto.nombre, entry);
+    porProducto.set(nombre, entry);
     porProductoId.set(String(id), entry);
   }
 
@@ -1403,7 +1575,7 @@ function serializeReceta(row, ingredientes) {
     id: row.id,
     productoId: row.producto_id,
     productoNombre: row.producto_nombre,
-    categoria: PRODUCTOS_CATALOGO[Number(row.producto_id)]?.categoria ?? null,
+    categoria: obtenerProducto(Number(row.producto_id))?.categoria ?? null,
     pesoMasaPorUnidadG: row.peso_masa_por_unidad_g,
     tiempoFermentacionMin: row.tiempo_fermentacion_min,
     tiempoHorneadoMin: row.tiempo_horneado_min,

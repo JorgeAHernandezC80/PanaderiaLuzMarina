@@ -152,6 +152,11 @@
         <div class="carrito__layout">
           <!-- Lista de productos -->
           <div class="carrito__items-wrapper">
+            <!-- Aviso de sincronización con el catálogo: lo llena carrito.js
+                 cuando un precio cambió o un producto dejó de estar
+                 disponible desde la última visita. -->
+            <p class="carrito__aviso" data-carrito-aviso role="status" hidden></p>
+
             <div class="carrito__items" data-carrito-items></div>
 
             <div class="carrito__vacio" data-carrito-vacio hidden>

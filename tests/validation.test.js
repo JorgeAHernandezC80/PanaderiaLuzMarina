@@ -2,7 +2,37 @@
  * @jest-environment node
  */
 
-const { validarOrden, ValidationError } = require('../validation');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+/* validation.js cruza el precio de cada item contra la tabla productos, así
+   que necesita una base de datos: se usa una temporal (como el resto de los
+   tests) en vez de la del repo, y por eso se requiere dentro de beforeAll,
+   una vez fijado DB_PATH. */
+let validarOrden;
+let ValidationError;
+let validarProducto;
+let db;
+let dbPath;
+
+beforeAll(() => {
+  dbPath = path.join(os.tmpdir(), `plm-validation-${process.pid}-${Date.now()}.db`);
+  process.env.DB_PATH = dbPath;
+  ({ validarOrden, ValidationError, validarProducto } = require('../validation'));
+  db = require('../db');
+});
+
+afterAll(() => {
+  db.close();
+  for (const suffix of ['', '-wal', '-shm']) {
+    try {
+      fs.unlinkSync(dbPath + suffix);
+    } catch {
+      /* ignore */
+    }
+  }
+});
 
 /** Construye una orden válida base; sobrescribe con overrides. */
 function ordenValida(overrides = {}) {
@@ -224,13 +254,66 @@ describe('validarOrden — items', () => {
   });
 
   test('preserva productoId cuando el item lo trae, saneado a string', () => {
+    const { precio } = db.prepare('SELECT precio FROM productos WHERE id = 6').get();
     const { items } = validarOrden(
       ordenValida({
-        items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 2, precio: 1.5 }],
-        total: 3,
+        items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 2, precio }],
+        total: 2 * precio,
       }),
     );
     expect(items[0].productoId).toBe('6');
+  });
+
+  test('rechaza un item cuyo precio no coincide con el del catálogo', () => {
+    const { precio } = db.prepare('SELECT precio FROM productos WHERE id = 6').get();
+    expect(() =>
+      validarOrden(
+        ordenValida({
+          items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 1, precio: precio / 2 }],
+          total: precio / 2,
+        }),
+      ),
+    ).toThrow('no coincide con el del catálogo');
+  });
+
+  test('acepta una diferencia de precio del orden del ruido de coma flotante', () => {
+    const { precio } = db.prepare('SELECT precio FROM productos WHERE id = 6').get();
+    expect(() =>
+      validarOrden(
+        ordenValida({
+          items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 1, precio: precio + 0.001 }],
+          total: precio,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  test('rechaza un item cuyo producto no está activo', () => {
+    const { precio } = db.prepare('SELECT precio FROM productos WHERE id = 6').get();
+    db.prepare("UPDATE productos SET estado = 'descontinuado' WHERE id = 6").run();
+    try {
+      expect(() =>
+        validarOrden(
+          ordenValida({
+            items: [{ productoId: 6, nombre: 'Pandebono', cantidad: 1, precio }],
+            total: precio,
+          }),
+        ),
+      ).toThrow('producto no disponible');
+    } finally {
+      db.prepare("UPDATE productos SET estado = 'activo' WHERE id = 6").run();
+    }
+  });
+
+  test('rechaza un item cuyo productoId no existe en el catálogo', () => {
+    expect(() =>
+      validarOrden(
+        ordenValida({
+          items: [{ productoId: 99999, nombre: 'Pan fantasma', cantidad: 1, precio: 2 }],
+          total: 2,
+        }),
+      ),
+    ).toThrow('producto no disponible');
   });
 
   test('deja productoId en null cuando el item no lo trae (compatibilidad con carritos viejos)', () => {
@@ -272,5 +355,91 @@ describe('validarOrden — total', () => {
       }),
     );
     expect(out.total).toBe(0.3);
+  });
+});
+
+describe('validarProducto', () => {
+  const productoValido = (overrides = {}) => ({
+    nombre: 'Pan de queso',
+    categoria: 'panaderia',
+    precio: 3.5,
+    ...overrides,
+  });
+
+  test('acepta un producto mínimo y recorta el nombre', () => {
+    const out = validarProducto(productoValido({ nombre: '  Pan de queso  ' }));
+    expect(out).toEqual({ nombre: 'Pan de queso', categoria: 'panaderia', precio: 3.5 });
+  });
+
+  test.each([null, undefined, 'texto', 42])('rechaza cuerpo no-objeto: %p', (datos) => {
+    expect(() => validarProducto(datos)).toThrow(ValidationError);
+  });
+
+  test.each(['', '   ', 'a'.repeat(81)])('rechaza nombre inválido: %p', (nombre) => {
+    expect(() => validarProducto(productoValido({ nombre }))).toThrow('nombre es obligatorio');
+  });
+
+  test.each(['pasteles', '', 'PANADERIA', undefined])(
+    'rechaza categoría fuera de la lista: %p',
+    (categoria) => {
+      expect(() => validarProducto(productoValido({ categoria }))).toThrow('Categoría inválida');
+    },
+  );
+
+  test.each([0, -1, 1001, NaN, 'abc'])('rechaza precio inválido: %p', (precio) => {
+    expect(() => validarProducto(productoValido({ precio }))).toThrow('precio debe ser');
+  });
+
+  test('redondea el precio a dos decimales', () => {
+    expect(validarProducto(productoValido({ precio: 2.005 })).precio).toBe(2.01);
+  });
+
+  test('acepta precio como string numérico', () => {
+    expect(validarProducto(productoValido({ precio: '4.25' })).precio).toBe(4.25);
+  });
+
+  test.each(['activo', 'borrador', 'agotado', 'descontinuado'])('acepta el estado %p', (estado) => {
+    expect(validarProducto(productoValido({ estado })).estado).toBe(estado);
+  });
+
+  test('rechaza un estado desconocido', () => {
+    expect(() => validarProducto(productoValido({ estado: 'inactivo' }))).toThrow(
+      'Estado inválido',
+    );
+  });
+
+  test('omite estado cuando no viene, para no pisar el que ya tiene el producto', () => {
+    expect(validarProducto(productoValido())).not.toHaveProperty('estado');
+  });
+
+  test('convierte SKU y descripción vacíos en null', () => {
+    // '' rompería el UNIQUE de sku en cuanto hubiera un segundo producto
+    // sin SKU; NULL sí admite repetidos.
+    const out = validarProducto(productoValido({ sku: '  ', descripcion: '  ' }));
+    expect(out.sku).toBeNull();
+    expect(out.descripcion).toBeNull();
+  });
+
+  test('recorta SKU, descripción y actualizadoPor', () => {
+    const out = validarProducto(
+      productoValido({ sku: ' PAN-01 ', descripcion: ' Rico ', actualizadoPor: ' Ana ' }),
+    );
+    expect(out).toMatchObject({ sku: 'PAN-01', descripcion: 'Rico', actualizadoPor: 'Ana' });
+  });
+
+  test('rechaza SKU demasiado largo', () => {
+    expect(() => validarProducto(productoValido({ sku: 'x'.repeat(41) }))).toThrow('SKU no puede');
+  });
+
+  test('rechaza descripción demasiado larga', () => {
+    expect(() => validarProducto(productoValido({ descripcion: 'x'.repeat(301) }))).toThrow(
+      'descripción no puede',
+    );
+  });
+
+  test('rechaza actualizadoPor demasiado largo', () => {
+    expect(() => validarProducto(productoValido({ actualizadoPor: 'x'.repeat(81) }))).toThrow(
+      'quien actualiza no puede',
+    );
   });
 });

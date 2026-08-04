@@ -120,6 +120,25 @@ const CONFIG = Object.freeze({
     insumosCount: '#insumos-count',
     insumosContainer: '#insumos-container',
     tplInsumoRow: '#tpl-insumo-row',
+
+    // Productos
+    productosView: '#productos-view',
+    productosCount: '#productos-count',
+    productosTbody: '#productos-tbody',
+    productosVacio: '#productos-vacio',
+    productoForm: '#producto-form',
+    productoId: '#producto-id',
+    productoNombre: '#producto-nombre',
+    productoCategoria: '#producto-categoria',
+    productoPrecio: '#producto-precio',
+    productoEstado: '#producto-estado',
+    productoSku: '#producto-sku',
+    productoDescripcion: '#producto-descripcion',
+    productoActualizadoPor: '#producto-actualizado-por',
+    productoSubmitLabel: '#producto-submit-label',
+    productoCancelarEdicion: '#producto-cancelar-edicion',
+    productoError: '#producto-error',
+    productoErrorMsg: '[data-producto-error-msg]',
     insumoForm: '#insumo-form',
     insumoId: '#insumo-id',
     insumoNombre: '#insumo-nombre',
@@ -310,6 +329,20 @@ const CONFIG = Object.freeze({
     levaduras: 'Levaduras / leudantes',
     empaque: 'Empaque',
     otros: 'Otros',
+  },
+  PRODUCTO_CATEGORIA_LABELS: {
+    panaderia: 'Panadería',
+    reposteria: 'Repostería',
+    bolleria: 'Bollería',
+    frituras: 'Frituras',
+  },
+  // badgeClase reutiliza los mismos colores que ya usa el resto del panel
+  // (sección Alertas) — nada inventado a propósito para Productos.
+  PRODUCTO_ESTADO_LABELS: {
+    activo: { texto: 'Activo', badgeClase: 'insumo-badge--exito' },
+    borrador: { texto: 'Borrador', badgeClase: 'insumo-badge--neutral' },
+    agotado: { texto: 'Agotado', badgeClase: 'insumo-badge--por-vencer' },
+    descontinuado: { texto: 'Descontinuado', badgeClase: 'insumo-badge--bajo-stock' },
   },
   ALERGENO_LABELS: {
     gluten: 'Gluten',
@@ -568,6 +601,73 @@ const Insumos = {
       return { ok: true };
     } catch (err) {
       console.error('[Insumos] Error eliminando insumo:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   MÓDULO: PRODUCTOS (backend real)
+   ═══════════════════════════════════════════
+   Mismo contrato que Insumos, pero sin eliminar() — un producto sale de
+   circulación cambiando su estado (PUT con estado 'agotado' o
+   'descontinuado'), nunca se borra: ya tiene historial en recetas,
+   producciones, horneadas, ajustes y pedidos. */
+const Productos = {
+  async listar() {
+    try {
+      const res = await apiFetch('/productos', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error(
+          '[Productos] Timeout obteniendo productos (el servidor puede estar iniciando).',
+        );
+      } else {
+        console.error('[Productos] Error obteniendo productos:', err.message);
+      }
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/productos', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/productos/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, producto: await res.json() };
+    } catch (err) {
+      console.error(`[Productos] Error en ${method} ${path}:`, err.message);
       return { ok: false, reason: 'network' };
     }
   },
@@ -1336,6 +1436,96 @@ const Render = {
   updateInsumosCount(lista) {
     const el = document.querySelector(CONFIG.SELECTORS.insumosCount);
     if (el) el.textContent = lista.length;
+  },
+
+  updateProductosCount(lista) {
+    const el = document.querySelector(CONFIG.SELECTORS.productosCount);
+    if (el) el.textContent = lista.length;
+  },
+
+  /** Llena los selects de producto de Recetas, Producción, Horneadas y
+   *  Ajustes desde la tabla productos, en vez de las opciones fijas que
+   *  antes estaban escritas en admin.html: un producto creado en esta
+   *  pestaña tiene que aparecer solo en el resto del panel.
+   *
+   *  Los productos que ya no están activos se listan deshabilitados en
+   *  vez de omitirse — si se omitieran, abrir para editar una horneada
+   *  vieja de un producto descontinuado dejaría el select en blanco y al
+   *  guardar cambiaría el producto del registro histórico. */
+  fillProductoSelects(lista) {
+    const selectores = [
+      CONFIG.SELECTORS.recetaProducto,
+      CONFIG.SELECTORS.produccionProducto,
+      CONFIG.SELECTORS.horneadaProducto,
+      CONFIG.SELECTORS.ajusteProducto,
+    ];
+
+    for (const selector of selectores) {
+      const select = document.querySelector(selector);
+      if (!select) continue;
+
+      const valorActual = select.value;
+      const placeholder = select.querySelector('option[value=""]');
+      select.innerHTML = '';
+      if (placeholder) select.appendChild(placeholder);
+
+      for (const p of lista) {
+        const opt = document.createElement('option');
+        opt.value = String(p.id);
+        const estaActivo = p.estado === 'activo';
+        const estadoTexto = CONFIG.PRODUCTO_ESTADO_LABELS[p.estado]?.texto ?? p.estado;
+        opt.textContent = estaActivo ? p.nombre : `${p.nombre} (${estadoTexto})`;
+        opt.disabled = !estaActivo;
+        select.appendChild(opt);
+      }
+
+      if (valorActual) select.value = valorActual;
+    }
+  },
+
+  /** Tabla de Productos: mismo patrón que renderDiagnosticoPedidos (tabla
+   *  estática en el HTML, esta función solo llena el <tbody>) — más simple
+   *  que el patrón <template> de Insumos porque acá no hay tantas columnas
+   *  ni casos especiales. Los botones usan delegación de eventos (un solo
+   *  listener en el tbody, ver _bindEvents) en vez de uno por fila. */
+  renderProductos(lista) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.productosTbody);
+    const vacio = document.querySelector(CONFIG.SELECTORS.productosVacio);
+    if (!tbody) return;
+
+    if (lista.length === 0) {
+      tbody.innerHTML = '';
+      if (vacio) vacio.hidden = false;
+      return;
+    }
+    if (vacio) vacio.hidden = true;
+
+    tbody.innerHTML = lista
+      .map((p) => {
+        const categoriaLabel = CONFIG.PRODUCTO_CATEGORIA_LABELS[p.categoria] || p.categoria;
+        const estadoInfo = CONFIG.PRODUCTO_ESTADO_LABELS[p.estado] || {
+          texto: p.estado,
+          badgeClase: 'insumo-badge--neutral',
+        };
+        const estadoBadge = `<span class="insumo-badge ${estadoInfo.badgeClase}">${escapeHTML(estadoInfo.texto)}</span>`;
+        return `
+          <tr>
+            <td data-label="Nombre">${escapeHTML(p.nombre)}</td>
+            <td data-label="Categoría">${escapeHTML(categoriaLabel)}</td>
+            <td data-label="SKU">${p.sku ? escapeHTML(p.sku) : '—'}</td>
+            <td data-label="Precio">${formatPrice(p.precio)}</td>
+            <td data-label="Estado">${estadoBadge}</td>
+            <td data-label="Acciones">
+              <div class="insumo-table__acciones">
+                <button type="button" class="btn btn--small btn--ghost" data-accion="editar-producto" data-id="${p.id}">
+                  <i class="fa-solid fa-pen" aria-hidden="true"></i> Editar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
   },
 
   renderInsumos(lista, huboErrorConexion) {
@@ -2133,6 +2323,7 @@ const Render = {
 const App = {
   _liveConnected: false,
   _insumosCache: [],
+  _productosCache: [],
   _proveedoresCache: [],
   _horneadasCache: [],
   // Fecha que se está consultando en la pestaña Horneadas — por defecto hoy,
@@ -2169,7 +2360,16 @@ const App = {
 
     if (orders !== null && !this._liveConnected) {
       this._liveConnected = true;
-      Api.connectLive(() => this.refresh());
+      // Los avisos de producto no tienen nada que ver con los pedidos del
+      // día: refrescar el catálogo (y con él los selects de producto de
+      // las demás vistas) en vez de recargar la tabla de pedidos.
+      Api.connectLive((msg) => {
+        if (msg?.tipo === 'producto:nuevo' || msg?.tipo === 'producto:actualizado') {
+          this.refreshProductos();
+          return;
+        }
+        this.refresh();
+      });
     }
   },
 
@@ -2185,6 +2385,40 @@ const App = {
     this._insumosCache = Array.isArray(lista) ? lista : [];
     Render.updateInsumosCount(this._insumosCache);
     Render.renderInsumos(this._insumosCache, lista === null);
+  },
+
+  async refreshProductos() {
+    const lista = await Productos.listar();
+
+    if (lista === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._productosCache = Array.isArray(lista) ? lista : [];
+    Render.updateProductosCount(this._productosCache);
+    Render.renderProductos(this._productosCache);
+    Render.fillProductoSelects(this._productosCache);
+  },
+
+  /** Carga el catálogo solo para los selects de producto de otras vistas
+   *  (Recetas, Producción, Horneadas, Ajustes). Se vuelve a pedir en cada
+   *  entrada a esas vistas porque el catálogo lo puede haber cambiado
+   *  otra sesión del panel mientras esta seguía abierta; si la petición
+   *  falla se usa lo último que se había cargado. */
+  async cargarProductosParaSelects() {
+    const lista = await Productos.listar();
+    if (lista === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (Array.isArray(lista)) {
+      this._productosCache = lista;
+      Render.updateProductosCount(lista);
+    }
+    Render.fillProductoSelects(this._productosCache);
   },
 
   async refreshProveedores() {
@@ -3242,6 +3476,33 @@ const App = {
     this._resetInsumoForm();
   },
 
+  startEditProducto(id) {
+    const producto = this._productosCache.find((p) => p.id === id);
+    if (!producto) return;
+
+    document.querySelector(CONFIG.SELECTORS.productoId).value = producto.id;
+    document.querySelector(CONFIG.SELECTORS.productoNombre).value = producto.nombre || '';
+    document.querySelector(CONFIG.SELECTORS.productoCategoria).value = producto.categoria || '';
+    document.querySelector(CONFIG.SELECTORS.productoPrecio).value = producto.precio ?? '';
+    document.querySelector(CONFIG.SELECTORS.productoEstado).value = producto.estado || 'activo';
+    document.querySelector(CONFIG.SELECTORS.productoSku).value = producto.sku || '';
+    document.querySelector(CONFIG.SELECTORS.productoDescripcion).value = producto.descripcion || '';
+    document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value =
+      producto.actualizadoPor || '';
+
+    document.querySelector(CONFIG.SELECTORS.productoSubmitLabel).textContent = 'Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.productoCancelarEdicion).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.productoForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(CONFIG.SELECTORS.productoNombre).focus();
+  },
+
+  cancelEditProducto() {
+    this._resetProductoForm();
+  },
+
   async deleteInsumo(id, nombre) {
     const confirmado = window.confirm(`¿Eliminar "${nombre}" del listado de insumos?`);
     if (!confirmado) return;
@@ -3271,6 +3532,68 @@ const App = {
       '<i class="fa-solid fa-plus" aria-hidden="true"></i> Agregar insumo';
     document.querySelector(CONFIG.SELECTORS.insumoCancelEditBtn).hidden = true;
     document.querySelector(CONFIG.SELECTORS.insumoError).hidden = true;
+  },
+
+  async _handleProductoSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.productoError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.productoErrorMsg);
+
+    const nombre = document.querySelector(CONFIG.SELECTORS.productoNombre).value.trim();
+    const categoria = document.querySelector(CONFIG.SELECTORS.productoCategoria).value;
+    const precioRaw = document.querySelector(CONFIG.SELECTORS.productoPrecio).value;
+
+    if (!nombre || !categoria || precioRaw === '' || Number(precioRaw) <= 0) {
+      errorMsgEl.textContent = 'Completa nombre, categoría y un precio mayor a 0.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.productoId).value || null;
+    const datos = {
+      nombre,
+      categoria,
+      precio: Number(precioRaw),
+      estado: document.querySelector(CONFIG.SELECTORS.productoEstado).value,
+      sku: document.querySelector(CONFIG.SELECTORS.productoSku).value.trim(),
+      descripcion: document.querySelector(CONFIG.SELECTORS.productoDescripcion).value.trim(),
+      actualizadoPor: document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value.trim(),
+    };
+
+    const submitLabel = document.querySelector(CONFIG.SELECTORS.productoSubmitLabel);
+    const textoOriginal = submitLabel.textContent;
+    submitLabel.textContent = 'Guardando…';
+
+    const resultado = idExistente
+      ? await Productos.actualizar(idExistente, datos)
+      : await Productos.crear(datos);
+
+    submitLabel.textContent = textoOriginal;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent =
+        resultado.message || 'No se pudo guardar el producto. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._resetProductoForm();
+    this.refreshProductos();
+  },
+
+  _resetProductoForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.productoForm);
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.productoId).value = '';
+    document.querySelector(CONFIG.SELECTORS.productoEstado).value = 'activo';
+    document.querySelector(CONFIG.SELECTORS.productoSubmitLabel).textContent = 'Guardar producto';
+    document.querySelector(CONFIG.SELECTORS.productoCancelarEdicion).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.productoError).hidden = true;
   },
 
   _bindEvents() {
@@ -3324,6 +3647,27 @@ const App = {
     document
       .querySelector(CONFIG.SELECTORS.insumoCancelEditBtn)
       ?.addEventListener('click', () => this.cancelEditInsumo());
+
+    // Formulario de productos: alta y edición
+    document.querySelector(CONFIG.SELECTORS.productoForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleProductoSubmit();
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.productoCancelarEdicion)
+      ?.addEventListener('click', () => this.cancelEditProducto());
+
+    // Tabla de productos: un solo listener delegado en el tbody, en vez
+    // de uno por fila (la tabla se reconstruye entera en cada
+    // refreshProductos(), así que los listeners individuales se
+    // perderían de todas formas en cada render).
+    document.querySelector(CONFIG.SELECTORS.productosTbody)?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-accion]');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      if (btn.dataset.accion === 'editar-producto') this.startEditProducto(id);
+    });
 
     // Formulario de proveedores: alta y edición
     document.querySelector(CONFIG.SELECTORS.proveedorForm)?.addEventListener('submit', (e) => {
@@ -3517,6 +3861,7 @@ const App = {
     const views = [
       CONFIG.SELECTORS.dashboardView,
       CONFIG.SELECTORS.insumosView,
+      CONFIG.SELECTORS.productosView,
       CONFIG.SELECTORS.proveedoresView,
       CONFIG.SELECTORS.horneadasView,
       CONFIG.SELECTORS.inventarioView,
@@ -3537,9 +3882,26 @@ const App = {
     if (targetId === CONFIG.SELECTORS.insumosView.slice(1)) {
       this.refreshInsumos();
     }
+    if (targetId === CONFIG.SELECTORS.productosView.slice(1)) {
+      this.refreshProductos();
+    }
     if (targetId === CONFIG.SELECTORS.proveedoresView.slice(1)) {
       this.refreshProveedores();
     }
+    // Vistas que trabajan sobre un producto del catálogo: sus selects se
+    // llenan desde la tabla productos, así que hay que tener el catálogo
+    // cargado antes de renderizarlas.
+    if (
+      [
+        CONFIG.SELECTORS.horneadasView,
+        CONFIG.SELECTORS.inventarioView,
+        CONFIG.SELECTORS.recetasView,
+        CONFIG.SELECTORS.produccionView,
+      ].some((sel) => targetId === sel.slice(1))
+    ) {
+      this.cargarProductosParaSelects();
+    }
+
     if (targetId === CONFIG.SELECTORS.horneadasView.slice(1)) {
       this._prefillHorneadaFechaHora();
       const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
@@ -3576,6 +3938,7 @@ const App = {
     const loginView = document.querySelector(CONFIG.SELECTORS.loginView);
     const dashView = document.querySelector(CONFIG.SELECTORS.dashboardView);
     const insumosView = document.querySelector(CONFIG.SELECTORS.insumosView);
+    const productosView = document.querySelector(CONFIG.SELECTORS.productosView);
     const proveedoresView = document.querySelector(CONFIG.SELECTORS.proveedoresView);
     const horneadasView = document.querySelector(CONFIG.SELECTORS.horneadasView);
     const inventarioView = document.querySelector(CONFIG.SELECTORS.inventarioView);
@@ -3588,6 +3951,7 @@ const App = {
       if (navEl) navEl.hidden = false;
       if (dashView) dashView.hidden = false;
       if (insumosView) insumosView.hidden = true;
+      if (productosView) productosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;
@@ -3607,6 +3971,7 @@ const App = {
       if (navEl) navEl.hidden = true;
       if (dashView) dashView.hidden = true;
       if (insumosView) insumosView.hidden = true;
+      if (productosView) productosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;

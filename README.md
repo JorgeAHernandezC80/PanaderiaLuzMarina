@@ -285,6 +285,22 @@ contra fuerza bruta.
 | `GET`   | `/ordenes`         | Admin | Lista órdenes (filtros `fecha`, `estado`).   |
 | `PATCH` | `/ordenes/:numero` | Admin | Avanza el estado de una orden.               |
 
+**Productos**
+
+| Método | Ruta             | Auth  | Descripción                                                             |
+| ------ | ---------------- | ----- | ----------------------------------------------------------------------- |
+| `GET`  | `/catalogo`      | No    | Catálogo público: id, nombre, categoría y precio de lo que está activo. |
+| `GET`  | `/productos`     | Admin | Lista el catálogo completo, incluidos los que no están activos.         |
+| `POST` | `/productos`     | Admin | Crea un producto.                                                       |
+| `PUT`  | `/productos/:id` | Admin | Actualiza un producto.                                                  |
+
+Los productos no se borran: se les cambia el `estado` (`activo`, `borrador`, `agotado`,
+`descontinuado`), porque recetas, producciones, horneadas, ajustes y órdenes guardan su id.
+Solo los `activo` aparecen en `/catalogo` y en el inventario del día, y `POST /ordenes`
+rechaza cualquier item cuyo producto no esté activo o cuyo precio no coincida con el de la
+tabla — el precio escrito en `catalogo.html` es solo el respaldo para cuando el backend no
+responde.
+
 **Insumos**
 
 | Método   | Ruta           | Auth  | Descripción          |

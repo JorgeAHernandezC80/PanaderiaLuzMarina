@@ -55,8 +55,18 @@ function auth() {
 }
 
 const FECHA = '2026-07-28';
+const PRODUCTO_PANDEBONO = 6;
+
+/* El precio lo sale a buscar a la tabla productos en vez de fijarlo acá:
+   POST /ordenes rechaza cualquier item cuyo precio no coincida con el del
+   catálogo (ver validarItem en validation.js), así que un precio escrito
+   a mano acá haría fallar la orden entera si alguien cambia el catálogo. */
+function precioDe(productoId) {
+  return db.prepare('SELECT precio FROM productos WHERE id = ?').get(productoId).precio;
+}
 
 async function crearOrden({ numero, productoId, nombre, cantidad, estado }) {
+  const precio = precioDe(productoId ?? PRODUCTO_PANDEBONO);
   await request(app)
     .post('/ordenes')
     .send({
@@ -66,8 +76,8 @@ async function crearOrden({ numero, productoId, nombre, cantidad, estado }) {
       cliente: 'Cliente de prueba',
       telefono: '3001234567',
       retiro: '11:00',
-      items: [{ productoId, nombre, cantidad, precio: 1.5 }],
-      total: cantidad * 1.5,
+      items: [{ productoId, nombre, cantidad, precio }],
+      total: cantidad * precio,
     });
   if (estado) {
     await request(app).patch(`/ordenes/${numero}`).set('Authorization', auth()).send({ estado });
@@ -97,7 +107,14 @@ describe('GET /inventario', () => {
     const res = await request(app).get(`/inventario?fecha=${FECHA}`).set('Authorization', auth());
     expect(res.status).toBe(200);
     expect(res.body.fecha).toBe(FECHA);
-    expect(res.body.productos).toHaveLength(8); // 8 productos en PRODUCTOS_CATALOGO
+    // Un producto por cada fila activa de la tabla productos (ver el seed
+    // en db.js) — se compara contra la tabla y no contra un número fijo
+    // para que agregar un producto no rompa este test.
+    const idsActivos = db
+      .prepare("SELECT id FROM productos WHERE estado = 'activo'")
+      .all()
+      .map((p) => String(p.id));
+    expect(res.body.productos.map((p) => p.productoId).sort()).toEqual(idsActivos.sort());
     const pandebono = res.body.productos.find((p) => p.productoNombre === 'Pandebono');
     expect(pandebono).toMatchObject({
       horneado: 0,

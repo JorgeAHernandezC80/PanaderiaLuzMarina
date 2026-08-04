@@ -9,9 +9,15 @@
  */
 
 import { initUI } from '../core/ui.js';
-import { getCart, getCartTotal, clearCart, escapeHTML } from '../core/cart.js';
+import {
+  getCart,
+  getCartTotal,
+  clearCart,
+  escapeHTML,
+  syncCartWithCatalogo,
+} from '../core/cart.js';
 import { formatPrice } from '../core/format.js';
-import { apiFetch } from '../core/api.js';
+import { apiFetch, fetchCatalogo } from '../core/api.js';
 import { t } from '../core/i18n.js';
 
 /* ---- Número WhatsApp Business de Panadería Luz Marina ---- */
@@ -315,8 +321,21 @@ function initForm() {
   });
 }
 
+/** Igual que en carrito.js: el precio del carrito puede haber quedado
+ *  viejo (o el producto fuera de venta) y el backend rechaza el pedido
+ *  completo por eso. Se repite acá porque a checkout.html se puede
+ *  llegar directo, sin pasar por la canasta. */
+async function initSyncCatalogo() {
+  const catalogo = await fetchCatalogo();
+  if (!catalogo) return;
+
+  const { actualizados, removidos } = syncCartWithCatalogo(catalogo);
+  if (actualizados > 0 || removidos > 0) renderItems();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initUI();
   renderItems();
   initForm();
+  initSyncCatalogo();
 });

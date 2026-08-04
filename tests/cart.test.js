@@ -12,6 +12,7 @@ import {
   clearCart,
   getCartCount,
   getCartTotal,
+  syncCartWithCatalogo,
 } from '../JS/core/cart.js';
 import { formatPrice } from '../JS/core/format.js';
 
@@ -264,4 +265,49 @@ describe('formatPrice', () => {
   test('acepta strings numéricos', () => {
     expect(formatPrice('3')).toBe('$3.00');
   });
+});
+
+describe('syncCartWithCatalogo', () => {
+  const catalogo = [
+    { id: 1, nombre: 'Pandebono', precio: 2.5 },
+    { id: 2, nombre: 'Croissant', precio: 2 },
+  ];
+
+  test('corrige el precio que quedó viejo en el carrito', () => {
+    addToCart(producto({ id: '1', nombre: 'Pandebono', precio: 1.5 }), 2);
+    const resultado = syncCartWithCatalogo(catalogo);
+    expect(resultado).toEqual({ actualizados: 1, removidos: 0 });
+    expect(getCart()[0]).toMatchObject({ precio: 2.5, cantidad: 2 });
+  });
+
+  test('corrige el nombre cuando el producto se renombró', () => {
+    addToCart(producto({ id: '2', nombre: 'Croissant simple', precio: 2 }), 1);
+    syncCartWithCatalogo(catalogo);
+    expect(getCart()[0].nombre).toBe('Croissant');
+  });
+
+  test('saca los productos que ya no están en el catálogo activo', () => {
+    addToCart(producto({ id: '1', nombre: 'Pandebono', precio: 2.5 }), 1);
+    addToCart(producto({ id: '99', nombre: 'Pan retirado', precio: 3 }), 1);
+    const resultado = syncCartWithCatalogo(catalogo);
+    expect(resultado).toEqual({ actualizados: 0, removidos: 1 });
+    expect(getCart().map((i) => i.id)).toEqual(['1']);
+  });
+
+  test('no toca nada cuando el carrito ya coincide con el catálogo', () => {
+    addToCart(producto({ id: '1', nombre: 'Pandebono', precio: 2.5 }), 1);
+    const antes = localStorage.getItem(CART_KEY);
+    expect(syncCartWithCatalogo(catalogo)).toEqual({ actualizados: 0, removidos: 0 });
+    expect(localStorage.getItem(CART_KEY)).toBe(antes);
+  });
+
+  test.each([null, undefined, [], 'x'])(
+    'deja el carrito intacto con un catálogo inservible: %p',
+    (entrada) => {
+      // Un problema de red no puede vaciarle la canasta al cliente.
+      addToCart(producto({ id: '1', nombre: 'Pandebono', precio: 1.5 }), 1);
+      expect(syncCartWithCatalogo(entrada)).toEqual({ actualizados: 0, removidos: 0 });
+      expect(getCart()).toHaveLength(1);
+    },
+  );
 });
