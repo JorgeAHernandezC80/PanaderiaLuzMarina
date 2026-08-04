@@ -1123,8 +1123,8 @@ button {
 /* ═══════════════════════════════════════════
    7. TABLAS
    ═══════════════════════════════════════════
-   Un solo patrón visual (.order-table, .insumo-table e
-   #inventario-container comparten la misma receta de th/td) reforzado
+   Un solo patrón visual (.order-table, .insumo-table y
+   .tabla-tarjetas comparten la misma receta de th/td) reforzado
    con lo que pediste: encabezado sticky dentro de su contenedor con
    scroll, cebra sutil y hover de fila. En móvil (≤640px) estas mismas
    tablas se transforman en tarjetas — esa transformación depende del
@@ -1262,7 +1262,7 @@ button {
   font-size: 0.9rem;
 }
 
-/* ── Insumos / Proveedores / Horneadas / Inventario ── */
+/* ── Insumos / Proveedores / Horneadas / Inventario / Productos ── */
 .insumos {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -1344,44 +1344,48 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* Inventario/Stock: el WRAPPER (.inventario-shell) es quien se ajusta a
-   su contenido y queda centrado — no #inventario-container directamente.
-   Así, el toolbar de fecha (hermano dentro del mismo wrapper) puede
+/* Tablas centradas que se vuelven tarjetas (Inventario y Productos): el
+   WRAPPER (.tabla-shell) es quien se ajusta a su contenido y queda
+   centrado — no el contenedor de la tabla directamente. Así, un toolbar
+   hermano dentro del mismo wrapper (el de fecha en Inventario) puede
    estirarse a width:100% y terminar exactamente con el mismo ancho que
    la tabla, en vez de que cada uno mida lo suyo por separado y sus
    bordes no coincidan. */
-.inventario-shell {
+.tabla-shell {
   width: max-content;
   max-width: 100%;
   margin-inline: auto;
 }
 
-.inventario-shell > [data-component='inventario-toolbar'],
-.inventario-shell > #inventario-container {
+.tabla-shell > [data-component='inventario-toolbar'],
+.tabla-shell > .tabla-tarjetas {
   width: 100%;
 }
 
-#inventario-container.insumos {
+.tabla-tarjetas.insumos {
   overflow-x: visible; /* .insumos trae overflow-x:auto por defecto (para el
     fallback de scroll de las demás tablas); acá ya no hace falta porque
     la tabla se ajusta a su contenido y el wrapper la centra. */
 }
 
-#inventario-container .insumo-table {
+.tabla-tarjetas .insumo-table {
   width: auto;
 }
 
-/* Padding compacto en Inventario: 8px vertical, 18px horizontal (más
-   espacio entre columnas que las demás tablas, que usan var(--space-*)
-   por defecto — acá se ve mejor con números fijos y cortos). */
-#inventario-container th,
-#inventario-container td {
+/* Padding compacto: 8px vertical, 18px horizontal (más espacio entre
+   columnas que las demás tablas, que usan var(--space-*) por defecto —
+   acá se ve mejor con números fijos y cortos). Doble clase a propósito:
+   así le sigue ganando en especificidad al padding de .insumo-table
+   th/td del media query de 768px, igual que cuando esta regla usaba un
+   #id. */
+.tabla-tarjetas.insumos th,
+.tabla-tarjetas.insumos td {
   padding: 8px 18px;
 }
 
 /* Todos los encabezados centrados, incluido "Producto" (antes se
    dejaba a la izquierda por defecto; Jorge pidió centrarlo también). */
-#inventario-container th {
+.tabla-tarjetas th {
   text-align: center;
 }
 
@@ -2085,9 +2089,9 @@ button {
     padding: var(--space-3);
   }
 
-  /* #inventario-container th/td (8px, definido fuera del media query)
-     le sigue ganando en especificidad a la regla de arriba gracias al
-     #id — no hace falta repetirlo aquí, ya se queda compacto en móvil
+  /* .tabla-tarjetas.insumos th/td (8px, definido fuera del media query)
+     le sigue ganando en especificidad a la regla de arriba por la doble
+     clase — no hace falta repetirlo aquí, ya se queda compacto en móvil
      también. */
 
   /* Formularios grandes (Insumos, Horneadas, Recetas, Producción...): una
@@ -2285,23 +2289,22 @@ button {
     justify-content: flex-end;
   }
 
-  /* Inventario: en desktop el wrapper .inventario-shell se ajusta a su
-     contenido (width: max-content, ver más arriba), pero eso no tiene
-     sentido en la vista de tarjetas — acá debe verse tan ancho como
-     .insumo-form (el formulario "Registrar ajuste" justo debajo). */
-  .inventario-shell {
+  /* En desktop el wrapper .tabla-shell se ajusta a su contenido
+     (width: max-content, ver más arriba), pero eso no tiene sentido en
+     la vista de tarjetas — acá debe verse tan ancho como .insumo-form
+     (el formulario que va justo debajo o arriba de la tabla). */
+  .tabla-shell {
     width: 100%;
     max-width: none;
     margin-inline: 0;
   }
 
-  /* #inventario-container también pierde su propio fondo/borde/sombra
-     (heredados de .insumos): sin esto, el contenedor forma una "caja"
-     blanca detrás de todas las tarjetas, y el espacio de 10px entre
-     ellas terminaba mostrando el fondo de ESA caja en vez del fondo
-     limpio de la página — se veía como si hubiera color de más entre
-     tarjetas. */
-  #inventario-container.insumos {
+  /* El contenedor también pierde su propio fondo/borde/sombra
+     (heredados de .insumos): sin esto, forma una "caja" blanca detrás
+     de todas las tarjetas, y el espacio de 10px entre ellas terminaba
+     mostrando el fondo de ESA caja en vez del fondo limpio de la
+     página — se veía como si hubiera color de más entre tarjetas. */
+  .tabla-tarjetas.insumos {
     background: none;
     border: none;
     box-shadow: none;
@@ -2313,13 +2316,13 @@ button {
      10px entre tarjetas (en vez de var(--space-3)); sin margen después
      de la última para no dejar aire de más antes del formulario de
      ajuste que sigue debajo. */
-  #inventario-container tr {
+  .tabla-tarjetas tr {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     margin-bottom: 10px;
   }
 
-  #inventario-container tr:last-child {
+  .tabla-tarjetas tr:last-child {
     margin-bottom: 0;
   }
 }

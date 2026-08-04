@@ -1000,23 +1000,28 @@
         </form>
 
         <h2 class="section-subtitle">Catálogo</h2>
-        <div class="insumos">
-          <table class="insumo-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Categoría</th>
-                <th>SKU</th>
-                <th>Precio</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="productos-tbody">
-              <!-- Se inyecta dinámicamente por admin.js -->
-            </tbody>
-          </table>
-          <p id="productos-vacio" class="empty-state" hidden>Todavía no hay productos.</p>
+        <!-- Mismo envoltorio que Inventario (.tabla-shell + .tabla-tarjetas):
+             tabla centrada y ajustada a su contenido en pantallas grandes, y
+             una tarjeta por producto por debajo de 640px. -->
+        <div class="tabla-shell">
+          <div class="insumos tabla-tarjetas">
+            <table class="insumo-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>SKU</th>
+                  <th>Precio</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="productos-tbody">
+                <!-- Se inyecta dinámicamente por admin.js -->
+              </tbody>
+            </table>
+            <p id="productos-vacio" class="empty-state" hidden>Todavía no hay productos.</p>
+          </div>
         </div>
       </section>
 
@@ -1700,7 +1705,7 @@
           </div>
         </header>
 
-        <div class="inventario-shell">
+        <div class="tabla-shell">
           <section
             class="horneadas-toolbar"
             aria-label="Consultar inventario de otra fecha"
@@ -1722,7 +1727,7 @@
 
           <section
             id="inventario-container"
-            class="insumos"
+            class="insumos tabla-tarjetas"
             aria-label="Disponible por producto"
             aria-live="polite"
             data-component="inventario-list"

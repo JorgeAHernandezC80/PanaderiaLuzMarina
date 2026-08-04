@@ -1,0 +1,11 @@
+# El sitio es estático: se publica la raíz del repo tal cual y no hay
+# funciones serverless. El sitio "luzmarpanaderia" tenía configurado el
+# directorio de funciones en la raíz, así que Netlify intentaba empaquetar
+# cada .js de la raíz como función y el deploy fallaba con
+# "The following serverless functions failed to deploy: babel.config,
+# eslint.config, jest.config" (los puntos no son válidos en un nombre de
+# función). Fijarlo acá deja los tres sitios con la misma configuración,
+# sin depender de los ajustes de cada proyecto en Netlify.
+[build]
+  publish = "."
+  functions = "netlify/functions"
