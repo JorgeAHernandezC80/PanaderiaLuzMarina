@@ -1399,9 +1399,13 @@ button {
   position: relative; /* ancla para el mensaje "Guardado" en posición absoluta */
   text-align: center;
 }
+/* Fondo y color explícitos: sin ellos el input se queda con el blanco y
+   negro del navegador, que en modo oscuro es lo único claro de la tabla. */
 .inventario-table__stock-minimo input {
   width: 4.5rem;
   padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
@@ -1420,7 +1424,7 @@ button {
   transform: translateY(-50%);
   white-space: nowrap;
   font-size: 0.75rem;
-  color: var(--color-accent);
+  color: var(--color-success);
   opacity: 0;
   transition: opacity var(--transition);
 }
@@ -2740,7 +2744,7 @@ button {
    por terminado — un cambio de paleta así conviene verlo, no solo
    leerlo. */
 [data-theme='dark'] {
-  --color-bg: #f5f0e8;
+  --color-bg: #111009;
   --color-surface: #1c1a16;
   --color-text: #f5f0e8;
   --color-text-muted: #c4b8a8;
@@ -2762,7 +2766,12 @@ button {
   --color-accent: #2f8a5f;
   --color-accent-hover: #257048;
   --color-accent-bg: rgba(86, 196, 142, 0.14);
-  --color-success: var(--color-accent);
+
+  /* Acá el alias deja de ser alias: --color-accent solo se usa como
+     fondo sólido (con texto blanco encima), mientras --color-success se
+     usa como color de letra sobre el fondo oscuro — el verde oscuro no
+     llega a 4.5:1 ahí, así que la letra usa el verde claro del sitio. */
+  --color-success: #56c48e;
   --color-success-bg: rgba(86, 196, 142, 0.12);
 
   --color-danger: #e87070;
