@@ -32,6 +32,20 @@
   background: var(--color-surface-alt);
 }
 
+/* Producto sin imagen asignada en el panel (imagen_base vacío): ícono de
+   la marca centrado en vez de un <img> roto — ver llenarImagen() en
+   JS/pages/catalogo.js. */
+.producto-card__imagen--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.producto-card__imagen-icono {
+  font-size: 2.5rem;
+  color: var(--color-border);
+}
+
 .producto-card__imagen img {
   width: 100%;
   height: 100%;

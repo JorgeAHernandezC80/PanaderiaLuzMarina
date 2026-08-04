@@ -71,6 +71,14 @@
   font-size: var(--text-lg);
 }
 
+/* --- Error de carga (GET /catalogo no respondió) --- */
+.productos-error {
+  text-align: center;
+  padding: var(--space-20) 0;
+  color: var(--color-danger);
+  font-size: var(--text-lg);
+}
+
 /* --- Responsive --- */
 @media (max-width: 1200px) {
   .productos-grid {

@@ -134,6 +134,34 @@ describe('POST /productos', () => {
     });
   });
 
+  test('guarda imagenBase y altImagen cuando vienen', async () => {
+    const res = await crear({
+      imagenBase: 'mogolla-integral',
+      altImagen: 'Mogolla integral recién horneada',
+    });
+    expect(res.body).toMatchObject({
+      imagenBase: 'mogolla-integral',
+      altImagen: 'Mogolla integral recién horneada',
+    });
+  });
+
+  test('crea el producto sin imagen cuando no viene (queda null, no vacío)', async () => {
+    const res = await crear();
+    expect(res.body.imagenBase).toBeNull();
+    expect(res.body.altImagen).toBeNull();
+  });
+
+  test.each([
+    ['con mayúsculas', 'Mogolla-Integral'],
+    ['con espacios', 'mogolla integral'],
+    ['con punto (extensión incluida por error)', 'mogolla.webp'],
+    ['con barra (intento de ruta)', '../secretos'],
+  ])('responde 400 si imagenBase es inválido: %s', async (_caso, imagenBase) => {
+    const res = await crear({ imagenBase });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBeTruthy();
+  });
+
   test('permite varios productos sin SKU (el UNIQUE no debe chocar entre vacíos)', async () => {
     expect((await crear({ nombre: 'Sin SKU 1', sku: '' })).status).toBe(201);
     expect((await crear({ nombre: 'Sin SKU 2', sku: '' })).status).toBe(201);
@@ -182,6 +210,8 @@ describe('PUT /productos/:id', () => {
       estado: 'borrador',
       sku: 'MOG-02',
       descripcion: 'Receta vieja',
+      imagenBase: 'mogolla-vieja',
+      altImagen: 'Mogolla vieja',
     });
     const res = await request(app)
       .put(`/productos/${creado.id}`)
@@ -192,7 +222,19 @@ describe('PUT /productos/:id', () => {
       estado: 'borrador',
       sku: 'MOG-02',
       descripcion: 'Receta vieja',
+      imagenBase: 'mogolla-vieja',
+      altImagen: 'Mogolla vieja',
     });
+  });
+
+  test('actualiza imagenBase y altImagen cuando vienen', async () => {
+    const { body: creado } = await crear();
+    const res = await request(app)
+      .put(`/productos/${creado.id}`)
+      .set('Authorization', auth())
+      .send(productoValido({ imagenBase: 'mogolla-nueva', altImagen: 'Mogolla nueva' }));
+
+    expect(res.body).toMatchObject({ imagenBase: 'mogolla-nueva', altImagen: 'Mogolla nueva' });
   });
 
   test('responde 404 con un id que no existe', async () => {
@@ -239,14 +281,42 @@ describe('GET /catalogo', () => {
     expect(Array.isArray(res.body.productos)).toBe(true);
   });
 
-  test('expone solo id, nombre, categoria y precio', async () => {
+  test('expone id, nombre, categoria, precio, descripcion, imagenBase y altImagen — nada de sku ni estado', async () => {
     const res = await request(app).get('/catalogo');
     expect(Object.keys(res.body.productos[0]).sort()).toEqual([
+      'altImagen',
       'categoria',
+      'descripcion',
       'id',
+      'imagenBase',
       'nombre',
       'precio',
     ]);
+  });
+
+  test('un producto sembrado trae su imagen y descripción reales (backfill de la migración)', async () => {
+    const res = await request(app).get('/catalogo');
+    const donuts = res.body.productos.find((p) => p.id === 1);
+    expect(donuts.imagenBase).toBe('donuts');
+    expect(donuts.descripcion).toMatch(/vainilla/i);
+  });
+
+  test('un producto nuevo del panel aparece en el catálogo con su imagen (el pendiente del PR #21)', async () => {
+    const { body: creado } = await crear({
+      nombre: 'Mogolla nueva',
+      imagenBase: 'mogolla-nueva',
+      altImagen: 'Mogolla nueva recién horneada',
+      descripcion: 'Recién salida del horno.',
+    });
+
+    const res = await request(app).get('/catalogo');
+    const enCatalogo = res.body.productos.find((p) => p.id === creado.id);
+    expect(enCatalogo).toMatchObject({
+      nombre: 'Mogolla nueva',
+      imagenBase: 'mogolla-nueva',
+      altImagen: 'Mogolla nueva recién horneada',
+      descripcion: 'Recién salida del horno.',
+    });
   });
 
   test('deja fuera los productos que no están activos', async () => {

@@ -1247,6 +1247,8 @@ function serializeProducto(row) {
     estado: row.estado,
     sku: row.sku,
     descripcion: row.descripcion,
+    imagenBase: row.imagen_base,
+    altImagen: row.alt_imagen,
     actualizadoPor: row.actualizado_por,
     creadoEn: sqliteDatetimeAIso(row.creado_en),
     actualizadoEn: sqliteDatetimeAIso(row.actualizado_en),
@@ -1284,8 +1286,9 @@ app.post('/productos', requireAuth, rateLimit, (req, res) => {
   try {
     const info = db
       .prepare(
-        `INSERT INTO productos (nombre, categoria, precio, estado, sku, descripcion, actualizado_por)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO productos
+           (nombre, categoria, precio, estado, sku, descripcion, imagen_base, alt_imagen, actualizado_por)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         datos.nombre,
@@ -1294,6 +1297,8 @@ app.post('/productos', requireAuth, rateLimit, (req, res) => {
         datos.estado ?? 'activo',
         datos.sku ?? null,
         datos.descripcion ?? null,
+        datos.imagenBase ?? null,
+        datos.altImagen ?? null,
         datos.actualizadoPor ?? null,
       );
     const fila = db.prepare('SELECT * FROM productos WHERE id = ?').get(info.lastInsertRowid);
@@ -1330,18 +1335,20 @@ app.put('/productos/:id', requireAuth, (req, res) => {
   }
 
   try {
-    // estado/sku/descripcion/actualizadoPor son opcionales en
-    // validarProducto (ver validation.js) — si no vienen en la
-    // petición, se conserva lo que el producto ya tenía.
+    // estado/sku/descripcion/imagenBase/altImagen/actualizadoPor son
+    // opcionales en validarProducto (ver validation.js) — si no vienen en
+    // la petición, se conserva lo que el producto ya tenía.
     const estado = datos.estado !== undefined ? datos.estado : existente.estado;
     const sku = datos.sku !== undefined ? datos.sku : existente.sku;
     const descripcion = datos.descripcion !== undefined ? datos.descripcion : existente.descripcion;
+    const imagenBase = datos.imagenBase !== undefined ? datos.imagenBase : existente.imagen_base;
+    const altImagen = datos.altImagen !== undefined ? datos.altImagen : existente.alt_imagen;
     const actualizadoPor =
       datos.actualizadoPor !== undefined ? datos.actualizadoPor : existente.actualizado_por;
     db.prepare(
       `UPDATE productos
        SET nombre = ?, categoria = ?, precio = ?, estado = ?, sku = ?, descripcion = ?,
-           actualizado_por = ?, actualizado_en = datetime('now')
+           imagen_base = ?, alt_imagen = ?, actualizado_por = ?, actualizado_en = datetime('now')
        WHERE id = ?`,
     ).run(
       datos.nombre,
@@ -1350,6 +1357,8 @@ app.put('/productos/:id', requireAuth, (req, res) => {
       estado,
       sku,
       descripcion,
+      imagenBase,
+      altImagen,
       actualizadoPor,
       idNum,
     );
@@ -1380,8 +1389,12 @@ function esConflictoDeSku(err) {
    un cambio de precio en el panel, los pedidos se perderían en
    silencio (checkout.js manda la orden sin bloquear el flujo de
    WhatsApp). Con este endpoint el precio se sincroniza en el navegador
-   antes de armar el carrito. Devuelve solo lo que el cliente necesita
-   ver — nada de sku, estado ni metadatos internos. */
+   antes de armar el carrito.
+
+   Las tarjetas de catalogo.html ahora se arman en JS a partir de esta
+   respuesta (ver JS/pages/catalogo.js), así que además del precio se
+   expone descripcion e imagenBase/altImagen — lo mínimo para dibujar
+   una tarjeta. Sigue sin exponer sku, estado ni metadatos internos. */
 app.get('/catalogo', (req, res) => {
   try {
     res.json({
@@ -1390,6 +1403,9 @@ app.get('/catalogo', (req, res) => {
         nombre: fila.nombre,
         categoria: fila.categoria,
         precio: fila.precio,
+        descripcion: fila.descripcion,
+        imagenBase: fila.imagen_base,
+        altImagen: fila.alt_imagen,
       })),
     });
   } catch (err) {

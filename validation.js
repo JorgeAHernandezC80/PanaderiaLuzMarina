@@ -95,7 +95,9 @@ const CATEGORIAS_PRODUCTO = ['panaderia', 'reposteria', 'bolleria', 'frituras'];
 function obtenerProducto(id) {
   return db
     .prepare(
-      'SELECT id, nombre, categoria, precio, estado, sku, descripcion, actualizado_por FROM productos WHERE id = ?',
+      `SELECT id, nombre, categoria, precio, estado, sku, descripcion, actualizado_por,
+              imagen_base, alt_imagen
+       FROM productos WHERE id = ?`,
     )
     .get(id);
 }
@@ -109,6 +111,14 @@ const ESTADOS_PRODUCTO = ['activo', 'borrador', 'agotado', 'descontinuado'];
 const MAX_PRODUCTO_SKU_LEN = 40;
 const MAX_PRODUCTO_DESCRIPCION_LEN = 300;
 const MAX_PRODUCTO_ACTUALIZADO_POR_LEN = 80; // mismo tope que horneada/ajuste (registradoPor)
+const MAX_PRODUCTO_ALT_IMAGEN_LEN = 160;
+// imagen_base termina interpolado en el src/srcset de un <img> en
+// catalogo.html (./IMG/webp/${imagenBase}-400.webp). Whitelist estricta
+// (minúsculas, dígitos, guion) para que nunca pueda meter una ruta fuera
+// de IMG/webp ni un atributo/etiqueta extra — mismo criterio que
+// INSUMO_ID_RE/PROVEEDOR_ID_RE, pero sin mayúsculas porque los archivos
+// en IMG/webp/ ya siguen esa convención (kebab-case).
+const IMAGEN_BASE_RE = /^[a-z0-9-]{1,60}$/;
 
 /** Valida los campos de un producto para crear/editar. `estado`, `sku`,
  *  `descripcion` y `actualizadoPor` son opcionales — si no vienen, se
@@ -177,6 +187,26 @@ function validarProducto(datos) {
       );
     }
     resultado.actualizadoPor = actualizadoPor === '' ? null : actualizadoPor;
+  }
+
+  if (datos.imagenBase !== undefined) {
+    const imagenBase = typeof datos.imagenBase === 'string' ? datos.imagenBase.trim() : '';
+    if (imagenBase !== '' && !IMAGEN_BASE_RE.test(imagenBase)) {
+      throw new ValidationError(
+        'La imagen debe ser el nombre base del archivo en IMG/webp (solo minúsculas, números y guiones, sin extensión), ej. "croissant".',
+      );
+    }
+    resultado.imagenBase = imagenBase === '' ? null : imagenBase;
+  }
+
+  if (datos.altImagen !== undefined) {
+    const altImagen = typeof datos.altImagen === 'string' ? datos.altImagen.trim() : '';
+    if (altImagen.length > MAX_PRODUCTO_ALT_IMAGEN_LEN) {
+      throw new ValidationError(
+        `El texto alternativo no puede superar los ${MAX_PRODUCTO_ALT_IMAGEN_LEN} caracteres.`,
+      );
+    }
+    resultado.altImagen = altImagen === '' ? null : altImagen;
   }
 
   return resultado;

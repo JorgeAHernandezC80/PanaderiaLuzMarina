@@ -134,6 +134,8 @@ const CONFIG = Object.freeze({
     productoEstado: '#producto-estado',
     productoSku: '#producto-sku',
     productoDescripcion: '#producto-descripcion',
+    productoImagenBase: '#producto-imagen-base',
+    productoAltImagen: '#producto-alt-imagen',
     productoActualizadoPor: '#producto-actualizado-por',
     productoSubmitLabel: '#producto-submit-label',
     productoCancelarEdicion: '#producto-cancelar-edicion',
@@ -3487,6 +3489,8 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.productoEstado).value = producto.estado || 'activo';
     document.querySelector(CONFIG.SELECTORS.productoSku).value = producto.sku || '';
     document.querySelector(CONFIG.SELECTORS.productoDescripcion).value = producto.descripcion || '';
+    document.querySelector(CONFIG.SELECTORS.productoImagenBase).value = producto.imagenBase || '';
+    document.querySelector(CONFIG.SELECTORS.productoAltImagen).value = producto.altImagen || '';
     document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value =
       producto.actualizadoPor || '';
 
@@ -3557,6 +3561,8 @@ const App = {
       estado: document.querySelector(CONFIG.SELECTORS.productoEstado).value,
       sku: document.querySelector(CONFIG.SELECTORS.productoSku).value.trim(),
       descripcion: document.querySelector(CONFIG.SELECTORS.productoDescripcion).value.trim(),
+      imagenBase: document.querySelector(CONFIG.SELECTORS.productoImagenBase).value.trim(),
+      altImagen: document.querySelector(CONFIG.SELECTORS.productoAltImagen).value.trim(),
       actualizadoPor: document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value.trim(),
     };
 

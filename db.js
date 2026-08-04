@@ -176,16 +176,113 @@ try {
     )
   `);
 
+  /* Migración: imagen_base + alt_imagen. El catálogo público (catalogo.html)
+     tenía las 9 tarjetas escritas a mano —imagen, descripción, i18n— y solo
+     el precio/nombre se sincronizaban desde /catalogo. Para que un producto
+     nuevo aparezca solo, las tarjetas ahora se arman en JS a partir de
+     GET /catalogo, que necesita de dónde sacar la imagen. ALTER TABLE ADD
+     COLUMN, mismo patrón no destructivo que insumos: no rompe filas
+     existentes, columnas quedan NULL hasta que algo las llene. */
+  const columnasProductos = db
+    .prepare('PRAGMA table_info(productos)')
+    .all()
+    .map((c) => c.name);
+  if (!columnasProductos.includes('imagen_base')) {
+    db.exec('ALTER TABLE productos ADD COLUMN imagen_base TEXT');
+  }
+  if (!columnasProductos.includes('alt_imagen')) {
+    db.exec('ALTER TABLE productos ADD COLUMN alt_imagen TEXT');
+  }
+
   const productosSemilla = [
-    { id: 1, nombre: 'Donuts Glaseadas', categoria: 'frituras', precio: 1.5 },
-    { id: 2, nombre: 'Buñuelos', categoria: 'frituras', precio: 2.5 },
-    { id: 3, nombre: 'Roscón de Arequipe', categoria: 'reposteria', precio: 2.5 },
-    { id: 4, nombre: 'Croissant', categoria: 'bolleria', precio: 2.0 },
-    { id: 5, nombre: 'Almojábanas', categoria: 'panaderia', precio: 2.5 },
-    { id: 6, nombre: 'Pandebono', categoria: 'panaderia', precio: 2.5 },
-    { id: 7, nombre: 'Pan de Yuca', categoria: 'panaderia', precio: 2.5 },
-    { id: 8, nombre: 'Conchas', categoria: 'reposteria', precio: 1.75 },
-    { id: 9, nombre: 'Pan mariquiteño', categoria: 'reposteria', precio: 2.5 },
+    {
+      id: 1,
+      nombre: 'Donuts Glaseadas',
+      categoria: 'frituras',
+      precio: 1.5,
+      imagenBase: 'donuts',
+      altImagen: 'Donuts glaseadas',
+      descripcion: 'Suaves por dentro, crujientes por fuera, con glaseado de vainilla.',
+    },
+    {
+      id: 2,
+      nombre: 'Buñuelos',
+      categoria: 'frituras',
+      precio: 2.5,
+      imagenBase: 'bunuelos',
+      altImagen: 'Buñuelos colombianos',
+      descripcion:
+        'Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un clásico colombiano para acompañar el café.',
+    },
+    {
+      id: 3,
+      nombre: 'Roscón de Arequipe',
+      categoria: 'reposteria',
+      precio: 2.5,
+      imagenBase: 'roscon-de-arequipe',
+      altImagen: 'Roscón relleno de arequipe o guayaba',
+      descripcion:
+        'Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o la merienda.',
+    },
+    {
+      id: 4,
+      nombre: 'Croissant',
+      categoria: 'bolleria',
+      precio: 2.0,
+      imagenBase: 'croissant',
+      altImagen: 'Croissants con dulce de leche',
+      descripcion: 'Hojaldre crujiente con mantequilla, acompañado de dulce de leche.',
+    },
+    {
+      id: 5,
+      nombre: 'Almojábanas',
+      categoria: 'panaderia',
+      precio: 2.5,
+      imagenBase: 'almojabana',
+      altImagen: 'Almojábanas colombianas',
+      descripcion:
+        'Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera, esponjosos por dentro. Perfectas con café o chocolate.',
+    },
+    {
+      id: 6,
+      nombre: 'Pandebono',
+      categoria: 'panaderia',
+      precio: 2.5,
+      imagenBase: 'pandebono',
+      altImagen: 'Pandebono colombiano',
+      descripcion:
+        'Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño. Crujiente por fuera, esponjoso por dentro.',
+    },
+    {
+      id: 7,
+      nombre: 'Pan de Yuca',
+      categoria: 'panaderia',
+      precio: 2.5,
+      imagenBase: 'pan-de-yuca',
+      altImagen: 'Pan de yuca colombiano tradicional',
+      descripcion:
+        'Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a queso. Perfecto solo o con chocolate.',
+    },
+    {
+      id: 8,
+      nombre: 'Conchas',
+      categoria: 'reposteria',
+      precio: 1.75,
+      imagenBase: 'pan-concha',
+      altImagen: 'Conchas de vainilla y chocolate',
+      descripcion:
+        'Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate. Perfectas para el desayuno o la merienda.',
+    },
+    {
+      id: 9,
+      nombre: 'Pan mariquiteño',
+      categoria: 'reposteria',
+      precio: 2.5,
+      imagenBase: 'pan-mariquiteño',
+      altImagen: 'Pan mariquiteño colombiano',
+      descripcion:
+        'Un pan que destaca por su distintiva forma curva, su textura suave y su rico aroma. Perfecto para acompañar el café o la merienda.',
+    },
   ];
   const insertarProducto = db.prepare(
     'INSERT OR IGNORE INTO productos (id, nombre, categoria, precio) VALUES (?, ?, ?, ?)',
@@ -194,6 +291,22 @@ try {
     for (const p of filas) insertarProducto.run(p.id, p.nombre, p.categoria, p.precio);
   });
   sembrarProductos(productosSemilla);
+
+  /* Backfill para instalaciones que ya tenían la tabla productos de antes
+     de imagen_base/alt_imagen/descripcion (INSERT OR IGNORE de arriba no
+     toca filas que ya existen). Solo llena lo que esté vacío — si alguien
+     ya editó la descripción o la imagen desde el panel, esto no la pisa. */
+  const backfillProducto = db.prepare(`
+    UPDATE productos
+    SET imagen_base = COALESCE(imagen_base, ?),
+        alt_imagen = COALESCE(alt_imagen, ?),
+        descripcion = COALESCE(descripcion, ?)
+    WHERE id = ?
+  `);
+  const backfillProductos = db.transaction((filas) => {
+    for (const p of filas) backfillProducto.run(p.imagenBase, p.altImagen, p.descripcion, p.id);
+  });
+  backfillProductos(productosSemilla);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS insumos (

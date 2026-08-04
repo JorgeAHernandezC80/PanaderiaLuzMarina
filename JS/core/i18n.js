@@ -106,20 +106,12 @@ const translations = {
     stock_quedan: 'Quedan',
     stock_agotado: 'Agotado',
     catalog_empty: 'No hay productos en esta categoría.',
-    prod_donuts_desc: 'Suaves por dentro, crujientes por fuera, con glaseado de vainilla.',
-    prod_bunuelos_desc:
-      'Buñuelos dorados de masa de queso, crujientes por fuera y suaves por dentro. Un clásico colombiano para acompañar el café.',
-    prod_almojabanas_desc:
-      'Panecillos tradicionales de harina de maíz y queso. Crujientes por fuera, esponjosos por dentro. Perfectas con café o chocolate.',
-    prod_pandebono_desc:
-      'Panecillo del Valle del Cauca, hecho con almidón de yuca y queso costeño. Crujiente por fuera, esponjoso por dentro.',
-    prod_panyuca_desc:
-      'Hecho con almidón de yuca, queso y huevo. Suave, esponjoso y con delicioso sabor a queso. Perfecto solo o con chocolate.',
-    prod_roscon_desc:
-      'Suave y esponjoso, relleno de arequipe o guayaba. Ideal para acompañar el café o la merienda.',
-    prod_conchas_desc:
-      'Pan dulce tradicional con su clásica cubierta crujiente de vainilla o chocolate. Perfectas para el desayuno o la merienda.',
-    prod_croissant_desc: 'Hojaldre crujiente con mantequilla, acompañado de dulce de leche.',
+    catalog_error: 'No pudimos cargar el catálogo. Intenta recargar la página.',
+    /* La descripción de cada producto en español ya no vive acá: viene de
+       productos.descripcion (ver GET /catalogo en server.js). Las claves
+       prod_desc_<id> de más abajo (bloque en) son solo para la traducción
+       al inglés — catalogo.js cae a la descripción en español si no
+       encuentra la clave para el producto. */
 
     /* Carrito */
     cart_title: 'Tu Canasta',
@@ -329,20 +321,27 @@ const translations = {
     stock_quedan: 'Left',
     stock_agotado: 'Sold out',
     catalog_empty: 'No products in this category.',
-    prod_donuts_desc: 'Soft inside, crispy outside, with vanilla glaze.',
-    prod_bunuelos_desc:
+    catalog_error: "We couldn't load the catalog. Try reloading the page.",
+    /* Traducción al inglés de la descripción de cada producto, por id (no
+       por slug — el id es estable, ver PR #21). Si un producto no tiene
+       clave acá (por ejemplo uno nuevo creado desde el panel), catalogo.js
+       cae a productos.descripcion (español) también en modo inglés. */
+    prod_desc_1: 'Soft inside, crispy outside, with vanilla glaze.',
+    prod_desc_2:
       'Golden cheese-dough fritters, crispy outside and soft inside. A Colombian classic to go with coffee.',
-    prod_almojabanas_desc:
-      'Traditional corn-flour and cheese rolls. Crispy outside, fluffy inside. Perfect with coffee or hot chocolate.',
-    prod_pandebono_desc:
-      'A roll from the Valle del Cauca, made with cassava starch and costeño cheese. Crispy outside, fluffy inside.',
-    prod_panyuca_desc:
-      'Made with cassava starch, cheese and egg. Soft, fluffy and full of cheese flavor. Great on its own or with hot chocolate.',
-    prod_roscon_desc:
+    prod_desc_3:
       'Soft and fluffy, filled with dulce de leche or guava. Perfect with coffee or as an afternoon snack.',
-    prod_conchas_desc:
+    prod_desc_4: 'Crispy buttery puff pastry, served with dulce de leche.',
+    prod_desc_5:
+      'Traditional corn-flour and cheese rolls. Crispy outside, fluffy inside. Perfect with coffee or hot chocolate.',
+    prod_desc_6:
+      'A roll from the Valle del Cauca, made with cassava starch and costeño cheese. Crispy outside, fluffy inside.',
+    prod_desc_7:
+      'Made with cassava starch, cheese and egg. Soft, fluffy and full of cheese flavor. Great on its own or with hot chocolate.',
+    prod_desc_8:
       'Traditional sweet bread with its classic crunchy vanilla or chocolate topping. Perfect for breakfast or a snack.',
-    prod_croissant_desc: 'Crispy buttery puff pastry, served with dulce de leche.',
+    prod_desc_9:
+      'A bread known for its distinctive curved shape, soft texture and rich aroma. Perfect with coffee or as a snack.',
 
     /* Carrito */
     cart_title: 'Your Basket',
@@ -475,6 +474,14 @@ export function getCurrentLang() {
 /** Traduce una clave al idioma activo; si no existe, devuelve la clave */
 export function t(key) {
   return translations[currentLang]?.[key] ?? key;
+}
+
+/** Igual que t(), pero devuelve null si la clave no existe en vez de la
+ *  clave misma — para contenido generado en JS (como la descripción de
+ *  producto en catalogo.js) que necesita distinguir "no hay traducción,
+ *  cae a otra fuente" de "la clave literalmente dice esto". */
+export function tOrNull(key) {
+  return translations[currentLang]?.[key] ?? null;
 }
 
 /** Obtiene el idioma guardado o el del navegador */

@@ -287,19 +287,28 @@ contra fuerza bruta.
 
 **Productos**
 
-| Método | Ruta             | Auth  | Descripción                                                             |
-| ------ | ---------------- | ----- | ----------------------------------------------------------------------- |
-| `GET`  | `/catalogo`      | No    | Catálogo público: id, nombre, categoría y precio de lo que está activo. |
-| `GET`  | `/productos`     | Admin | Lista el catálogo completo, incluidos los que no están activos.         |
-| `POST` | `/productos`     | Admin | Crea un producto.                                                       |
-| `PUT`  | `/productos/:id` | Admin | Actualiza un producto.                                                  |
+| Método | Ruta             | Auth  | Descripción                                                                                  |
+| ------ | ---------------- | ----- | -------------------------------------------------------------------------------------------- |
+| `GET`  | `/catalogo`      | No    | Catálogo público: id, nombre, categoría, precio, descripción e imagen de lo que está activo. |
+| `GET`  | `/productos`     | Admin | Lista el catálogo completo, incluidos los que no están activos.                              |
+| `POST` | `/productos`     | Admin | Crea un producto.                                                                            |
+| `PUT`  | `/productos/:id` | Admin | Actualiza un producto.                                                                       |
 
 Los productos no se borran: se les cambia el `estado` (`activo`, `borrador`, `agotado`,
 `descontinuado`), porque recetas, producciones, horneadas, ajustes y órdenes guardan su id.
 Solo los `activo` aparecen en `/catalogo` y en el inventario del día, y `POST /ordenes`
 rechaza cualquier item cuyo producto no esté activo o cuyo precio no coincida con el de la
-tabla — el precio escrito en `catalogo.html` es solo el respaldo para cuando el backend no
-responde.
+tabla.
+
+`catalogo.html` ya no tiene tarjetas escritas a mano: `JS/pages/catalogo.js` las arma en el
+navegador a partir de `GET /catalogo`, así que un producto nuevo creado desde el panel
+aparece solo, sin tocar el HTML. La imagen se arma con `imagenBase` (nombre del archivo en
+`IMG/webp/`, sin extensión — debe existir `<imagenBase>-400.webp` y `<imagenBase>-800.webp`);
+si el producto no tiene `imagenBase`, la tarjeta muestra un ícono en su lugar en vez de una
+imagen rota. La descripción en español sale de `productos.descripcion`; la traducción al
+inglés vive en `JS/core/i18n.js` por id de producto (`prod_desc_<id>`) y, si no existe, cae a
+la descripción en español. Como el catálogo depende de que el backend responda, si
+`GET /catalogo` falla se muestra un aviso en vez de una grilla vacía.
 
 **Insumos**
 
