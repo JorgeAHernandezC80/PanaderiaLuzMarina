@@ -11,6 +11,10 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
 const { convertirAGramos, costoPorGramo } = require('./units');
+const AnalyticsEngine = require('./analyticsEngine');
+const Auditoria = require('./auditoria');
+const CalidadDatos = require('./calidadDatos');
+const AutoML = require('./autoML');
 
 /* Zona horaria de referencia del negocio (Houston). El backend calcula
    "hoy" con esto cuando no viene fecha explícita en la petición (ej.
@@ -962,6 +966,19 @@ app.post('/horneadas', requireAuth, rateLimit, (req, res) => {
       datos.unidadesSegundaCalidad,
     );
     const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
+    Auditoria.registrarEnCadena({
+      entidad: 'horneadas',
+      entidadId: fila.id,
+      accion: 'crear',
+      datos: {
+        productoId: fila.producto_id,
+        productoNombre: fila.producto_nombre,
+        cantidad: fila.cantidad,
+        fecha: fila.fecha,
+        hora: fila.hora,
+      },
+      actualizadoPor: fila.registrado_por,
+    });
     broadcast({ tipo: 'horneada:nueva', horneada: serializeHorneada(fila) });
     res.status(201).json(serializeHorneada(fila));
   } catch (err) {
@@ -975,6 +992,7 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
   if (!HORNEADA_ID_RE.test(id)) {
     return res.status(400).json({ error: 'Identificador de horneada inválido.' });
   }
+  const existente = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
 
   let datos;
   try {
@@ -1059,6 +1077,16 @@ app.put('/horneadas/:id', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'Horneada no encontrada.' });
     }
     const fila = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
+    Auditoria.registrarEnCadena({
+      entidad: 'horneadas',
+      entidadId: fila.id,
+      accion: 'actualizar',
+      datos: {
+        antes: { cantidad: existente.cantidad, fecha: existente.fecha, hora: existente.hora },
+        despues: { cantidad: fila.cantidad, fecha: fila.fecha, hora: fila.hora },
+      },
+      actualizadoPor: fila.registrado_por,
+    });
     broadcast({ tipo: 'horneada:actualizada', horneada: serializeHorneada(fila) });
     res.json(serializeHorneada(fila));
   } catch (err) {
@@ -1073,10 +1101,23 @@ app.delete('/horneadas/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Identificador de horneada inválido.' });
   }
   try {
+    const existente = db.prepare('SELECT * FROM horneadas WHERE id = ?').get(id);
     const info = db.prepare('DELETE FROM horneadas WHERE id = ?').run(id);
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Horneada no encontrada.' });
     }
+    Auditoria.registrarEnCadena({
+      entidad: 'horneadas',
+      entidadId: id,
+      accion: 'eliminar',
+      datos: {
+        productoNombre: existente.producto_nombre,
+        cantidad: existente.cantidad,
+        fecha: existente.fecha,
+        hora: existente.hora,
+      },
+      actualizadoPor: existente.registrado_por,
+    });
     broadcast({ tipo: 'horneada:eliminada', id });
     res.status(204).end();
   } catch (err) {
@@ -1156,6 +1197,19 @@ app.post('/ajustes-inventario', requireAuth, rateLimit, (req, res) => {
       datos.notas,
     );
     const fila = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
+    Auditoria.registrarEnCadena({
+      entidad: 'ajustes_inventario',
+      entidadId: fila.id,
+      accion: 'crear',
+      datos: {
+        productoNombre: fila.producto_nombre,
+        cantidad: fila.cantidad,
+        motivo: fila.motivo,
+        fecha: fila.fecha,
+        hora: fila.hora,
+      },
+      actualizadoPor: fila.registrado_por,
+    });
     broadcast({ tipo: 'ajuste:nuevo', ajuste: serializeAjuste(fila) });
     res.status(201).json(serializeAjuste(fila));
   } catch (err) {
@@ -1169,6 +1223,7 @@ app.put('/ajustes-inventario/:id', requireAuth, (req, res) => {
   if (!AJUSTE_ID_RE.test(id)) {
     return res.status(400).json({ error: 'Identificador de ajuste inválido.' });
   }
+  const existente = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
 
   let datos;
   try {
@@ -1203,6 +1258,16 @@ app.put('/ajustes-inventario/:id', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'Ajuste no encontrado.' });
     }
     const fila = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
+    Auditoria.registrarEnCadena({
+      entidad: 'ajustes_inventario',
+      entidadId: fila.id,
+      accion: 'actualizar',
+      datos: {
+        antes: { cantidad: existente.cantidad, motivo: existente.motivo },
+        despues: { cantidad: fila.cantidad, motivo: fila.motivo },
+      },
+      actualizadoPor: fila.registrado_por,
+    });
     broadcast({ tipo: 'ajuste:actualizado', ajuste: serializeAjuste(fila) });
     res.json(serializeAjuste(fila));
   } catch (err) {
@@ -1217,10 +1282,22 @@ app.delete('/ajustes-inventario/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Identificador de ajuste inválido.' });
   }
   try {
+    const existente = db.prepare('SELECT * FROM ajustes_inventario WHERE id = ?').get(id);
     const info = db.prepare('DELETE FROM ajustes_inventario WHERE id = ?').run(id);
     if (info.changes === 0) {
       return res.status(404).json({ error: 'Ajuste no encontrado.' });
     }
+    Auditoria.registrarEnCadena({
+      entidad: 'ajustes_inventario',
+      entidadId: id,
+      accion: 'eliminar',
+      datos: {
+        productoNombre: existente.producto_nombre,
+        cantidad: existente.cantidad,
+        motivo: existente.motivo,
+      },
+      actualizadoPor: existente.registrado_por,
+    });
     broadcast({ tipo: 'ajuste:eliminado', id });
     res.status(204).end();
   } catch (err) {
@@ -1249,10 +1326,33 @@ function serializeProducto(row) {
     descripcion: row.descripcion,
     imagenBase: row.imagen_base,
     altImagen: row.alt_imagen,
+    vidaUtilHoras: row.vida_util_horas,
     actualizadoPor: row.actualizado_por,
     creadoEn: sqliteDatetimeAIso(row.creado_en),
     actualizadoEn: sqliteDatetimeAIso(row.actualizado_en),
   };
+}
+
+/** Serializa un producto Y lo enriquece con sus estadísticas (Patrón 1,
+ *  "Flujo Operativo Automático" — ver analyticsEngine.js). `forzar` pisa
+ *  el caché de 30 min: úsalo en creación/edición explícita de ESE
+ *  producto (POST/PUT), no en listados de alta frecuencia como
+ *  GET /productos, donde el caché evita recorrer 90 días de historial
+ *  por producto en cada carga del panel. */
+function serializeProductoConEstadisticas(row, { forzar = false } = {}) {
+  const { produccionSugeridaManana, ...estadisticas } =
+    AnalyticsEngine.enriquecerProductoConEstadisticas(row, { forzar });
+  return {
+    ...serializeProducto(row),
+    estadisticas: { ...estadisticas, produccionSugeridaManana },
+  };
+}
+
+/** Fila completa de un producto (todas las columnas, incluidas las de
+ *  caché de estadísticas) — a diferencia de obtenerProducto (validation.js),
+ *  que solo trae las columnas que necesita la validación de pedidos. */
+function obtenerProductoCompleto(id) {
+  return db.prepare('SELECT * FROM productos WHERE id = ?').get(id);
 }
 
 /** Un producto solo se puede pedir/hornear/producir cuando está activo;
@@ -1266,7 +1366,7 @@ function productosActivos() {
 app.get('/productos', requireAuth, (req, res) => {
   try {
     const filas = db.prepare('SELECT * FROM productos ORDER BY nombre COLLATE NOCASE ASC').all();
-    res.json(filas.map(serializeProducto));
+    res.json(filas.map((fila) => serializeProductoConEstadisticas(fila)));
   } catch (err) {
     console.error('[GET /productos]', err.message);
     res.status(500).json({ error: 'Error al obtener los productos.' });
@@ -1287,8 +1387,8 @@ app.post('/productos', requireAuth, rateLimit, (req, res) => {
     const info = db
       .prepare(
         `INSERT INTO productos
-           (nombre, categoria, precio, estado, sku, descripcion, imagen_base, alt_imagen, actualizado_por)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (nombre, categoria, precio, estado, sku, descripcion, imagen_base, alt_imagen, vida_util_horas, actualizado_por)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         datos.nombre,
@@ -1299,11 +1399,25 @@ app.post('/productos', requireAuth, rateLimit, (req, res) => {
         datos.descripcion ?? null,
         datos.imagenBase ?? null,
         datos.altImagen ?? null,
+        datos.vidaUtilHoras ?? null,
         datos.actualizadoPor ?? null,
       );
     const fila = db.prepare('SELECT * FROM productos WHERE id = ?').get(info.lastInsertRowid);
-    broadcast({ tipo: 'producto:nuevo', producto: serializeProducto(fila) });
-    res.status(201).json(serializeProducto(fila));
+    Auditoria.registrarEnCadena({
+      entidad: 'productos',
+      entidadId: fila.id,
+      accion: 'crear',
+      datos: {
+        nombre: fila.nombre,
+        categoria: fila.categoria,
+        precio: fila.precio,
+        estado: fila.estado,
+      },
+      actualizadoPor: fila.actualizado_por,
+    });
+    const productoSerializado = serializeProductoConEstadisticas(fila, { forzar: true });
+    broadcast({ tipo: 'producto:nuevo', producto: productoSerializado });
+    res.status(201).json(productoSerializado);
   } catch (err) {
     if (esConflictoDeSku(err)) {
       return res.status(409).json({ error: 'Ese SKU ya lo usa otro producto.' });
@@ -1335,20 +1449,23 @@ app.put('/productos/:id', requireAuth, (req, res) => {
   }
 
   try {
-    // estado/sku/descripcion/imagenBase/altImagen/actualizadoPor son
-    // opcionales en validarProducto (ver validation.js) — si no vienen en
+    // estado/sku/descripcion/imagenBase/altImagen/vidaUtilHoras/actualizadoPor
+    // son opcionales en validarProducto (ver validation.js) — si no vienen en
     // la petición, se conserva lo que el producto ya tenía.
     const estado = datos.estado !== undefined ? datos.estado : existente.estado;
     const sku = datos.sku !== undefined ? datos.sku : existente.sku;
     const descripcion = datos.descripcion !== undefined ? datos.descripcion : existente.descripcion;
     const imagenBase = datos.imagenBase !== undefined ? datos.imagenBase : existente.imagen_base;
     const altImagen = datos.altImagen !== undefined ? datos.altImagen : existente.alt_imagen;
+    const vidaUtilHoras =
+      datos.vidaUtilHoras !== undefined ? datos.vidaUtilHoras : existente.vida_util_horas;
     const actualizadoPor =
       datos.actualizadoPor !== undefined ? datos.actualizadoPor : existente.actualizado_por;
     db.prepare(
       `UPDATE productos
        SET nombre = ?, categoria = ?, precio = ?, estado = ?, sku = ?, descripcion = ?,
-           imagen_base = ?, alt_imagen = ?, actualizado_por = ?, actualizado_en = datetime('now')
+           imagen_base = ?, alt_imagen = ?, vida_util_horas = ?, actualizado_por = ?,
+           actualizado_en = datetime('now')
        WHERE id = ?`,
     ).run(
       datos.nombre,
@@ -1359,12 +1476,34 @@ app.put('/productos/:id', requireAuth, (req, res) => {
       descripcion,
       imagenBase,
       altImagen,
+      vidaUtilHoras,
       actualizadoPor,
       idNum,
     );
     const fila = db.prepare('SELECT * FROM productos WHERE id = ?').get(idNum);
-    broadcast({ tipo: 'producto:actualizado', producto: serializeProducto(fila) });
-    res.json(serializeProducto(fila));
+    Auditoria.registrarEnCadena({
+      entidad: 'productos',
+      entidadId: fila.id,
+      accion: 'actualizar',
+      datos: {
+        antes: {
+          nombre: existente.nombre,
+          categoria: existente.categoria,
+          precio: existente.precio,
+          estado: existente.estado,
+        },
+        despues: {
+          nombre: fila.nombre,
+          categoria: fila.categoria,
+          precio: fila.precio,
+          estado: fila.estado,
+        },
+      },
+      actualizadoPor,
+    });
+    const productoSerializado = serializeProductoConEstadisticas(fila, { forzar: true });
+    broadcast({ tipo: 'producto:actualizado', producto: productoSerializado });
+    res.json(productoSerializado);
   } catch (err) {
     if (esConflictoDeSku(err)) {
       return res.status(409).json({ error: 'Ese SKU ya lo usa otro producto.' });
@@ -1583,9 +1722,184 @@ app.get('/inventario/disponible', (req, res) => {
 });
 
 /* ═══════════════════════════════════════════
-   RECETAS — ficha técnica por producto (ingredientes + peso por unidad).
-   Es la base de la que depende Producción.
+   ESTADÍSTICAS DE DEMANDA — forecasting para saber cuánto hornear.
+   Toda la orquestación (recorrer ordenes/horneadas/ajustes_inventario,
+   cachear sobre la fila del producto) vive en analyticsEngine.js
+   (Patrón 1, "Flujo Operativo Automático"); acá solo se llama.
    ═══════════════════════════════════════════ */
+
+app.get('/productos/:id/estadisticas', requireAuth, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Id de producto inválido.' });
+  }
+
+  const producto = obtenerProductoCompleto(id);
+  if (!producto) {
+    return res.status(404).json({ error: 'Producto no encontrado.' });
+  }
+
+  try {
+    res.json({
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      ...AnalyticsEngine.enriquecerProductoConEstadisticas(producto, { forzar: true }),
+    });
+  } catch (err) {
+    console.error('[GET /productos/:id/estadisticas]', err.message);
+    res.status(500).json({ error: 'Error al calcular las estadísticas.' });
+  }
+});
+
+/* Versión en lote: el panel necesita esto para todos los productos
+ * activos a la vez (por ejemplo, para sugerir cuánto hornear de cada
+ * uno mañana) — pedirlo uno por uno sería un GET por producto. No fuerza
+ * el recálculo: usa el mismo caché que ya se refrescó en GET /productos
+ * al entrar al panel (ver Productos view), así esta consulta no vuelve a
+ * recorrer 90 días de historial por producto. */
+app.get('/productos/estadisticas', requireAuth, (req, res) => {
+  try {
+    const resultado = productosActivos().map((producto) => ({
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      ...AnalyticsEngine.enriquecerProductoConEstadisticas(producto),
+    }));
+    res.json({ productos: resultado });
+  } catch (err) {
+    console.error('[GET /productos/estadisticas]', err.message);
+    res.status(500).json({ error: 'Error al calcular las estadísticas.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   AUDITORÍA — cadena de hashes (hash-chain) sobre horneadas, ajustes de
+   inventario y productos. Ver auditoria.js para el detalle de cómo se
+   arma y se verifica; acá solo se exponen los dos endpoints de lectura.
+   No hay POST/PUT/DELETE: la cadena solo crece desde adentro de los
+   endpoints de cada módulo (Auditoria.registrarEnCadena), nunca desde
+   afuera — si se pudiera escribir directo, dejaría de ser confiable.
+   ═══════════════════════════════════════════ */
+
+/** Historial completo o filtrado por entidad/entidadId — para mostrar
+ *  "qué cambió y cuándo" en el panel (ej. el historial de un producto
+ *  puntual). Sin filtro, trae toda la cadena (más reciente primero). */
+app.get('/auditoria', requireAuth, (req, res) => {
+  try {
+    const { entidad, entidadId } = req.query;
+    let filas;
+    if (entidad && entidadId) {
+      filas = Auditoria.historialDe(String(entidad), String(entidadId));
+    } else {
+      filas = db.prepare('SELECT * FROM auditoria_cadena ORDER BY id DESC LIMIT 200').all();
+    }
+    res.json({
+      bloques: filas.map((f) => ({
+        id: f.id,
+        entidad: f.entidad,
+        entidadId: f.entidad_id,
+        accion: f.accion,
+        datos: JSON.parse(f.datos),
+        actualizadoPor: f.actualizado_por,
+        hash: f.hash,
+        hashAnterior: f.hash_anterior,
+        creadoEn: f.creado_en,
+      })),
+    });
+  } catch (err) {
+    console.error('[GET /auditoria]', err.message);
+    res.status(500).json({ error: 'Error al obtener la auditoría.' });
+  }
+});
+
+/** Recorre toda la cadena y confirma que cada bloque enlaza con el
+ *  anterior y que su contenido no fue alterado. Es intencionalmente una
+ *  operación pesada (recorre TODA la tabla) — por eso es GET bajo
+ *  auth, no algo que se llame en cada carga de página. */
+app.get('/auditoria/verificar', requireAuth, (req, res) => {
+  try {
+    res.json(Auditoria.verificarCadena());
+  } catch (err) {
+    console.error('[GET /auditoria/verificar]', err.message);
+    res.status(500).json({ error: 'Error al verificar la cadena de auditoría.' });
+  }
+});
+
+/** Inspecciona/agrupa/modela la cadena para la vista Auditoría del panel
+ *  (gráficos de barras por entidad y por acción, línea de tiempo,
+ *  registros con más cambios). Ver Auditoria.analizarCadena. */
+app.get('/auditoria/analisis', requireAuth, (req, res) => {
+  try {
+    res.json(Auditoria.analizarCadena());
+  } catch (err) {
+    console.error('[GET /auditoria/analisis]', err.message);
+    res.status(500).json({ error: 'Error al analizar la cadena de auditoría.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   CALIDAD DE DATOS (ADM — Gestión de Datos Aumentada). Ver calidadDatos.js
+   para las reglas; acá solo se expone el reporte. Es intencionalmente
+   de solo lectura: esto avisa qué falta, no lo corrige solo — corregir
+   un precio o una fecha de vencimiento sigue siendo una decisión humana.
+   ═══════════════════════════════════════════ */
+app.get('/calidad-datos', requireAuth, (req, res) => {
+  try {
+    res.json(CalidadDatos.evaluarCalidadGeneral());
+  } catch (err) {
+    console.error('[GET /calidad-datos]', err.message);
+    res.status(500).json({ error: 'Error al evaluar la calidad de los datos.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   AUTOML — pronóstico de demanda con selección automática de modelo.
+   Ver autoML.js para el detalle de qué técnicas prueba y cómo elige.
+   No se cachea (a diferencia de AnalyticsEngine): el backtest sobre la
+   serie diaria de UN producto es aritmética simple, barata de repetir,
+   y acá vale más que el resultado esté siempre fresco que ahorrarse el
+   cálculo. ═══════════════════════════════════════════ */
+app.get('/productos/:id/prediccion-automl', requireAuth, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Id de producto inválido.' });
+  }
+
+  const producto = obtenerProductoCompleto(id);
+  if (!producto) {
+    return res.status(404).json({ error: 'Producto no encontrado.' });
+  }
+
+  try {
+    const serie = AnalyticsEngine.obtenerSerieVentasDiarias(producto);
+    res.json({
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      ...AutoML.seleccionarMejorModelo(serie),
+    });
+  } catch (err) {
+    console.error('[GET /productos/:id/prediccion-automl]', err.message);
+    res.status(500).json({ error: 'Error al calcular la predicción.' });
+  }
+});
+
+/* Versión en lote: la tarjeta de AutoML en la vista Productos necesita
+ * esto para todos los productos activos a la vez — pedirlo uno por uno
+ * sería un GET por producto, igual que ya resolvimos para
+ * GET /productos/estadisticas. */
+app.get('/productos/prediccion-automl', requireAuth, (req, res) => {
+  try {
+    const resultado = productosActivos().map((producto) => ({
+      productoId: producto.id,
+      productoNombre: producto.nombre,
+      ...AutoML.seleccionarMejorModelo(AnalyticsEngine.obtenerSerieVentasDiarias(producto)),
+    }));
+    res.json({ productos: resultado });
+  } catch (err) {
+    console.error('[GET /productos/prediccion-automl]', err.message);
+    res.status(500).json({ error: 'Error al calcular las predicciones.' });
+  }
+});
+
 function serializeReceta(row, ingredientes) {
   return {
     id: row.id,

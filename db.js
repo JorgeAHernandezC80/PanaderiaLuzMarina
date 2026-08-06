@@ -193,6 +193,38 @@ try {
   if (!columnasProductos.includes('alt_imagen')) {
     db.exec('ALTER TABLE productos ADD COLUMN alt_imagen TEXT');
   }
+  /* Migración: vida_util_horas — cuántas horas se considera fresco un
+     lote de este producto después de horneado. Es el dato que le falta
+     a probabilidadVencimiento (ver estadisticas.js) para saber si un
+     lote se vendió a tiempo o no; sin esto, esa métrica no se puede
+     calcular en absoluto (queda en null hasta que alguien lo configure
+     desde el panel). */
+  if (!columnasProductos.includes('vida_util_horas')) {
+    db.exec('ALTER TABLE productos ADD COLUMN vida_util_horas REAL');
+  }
+  /* Migración: caché de estadísticas sobre el propio producto (Patrón 1,
+     "Flujo Operativo Automático" — AnalyticsEngine.enriquecerProductoConEstadisticas).
+     Antes estos 5 indicadores se calculaban al vuelo en cada
+     GET /productos/estadisticas, recorriendo 90 días de órdenes/horneadas
+     por producto en cada llamada. Ahora se guardan acá y solo se
+     recalculan cuando el caché está viejo — ver
+     analyticsEngine.js:necesitaRecalculo. factor_estacionalidad y
+     probabilidad_vencimiento son objetos, se guardan como TEXT (JSON). */
+  const columnasEstadisticas = [
+    'tasa_rotacion_diaria REAL',
+    'desviacion_estandar_demanda REAL',
+    'factor_estacionalidad TEXT',
+    'tasa_merma_historica REAL',
+    'probabilidad_vencimiento TEXT',
+    'estadisticas_dias_considerados INTEGER',
+    'estadisticas_actualizado_en TEXT',
+  ];
+  for (const definicion of columnasEstadisticas) {
+    const nombreColumna = definicion.split(' ')[0];
+    if (!columnasProductos.includes(nombreColumna)) {
+      db.exec(`ALTER TABLE productos ADD COLUMN ${definicion}`);
+    }
+  }
 
   const productosSemilla = [
     {
@@ -767,6 +799,57 @@ try {
   db.exec(
     'CREATE INDEX IF NOT EXISTS idx_produccion_etapas_produccion ON produccion_etapas(produccion_id)',
   );
+
+  /* Cadena de auditoría (hash-chain, estilo blockchain): un registro
+     append-only donde cada bloque incluye el hash del bloque anterior.
+     No es una blockchain distribuida (no hay red ni consenso — es un
+     solo servidor con una sola base de datos), pero da la misma
+     propiedad que Jorge pidió: si alguien edita un bloque viejo
+     directamente en la base de datos (fuera de la API), su hash deja de
+     coincidir con lo que el siguiente bloque esperaba como
+     "hash_anterior", y GET /auditoria/verificar lo detecta recorriendo
+     toda la cadena. La aritmética del hash vive en auditoria.js. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS auditoria_cadena (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      entidad          TEXT NOT NULL,
+      entidad_id       TEXT NOT NULL,
+      accion           TEXT NOT NULL,
+      datos            TEXT NOT NULL,
+      actualizado_por  TEXT,
+      hash_anterior    TEXT NOT NULL,
+      hash             TEXT NOT NULL UNIQUE,
+      creado_en        TEXT NOT NULL
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_auditoria_cadena_entidad ON auditoria_cadena(entidad, entidad_id)',
+  );
+
+  /* Vista de solo lectura para herramientas de BI externas (Power BI,
+     Excel, etc. vía ODBC): ordenes.items_json es un blob JSON con los
+     productos de cada pedido, y una tabla de este tipo no se puede
+     modelar en una herramienta tabular como Power BI sin aplanarla
+     primero. json_each() (SQLite core desde hace años, sin extensión
+     aparte) la convierte en una fila por ítem de pedido — un "orden
+     items" de verdad, listo para conectar directo. Es una VIEW, no una
+     tabla: no ocupa espacio propio, se recalcula al vuelo en cada
+     consulta desde ordenes. */
+  db.exec(`
+    CREATE VIEW IF NOT EXISTS vista_orden_items AS
+    SELECT
+      o.numero                                   AS orden_numero,
+      o.fecha_iso                                AS fecha_iso,
+      o.estado                                   AS estado,
+      o.cliente                                  AS cliente,
+      json_extract(item.value, '$.productoId')   AS producto_id,
+      json_extract(item.value, '$.nombre')       AS producto_nombre,
+      json_extract(item.value, '$.cantidad')     AS cantidad,
+      json_extract(item.value, '$.precio')       AS precio,
+      json_extract(item.value, '$.cantidad') * json_extract(item.value, '$.precio') AS subtotal
+    FROM ordenes o, json_each(o.items_json) AS item
+  `);
 } catch (err) {
   /* Sin base de datos no hay backend: fallar de forma ruidosa y con contexto,
      en lugar de dejar que un error opaco tumbe el arranque. */

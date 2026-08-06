@@ -27,6 +27,27 @@ function ahoraHoraHouston() {
     .slice(0, 5);
 }
 
+/** Índice de día de la semana (0=domingo … 6=sábado, mismo criterio que
+ *  Date#getDay()) de "mañana" en hora de Houston — para elegir qué
+ *  factorEstacionalidad usar en la sugerencia de cuánto hornear (ver
+ *  GET /productos/estadisticas y Render.renderSugerenciasHorneado). */
+function diaSemanaMananaHouston() {
+  const [y, m, d] = hoyHouston().split('-').map(Number);
+  const manana = new Date(Date.UTC(y, m - 1, d));
+  manana.setUTCDate(manana.getUTCDate() + 1);
+  return manana.getUTCDay();
+}
+
+const DIAS_SEMANA_LABELS = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+];
+
 /** Suma minutos a una hora "HH:MM" (sin cruzar más de un día — de sobra
  *  para el margen de espera de retiro, que son 15 min). */
 function sumarMinutosAHora(horaHHMM, minutos) {
@@ -136,6 +157,7 @@ const CONFIG = Object.freeze({
     productoDescripcion: '#producto-descripcion',
     productoImagenBase: '#producto-imagen-base',
     productoAltImagen: '#producto-alt-imagen',
+    productoVidaUtil: '#producto-vida-util',
     productoActualizadoPor: '#producto-actualizado-por',
     productoSubmitLabel: '#producto-submit-label',
     productoCancelarEdicion: '#producto-cancelar-edicion',
@@ -187,6 +209,8 @@ const CONFIG = Object.freeze({
     horneadasCount: '#horneadas-count',
     horneadasContainer: '#horneadas-container',
     horneadasResumen: '#horneadas-resumen',
+    horneadasSugerencias: '#horneadas-sugerencias',
+    productosAutoML: '#productos-automl',
     tplHorneadaRow: '#tpl-horneada-row',
     horneadaForm: '#horneada-form',
     horneadaId: '#horneada-id',
@@ -265,6 +289,14 @@ const CONFIG = Object.freeze({
 
     // Producción
     produccionView: '#produccion-view',
+    auditoriaView: '#auditoria-view',
+    auditoriaIntegridad: '#auditoria-integridad',
+    auditoriaResumen: '#auditoria-resumen',
+    auditoriaGraficoEntidad: '#auditoria-grafico-entidad',
+    auditoriaGraficoAccion: '#auditoria-grafico-accion',
+    auditoriaLineaTiempo: '#auditoria-linea-tiempo',
+    auditoriaTablaRegistros: '#auditoria-tabla-registros tbody',
+    auditoriaTablaBloques: '#auditoria-tabla-bloques tbody',
     produccionCount: '#produccion-count',
     produccionesContainer: '#producciones-container',
     tplProduccionCard: '#tpl-produccion-card',
@@ -648,6 +680,52 @@ const Productos = {
     return this._enviar(`/productos/${encodeURIComponent(id)}`, 'PUT', datos);
   },
 
+  /** GET /productos/estadisticas — tasaRotacionDiaria, desviacionEstandarDemanda
+   *  y factorEstacionalidad de todos los productos activos, calculados desde
+   *  el historial real de órdenes entregadas (ver estadisticas.js). Se usa
+   *  para la sugerencia de cuánto hornear mañana en la vista de Horneadas. */
+  async estadisticas() {
+    try {
+      const res = await apiFetch('/productos/estadisticas', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      const { productos } = await res.json();
+      return productos;
+    } catch (err) {
+      console.error('[Productos] Error obteniendo estadísticas:', err.message);
+      return null;
+    }
+  },
+
+  /** GET /productos/prediccion-automl — para cada producto activo, el
+   *  modelo de pronóstico que AutoML eligió por backtesting, su
+   *  predicción y su margen de error (ver autoML.js). Se usa en la
+   *  tarjeta de predicción de la vista Productos. */
+  async prediccionAutoML() {
+    try {
+      const res = await apiFetch('/productos/prediccion-automl', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      const { productos } = await res.json();
+      return productos;
+    } catch (err) {
+      console.error('[Productos] Error obteniendo la predicción AutoML:', err.message);
+      return null;
+    }
+  },
+
   async _enviar(path, method, datos) {
     try {
       const res = await apiFetch(path, {
@@ -671,6 +749,57 @@ const Productos = {
     } catch (err) {
       console.error(`[Productos] Error en ${method} ${path}:`, err.message);
       return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   MÓDULO: AUDITORÍA (backend real)
+   ═══════════════════════════════════════════
+   Cadena de hashes de solo lectura desde el panel — la API nunca expone
+   forma de escribir en auditoria_cadena directamente (ver auditoria.js
+   y server.js); acá solo se consulta lo que ya se generó automáticamente
+   al crear/editar/borrar en Productos, Horneadas y Ajustes. */
+const Auditoria = {
+  /** GET /auditoria/analisis — integridad de la cadena + agrupaciones
+   *  (por entidad, por acción, actividad por día, registros con más
+   *  cambios). Es lo que arma toda la vista Auditoría del panel. */
+  async analisis() {
+    try {
+      const res = await apiFetch('/auditoria/analisis', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Auditoria] Error obteniendo el análisis:', err.message);
+      return null;
+    }
+  },
+
+  /** GET /auditoria — últimos bloques (sin filtro, los 200 más
+   *  recientes) para la tabla "Últimos bloques". */
+  async ultimosBloques() {
+    try {
+      const res = await apiFetch('/auditoria', {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      const { bloques } = await res.json();
+      return bloques;
+    } catch (err) {
+      console.error('[Auditoria] Error obteniendo los bloques:', err.message);
+      return null;
     }
   },
 };
@@ -1802,6 +1931,251 @@ const Render = {
     if (el) el.textContent = lista.length;
   },
 
+  /** Sugerencia de cuánto hornear mañana por producto: produccionSugeridaManana
+   *  ya viene calculada del backend (ver AnalyticsEngine.enriquecerProductoConEstadisticas
+   *  y calcularProduccionSugerida en estadisticas.js) — promedio histórico
+   *  ajustado por estacionalidad del día, más el colchón de stock de
+   *  seguridad (desviación estándar × 1.65, ~95% de no quedarse corto).
+   *  Acá solo se pinta; el cálculo vive en un único lugar (el backend),
+   *  no duplicado en el navegador. */
+  renderSugerenciasHorneado(estadisticas) {
+    const container = document.querySelector(CONFIG.SELECTORS.horneadasSugerencias);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!Array.isArray(estadisticas) || estadisticas.length === 0) return;
+
+    const diaManana = diaSemanaMananaHouston();
+    const labelDia = DIAS_SEMANA_LABELS[diaManana];
+
+    const titulo = document.createElement('h2');
+    titulo.className = 'sr-only';
+    titulo.textContent = `Sugerencia de horneado para mañana (${labelDia})`;
+    container.appendChild(titulo);
+
+    const conDatos = estadisticas.filter((e) => e.produccionSugeridaManana !== null);
+    const sinDatos = estadisticas.filter((e) => e.produccionSugeridaManana === null);
+
+    conDatos
+      .slice()
+      .sort((a, b) => b.produccionSugeridaManana - a.produccionSugeridaManana)
+      .forEach(({ productoNombre, produccionSugeridaManana, desviacionEstandarDemanda }) => {
+        const card = document.createElement('article');
+        card.className = 'stat-card';
+        card.innerHTML = `
+          <span class="stat-card__label">${escapeHTML(productoNombre)}</span>
+          <data class="stat-card__value" value="${produccionSugeridaManana}">${produccionSugeridaManana}</data>
+          <span class="stat-card__hint">±${desviacionEstandarDemanda} de variabilidad diaria</span>
+        `;
+        container.appendChild(card);
+      });
+
+    if (sinDatos.length > 0) {
+      const nota = document.createElement('p');
+      nota.className = 'insumo-form__hint';
+      nota.textContent = `Todavía sin sugerencia por falta de historial de ventas: ${sinDatos
+        .map((e) => e.productoNombre)
+        .join(', ')}.`;
+      container.appendChild(nota);
+    }
+  },
+
+  /** Tarjeta de predicción por producto: qué modelo eligió AutoML por
+   *  backtesting (ver autoML.js), su predicción para el próximo día y su
+   *  margen de error (MAE del backtest — entre más bajo, más confiable
+   *  fue esa técnica prediciendo los últimos días reales de ESE
+   *  producto). Transparente a propósito: el nombre del modelo dice qué
+   *  se eligió y por qué (no es una caja negra con solo un número). */
+  renderProductosAutoML(predicciones) {
+    const container = document.querySelector(CONFIG.SELECTORS.productosAutoML);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!Array.isArray(predicciones) || predicciones.length === 0) return;
+
+    const titulo = document.createElement('h2');
+    titulo.className = 'sr-only';
+    titulo.textContent = 'Predicción de demanda elegida automáticamente por producto';
+    container.appendChild(titulo);
+
+    const conDatos = predicciones.filter((p) => !p.datosInsuficientes);
+    const sinDatos = predicciones.filter((p) => p.datosInsuficientes);
+
+    conDatos
+      .slice()
+      .sort((a, b) => b.prediccion - a.prediccion)
+      .forEach(({ productoNombre, modeloElegido, prediccion, errorPromedio }) => {
+        const card = document.createElement('article');
+        card.className = 'stat-card';
+        card.innerHTML = `
+          <span class="stat-card__label">${escapeHTML(productoNombre)}</span>
+          <data class="stat-card__value" value="${prediccion}">${prediccion}</data>
+          <span class="stat-card__hint">${escapeHTML(modeloElegido)} · margen de error ±${errorPromedio}</span>
+        `;
+        container.appendChild(card);
+      });
+
+    if (sinDatos.length > 0) {
+      const nota = document.createElement('p');
+      nota.className = 'insumo-form__hint';
+      nota.textContent = `Todavía sin suficiente historial para que AutoML elija un modelo: ${sinDatos
+        .map((p) => p.productoNombre)
+        .join(', ')}.`;
+      container.appendChild(nota);
+    }
+  },
+
+  /** Etiquetas legibles para lo que guarda auditoria_cadena — la tabla
+   *  guarda nombres técnicos (entidad = nombre de tabla SQL, accion en
+   *  minúscula) porque eso es lo que usan los otros endpoints; acá se
+   *  traduce para la vista. */
+  AUDITORIA_ENTIDAD_LABELS: {
+    productos: 'Productos',
+    horneadas: 'Horneadas',
+    ajustes_inventario: 'Ajustes de inventario',
+  },
+  AUDITORIA_ACCION_LABELS: {
+    crear: 'Crear',
+    actualizar: 'Actualizar',
+    eliminar: 'Eliminar',
+  },
+
+  /** Pinta toda la vista Auditoría: estado de integridad, tarjetas de
+   *  resumen, dos "gráficos" de barras (con CSS, sin librería — mismo
+   *  criterio de "vanilla" del resto del proyecto) para entidad/acción,
+   *  línea de tiempo de actividad por día, y las dos tablas (registros
+   *  con más cambios, últimos bloques). */
+  renderAuditoria(analisis, bloques) {
+    if (!analisis) return;
+
+    // Integridad
+    const integridadEl = document.querySelector(CONFIG.SELECTORS.auditoriaIntegridad);
+    if (integridadEl) {
+      const { integra, totalBloques, rotoEnId, motivo } = analisis.integridad;
+      integridadEl.className = `auditoria-integridad ${
+        integra ? 'auditoria-integridad--ok' : 'auditoria-integridad--rota'
+      }`;
+      integridadEl.innerHTML = integra
+        ? `<i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+           <div>
+             <strong>Cadena íntegra</strong>
+             <span>${totalBloques} bloque(s) verificado(s), ninguno alterado.</span>
+           </div>`
+        : `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+           <div>
+             <strong>Cadena rota en el bloque #${rotoEnId}</strong>
+             <span>${escapeHTML(motivo)}</span>
+           </div>`;
+    }
+
+    // Tarjetas de resumen
+    const resumenEl = document.querySelector(CONFIG.SELECTORS.auditoriaResumen);
+    if (resumenEl) {
+      const totalCambios = analisis.porEntidad.reduce((suma, e) => suma + e.total, 0);
+      resumenEl.innerHTML = `
+        <article class="stat-card stat-card--accent">
+          <span class="stat-card__label">Total de cambios registrados</span>
+          <data class="stat-card__value" value="${totalCambios}">${totalCambios}</data>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Módulos con auditoría activa</span>
+          <data class="stat-card__value" value="${analisis.porEntidad.length}">${analisis.porEntidad.length}</data>
+        </article>
+      `;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.auditoriaGraficoEntidad,
+      analisis.porEntidad.map((e) => ({
+        etiqueta: this.AUDITORIA_ENTIDAD_LABELS[e.entidad] || e.entidad,
+        total: e.total,
+      })),
+    );
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.auditoriaGraficoAccion,
+      analisis.porAccion.map((a) => ({
+        etiqueta: this.AUDITORIA_ACCION_LABELS[a.accion] || a.accion,
+        total: a.total,
+      })),
+    );
+
+    // Línea de tiempo (barras horizontales por día, mismo componente que
+    // los otros dos "gráficos")
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.auditoriaLineaTiempo,
+      analisis.actividadPorDia.map((d) => ({ etiqueta: d.fecha, total: d.total })),
+    );
+
+    // Registros con más cambios
+    const tbodyRegistros = document.querySelector(CONFIG.SELECTORS.auditoriaTablaRegistros);
+    if (tbodyRegistros) {
+      tbodyRegistros.innerHTML = analisis.entidadesMasModificadas.length
+        ? analisis.entidadesMasModificadas
+            .map(
+              (r) => `
+          <tr>
+            <td>${escapeHTML(this.AUDITORIA_ENTIDAD_LABELS[r.entidad] || r.entidad)}</td>
+            <td>${escapeHTML(String(r.entidadId))}</td>
+            <td>${r.total}</td>
+          </tr>`,
+            )
+            .join('')
+        : '<tr><td colspan="3">Todavía no hay cambios registrados.</td></tr>';
+    }
+
+    // Últimos bloques
+    const tbodyBloques = document.querySelector(CONFIG.SELECTORS.auditoriaTablaBloques);
+    if (tbodyBloques) {
+      const filas = Array.isArray(bloques) ? bloques.slice(0, 50) : [];
+      tbodyBloques.innerHTML = filas.length
+        ? filas
+            .map((b) => {
+              const fecha = new Date(b.creadoEn).toLocaleString('es-US', {
+                timeZone: HOUSTON_TZ,
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              });
+              return `
+          <tr>
+            <td>${escapeHTML(fecha)}</td>
+            <td>${escapeHTML(this.AUDITORIA_ENTIDAD_LABELS[b.entidad] || b.entidad)}</td>
+            <td>${escapeHTML(this.AUDITORIA_ACCION_LABELS[b.accion] || b.accion)}</td>
+            <td>${escapeHTML(b.actualizadoPor || '—')}</td>
+            <td><code class="auditoria-hash" title="${escapeHTML(b.hash)}">${escapeHTML(b.hash.slice(0, 12))}…</code></td>
+          </tr>`;
+            })
+            .join('')
+        : '<tr><td colspan="5">Todavía no hay bloques.</td></tr>';
+    }
+  },
+
+  /** "Gráfico" de barras horizontales hecho con CSS puro (ancho en % del
+   *  máximo del propio conjunto de datos) — sin librería de charts, para
+   *  no meter una dependencia nueva solo para esto. */
+  _renderAuditoriaBarras(selector, datos) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+
+    if (!datos.length) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin datos todavía.</p>';
+      return;
+    }
+
+    const maximo = Math.max(...datos.map((d) => d.total), 1);
+    container.innerHTML = datos
+      .map(
+        (d) => `
+      <div class="auditoria-barra">
+        <span class="auditoria-barra__etiqueta">${escapeHTML(d.etiqueta)}</span>
+        <div class="auditoria-barra__pista">
+          <div class="auditoria-barra__relleno" style="width: ${(d.total / maximo) * 100}%"></div>
+        </div>
+        <span class="auditoria-barra__valor">${d.total}</span>
+      </div>`,
+      )
+      .join('');
+  },
+
   /** Tarjetas de resumen: total de panes horneados en la fecha consultada y
    *  desglose por producto, para leer de un vistazo la producción del día
    *  sin tener que sumar filas de la tabla a mano. */
@@ -2437,6 +2811,25 @@ const App = {
     Render.renderProveedores(this._proveedoresCache, lista === null);
   },
 
+  /** Trae el análisis agrupado (integridad + agrupaciones) y los últimos
+   *  bloques, y pinta toda la vista Auditoría. Dos llamadas separadas
+   *  porque son dos consultas de propósito distinto en el backend (una
+   *  agrega/agrupa, la otra solo lista) — ver Auditoria en este archivo. */
+  async refreshAuditoria() {
+    const [analisis, bloques] = await Promise.all([
+      Auditoria.analisis(),
+      Auditoria.ultimosBloques(),
+    ]);
+
+    if (analisis === 'UNAUTHORIZED' || bloques === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    Render.renderAuditoria(analisis, bloques);
+  },
+
   async refreshHorneadas() {
     const fecha = this._horneadaFechaConsulta;
     const lista = await Horneadas.listar(fecha);
@@ -2451,6 +2844,35 @@ const App = {
     Render.updateHorneadasCount(this._horneadasCache);
     Render.renderHorneadaResumen(this._horneadasCache, fecha);
     Render.renderHorneadas(this._horneadasCache, lista === null, fecha);
+  },
+
+  /** Sugerencia de cuánto hornear mañana (ver Render.renderSugerenciasHorneado).
+   *  Independiente de refreshHorneadas: esta consulta no depende de la fecha
+   *  que se esté consultando en el historial, siempre mira hacia adelante. */
+  async refreshSugerenciasHorneado() {
+    const estadisticas = await Productos.estadisticas();
+
+    if (estadisticas === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    Render.renderSugerenciasHorneado(estadisticas);
+  },
+
+  /** Trae la predicción AutoML de todos los productos activos y pinta la
+   *  tarjeta en la vista Productos (ver Render.renderProductosAutoML). */
+  async refreshProductosAutoML() {
+    const predicciones = await Productos.prediccionAutoML();
+
+    if (predicciones === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    Render.renderProductosAutoML(predicciones);
   },
 
   /** Cambia la fecha consultada en la pestaña Horneadas y vuelve a cargar.
@@ -3491,6 +3913,7 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.productoDescripcion).value = producto.descripcion || '';
     document.querySelector(CONFIG.SELECTORS.productoImagenBase).value = producto.imagenBase || '';
     document.querySelector(CONFIG.SELECTORS.productoAltImagen).value = producto.altImagen || '';
+    document.querySelector(CONFIG.SELECTORS.productoVidaUtil).value = producto.vidaUtilHoras ?? '';
     document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value =
       producto.actualizadoPor || '';
 
@@ -3563,6 +3986,7 @@ const App = {
       descripcion: document.querySelector(CONFIG.SELECTORS.productoDescripcion).value.trim(),
       imagenBase: document.querySelector(CONFIG.SELECTORS.productoImagenBase).value.trim(),
       altImagen: document.querySelector(CONFIG.SELECTORS.productoAltImagen).value.trim(),
+      vidaUtilHoras: document.querySelector(CONFIG.SELECTORS.productoVidaUtil).value.trim(),
       actualizadoPor: document.querySelector(CONFIG.SELECTORS.productoActualizadoPor).value.trim(),
     };
 
@@ -3873,6 +4297,7 @@ const App = {
       CONFIG.SELECTORS.inventarioView,
       CONFIG.SELECTORS.recetasView,
       CONFIG.SELECTORS.produccionView,
+      CONFIG.SELECTORS.auditoriaView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -3890,9 +4315,13 @@ const App = {
     }
     if (targetId === CONFIG.SELECTORS.productosView.slice(1)) {
       this.refreshProductos();
+      this.refreshProductosAutoML();
     }
     if (targetId === CONFIG.SELECTORS.proveedoresView.slice(1)) {
       this.refreshProveedores();
+    }
+    if (targetId === CONFIG.SELECTORS.auditoriaView.slice(1)) {
+      this.refreshAuditoria();
     }
     // Vistas que trabajan sobre un producto del catálogo: sus selects se
     // llenan desde la tabla productos, así que hay que tener el catálogo
@@ -3913,6 +4342,7 @@ const App = {
       const filtroEl = document.querySelector(CONFIG.SELECTORS.horneadaFiltroFecha);
       if (filtroEl && !filtroEl.value) filtroEl.value = this._horneadaFechaConsulta;
       this.refreshHorneadas();
+      this.refreshSugerenciasHorneado();
     }
     if (targetId === CONFIG.SELECTORS.inventarioView.slice(1)) {
       this._prefillAjusteFechaHora();

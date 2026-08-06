@@ -971,6 +971,13 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.stat-card__hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 /* ── Grupos de pedidos ── */
 .orders {
   display: flex;
@@ -2713,6 +2720,85 @@ button {
 @keyframes spin {
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   14b. AUDITORÍA — cadena de hashes
+   ═══════════════════════════════════════════ */
+.auditoria-integridad {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: 0.95rem;
+}
+.auditoria-integridad i {
+  font-size: 1.5rem;
+}
+.auditoria-integridad div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.auditoria-integridad--ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.auditoria-integridad--rota {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.auditoria-graficos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+}
+
+.auditoria-barra {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 0.85rem;
+}
+.auditoria-barra__etiqueta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+.auditoria-barra__pista {
+  height: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-bg);
+  overflow: hidden;
+}
+.auditoria-barra__relleno {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+.auditoria-barra__valor {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.auditoria-hash {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .auditoria-graficos {
+    grid-template-columns: 1fr;
   }
 }
 

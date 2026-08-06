@@ -96,7 +96,7 @@ function obtenerProducto(id) {
   return db
     .prepare(
       `SELECT id, nombre, categoria, precio, estado, sku, descripcion, actualizado_por,
-              imagen_base, alt_imagen
+              imagen_base, alt_imagen, vida_util_horas, creado_en
        FROM productos WHERE id = ?`,
     )
     .get(id);
@@ -112,6 +112,10 @@ const MAX_PRODUCTO_SKU_LEN = 40;
 const MAX_PRODUCTO_DESCRIPCION_LEN = 300;
 const MAX_PRODUCTO_ACTUALIZADO_POR_LEN = 80; // mismo tope que horneada/ajuste (registradoPor)
 const MAX_PRODUCTO_ALT_IMAGEN_LEN = 160;
+// Tope generoso pero no absurdo: 168h = una semana. Nada horneado en esta
+// panadería debería durar más que eso, y evita que un typo (ej. "1680")
+// se cuele como si fuera un valor real.
+const MAX_VIDA_UTIL_HORAS = 168;
 // imagen_base termina interpolado en el src/srcset de un <img> en
 // catalogo.html (./IMG/webp/${imagenBase}-400.webp). Whitelist estricta
 // (minúsculas, dígitos, guion) para que nunca pueda meter una ruta fuera
@@ -207,6 +211,22 @@ function validarProducto(datos) {
       );
     }
     resultado.altImagen = altImagen === '' ? null : altImagen;
+  }
+
+  if (datos.vidaUtilHoras !== undefined) {
+    const vidaUtilHoras =
+      datos.vidaUtilHoras === '' || datos.vidaUtilHoras === null
+        ? null
+        : Number(datos.vidaUtilHoras);
+    if (
+      vidaUtilHoras !== null &&
+      (!Number.isFinite(vidaUtilHoras) || vidaUtilHoras <= 0 || vidaUtilHoras > MAX_VIDA_UTIL_HORAS)
+    ) {
+      throw new ValidationError(
+        `Vida útil inválida (debe ser un número mayor a 0 y hasta ${MAX_VIDA_UTIL_HORAS} horas).`,
+      );
+    }
+    resultado.vidaUtilHoras = vidaUtilHoras;
   }
 
   return resultado;
