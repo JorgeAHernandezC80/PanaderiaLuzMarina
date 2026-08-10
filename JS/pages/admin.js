@@ -222,6 +222,7 @@ const CONFIG = Object.freeze({
     ocSolicitadoPor: '#oc-solicitado-por',
     ocLugarEntrega: '#oc-lugar-entrega',
     ocNotas: '#oc-notas',
+    tplOcRow: '#tpl-oc-row',
     ocItemsLista: '#oc-items-lista',
     ocTotales: '#oc-totales',
     btnOcAgregarItem: '#btn-oc-agregar-item',
@@ -2844,71 +2845,64 @@ const Render = {
       return;
     }
 
-    ordenes.forEach((orden) => container.appendChild(this._renderOrdenCompraCard(orden)));
-  },
-
-  _renderOrdenCompraCard(orden) {
-    const card = document.createElement('article');
-    card.className = `oc-card oc-card--${orden.estado}`;
-
-    const lineas = orden.items
-      .map(
-        (item) => `
+    const table = document.createElement('table');
+    table.className = 'insumo-table';
+    table.innerHTML = `
+      <caption class="visually-hidden">Historial de órdenes de compra</caption>
+      <thead>
         <tr>
-          <td data-label="Insumo">${escapeHTML(item.insumoNombre)}</td>
-          <td data-label="Pedido">${Format.cantidad(item.cantidadPedida)} ${escapeHTML(item.unidad)}</td>
-          <td data-label="Recibido">${Format.cantidad(item.cantidadRecibida)} ${escapeHTML(item.unidad)}</td>
-          <td data-label="Pendiente">${Format.cantidad(item.cantidadPendiente)} ${escapeHTML(item.unidad)}</td>
-          <td data-label="Costo unit.">${Format.currency(item.costoUnitario)}</td>
-          <td data-label="Total línea">${Format.currency(item.totalLinea)}</td>
-        </tr>`,
-      )
-      .join('');
-
-    card.innerHTML = `
-      <header class="oc-card__header">
-        <div>
-          <h3 class="oc-card__numero">${escapeHTML(orden.numero)}</h3>
-          <p class="oc-card__proveedor">${escapeHTML(orden.proveedorRazonSocial)}</p>
-        </div>
-        <span class="oc-badge oc-badge--${orden.estado}">${OC_ESTADO_LABEL[orden.estado] ?? orden.estado}</span>
-      </header>
-
-      <dl class="oc-card__meta">
-        <div><dt>Emitida</dt><dd>${escapeHTML(orden.fechaEmision)}</dd></div>
-        <div><dt>Entrega estimada</dt><dd>${escapeHTML(orden.fechaEntregaEstimada || '—')}</dd></div>
-        <div><dt>Total</dt><dd>${Format.currency(orden.total)} ${escapeHTML(orden.moneda)}</dd></div>
-        <div><dt>Solicitó</dt><dd>${escapeHTML(orden.solicitadoPor || '—')}</dd></div>
-      </dl>
-
-      <div class="oc-card__avance">
-        <div class="oc-progress" role="img" aria-label="Recepción al ${orden.avanceRecepcionPct}%">
-          <span class="oc-progress__barra" style="width: ${Math.min(orden.avanceRecepcionPct, 100)}%"></span>
-        </div>
-        <span class="oc-card__avance-label">${orden.avanceRecepcionPct}% recibido</span>
-      </div>
-
-      <table class="insumo-table oc-card__items">
-        <caption class="visually-hidden">Líneas de la orden ${escapeHTML(orden.numero)}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Insumo</th>
-            <th scope="col">Pedido</th>
-            <th scope="col">Recibido</th>
-            <th scope="col">Pendiente</th>
-            <th scope="col">Costo unit.</th>
-            <th scope="col">Total línea</th>
-          </tr>
-        </thead>
-        <tbody>${lineas}</tbody>
-      </table>
-
-      ${orden.motivoCancelacion ? `<p class="oc-card__cancelacion">Cancelada: ${escapeHTML(orden.motivoCancelacion)}</p>` : ''}
-
-      <footer class="oc-card__acciones"></footer>
+          <th scope="col">Número</th>
+          <th scope="col">Proveedor</th>
+          <th scope="col">Emitida</th>
+          <th scope="col">Entrega estimada</th>
+          <th scope="col">Total</th>
+          <th scope="col">Recepción</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     `;
 
-    const acciones = card.querySelector('.oc-card__acciones');
+    const tbody = table.querySelector('tbody');
+    ordenes.forEach((orden) => tbody.appendChild(this._renderOrdenCompraRow(orden)));
+
+    container.appendChild(table);
+  },
+
+  _renderOrdenCompraRow(orden) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplOcRow);
+    const row = tpl.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+    tr.className = `oc-row oc-row--${orden.estado}`;
+
+    row.querySelector('.oc-table__numero').textContent = orden.numero;
+    row.querySelector('.oc-table__proveedor').textContent = orden.proveedorRazonSocial;
+    row.querySelector('.oc-table__emision').textContent = orden.fechaEmision;
+    row.querySelector('.oc-table__entrega').textContent = orden.fechaEntregaEstimada || '—';
+    row.querySelector('.oc-table__total').textContent =
+      `${Format.currency(orden.total)} ${orden.moneda}`;
+
+    const barra = row.querySelector('.oc-progress__barra');
+    barra.style.width = `${Math.min(orden.avanceRecepcionPct, 100)}%`;
+    row
+      .querySelector('.oc-progress')
+      .setAttribute('aria-label', `Recepción al ${orden.avanceRecepcionPct}%`);
+    row.querySelector('.oc-table__avance-pct').textContent = `${orden.avanceRecepcionPct}%`;
+
+    const estadoCell = row.querySelector('.oc-table__estado');
+    const badge = document.createElement('span');
+    badge.className = `oc-badge oc-badge--${orden.estado}`;
+    badge.textContent = OC_ESTADO_LABEL[orden.estado] ?? orden.estado;
+    estadoCell.appendChild(badge);
+    if (orden.motivoCancelacion) {
+      const motivo = document.createElement('p');
+      motivo.className = 'oc-table__cancelacion';
+      motivo.textContent = `Cancelada: ${orden.motivoCancelacion}`;
+      estadoCell.appendChild(motivo);
+    }
+
+    const acciones = row.querySelector('.oc-table__acciones');
 
     const agregarBoton = (label, icono, clase, onClick) => {
       const btn = document.createElement('button');
@@ -2951,14 +2945,28 @@ const Render = {
       );
     }
 
-    return card;
+    return tr;
   },
 
   /** Línea de tiempo de la orden: cada evento de la bitácora con su
    *  usuario y su hora, más el veredicto de integridad de la cadena. */
-  renderTrazabilidadOrdenCompra(traza) {
+  renderTrazabilidadOrdenCompra(traza, items = []) {
     const body = document.querySelector(CONFIG.SELECTORS.ocTrazabilidadBody);
     if (!body) return;
+
+    const lineasPactadas = items
+      .map(
+        (item) => `
+        <tr>
+          <td data-label="Insumo">${escapeHTML(item.insumoNombre)}</td>
+          <td data-label="Pedido">${Format.cantidad(item.cantidadPedida)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Recibido">${Format.cantidad(item.cantidadRecibida)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Pendiente">${Format.cantidad(item.cantidadPendiente)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Costo unit.">${Format.currency(item.costoUnitario)}</td>
+          <td data-label="Total línea">${Format.currency(item.totalLinea)}</td>
+        </tr>`,
+      )
+      .join('');
 
     const eventos = traza.eventos
       .map(
@@ -3008,6 +3016,25 @@ const Render = {
       </p>
 
       <ol class="oc-timeline">${eventos}</ol>
+
+      ${
+        lineasPactadas
+          ? `<h3 class="section-subtitle">Líneas pactadas</h3>
+             <table class="insumo-table">
+               <thead>
+                 <tr>
+                   <th scope="col">Insumo</th>
+                   <th scope="col">Pedido</th>
+                   <th scope="col">Recibido</th>
+                   <th scope="col">Pendiente</th>
+                   <th scope="col">Costo unit.</th>
+                   <th scope="col">Total línea</th>
+                 </tr>
+               </thead>
+               <tbody>${lineasPactadas}</tbody>
+             </table>`
+          : ''
+      }
 
       ${
         lotes
@@ -4028,7 +4055,8 @@ const App = {
       window.alert('No se pudo cargar la trazabilidad. Intenta de nuevo en unos segundos.');
       return;
     }
-    Render.renderTrazabilidadOrdenCompra(traza);
+    const ordenCache = this._ordenesCompraCache.find((o) => o.id === id);
+    Render.renderTrazabilidadOrdenCompra(traza, ordenCache?.items ?? []);
     this._abrirModal(CONFIG.SELECTORS.ocTrazabilidadModal);
   },
 

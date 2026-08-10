@@ -2873,6 +2873,27 @@
       </div>
     </template>
 
+    <!-- Plantilla: fila de la tabla de historial de Órdenes de compra -->
+    <template id="tpl-oc-row">
+      <tr>
+        <td class="insumo-table__nombre oc-table__numero" data-label="Número"></td>
+        <td class="oc-table__proveedor" data-label="Proveedor"></td>
+        <td class="oc-table__emision" data-label="Emitida"></td>
+        <td class="oc-table__entrega" data-label="Entrega estimada"></td>
+        <td class="oc-table__total" data-label="Total"></td>
+        <td class="oc-table__avance" data-label="Recepción">
+          <div class="oc-table__avance-wrap">
+            <div class="oc-progress" role="img">
+              <span class="oc-progress__barra"></span>
+            </div>
+            <span class="oc-table__avance-pct"></span>
+          </div>
+        </td>
+        <td class="oc-table__estado" data-label="Estado"></td>
+        <td class="insumo-table__acciones oc-table__acciones" data-label="Acciones"></td>
+      </tr>
+    </template>
+
     <!-- Plantilla: línea (insumo pedido) en el formulario de Orden de compra -->
     <template id="tpl-oc-item-row">
       <div class="oc-item-row" data-component="oc-item-row">
