@@ -37,6 +37,7 @@ El proyecto tiene dos partes:
 - [Variables de entorno](#-variables-de-entorno)
 - [Ejecución](#-ejecución)
 - [El ciclo de una orden](#-el-ciclo-de-una-orden)
+- [El ciclo de una orden de compra](#-el-ciclo-de-una-orden-de-compra)
 - [Cómo se calcula el disponible](#-cómo-se-calcula-el-disponible)
 - [API del backend](#-api-del-backend)
 - [Pruebas](#-pruebas)
@@ -64,8 +65,27 @@ El proyecto tiene dos partes:
   Entregada (más detalle en [El ciclo de una orden](#-el-ciclo-de-una-orden)).
 - **Insumos**: control de materia prima, con alerta cuando algo cae por debajo del
   mínimo.
+- **Recetas**: ingredientes y cantidades por producto (la lista de insumos que
+  necesita cada uno) — es la base de la que parte Producción.
+- **Producción**: registro de lotes con sus etapas cronometradas (pesado y
+  dosificación → amasado → primera fermentación → división → preformado → reposo →
+  formado definitivo → segunda fermentación), cada una con su hora de inicio y fin.
 - **Proveedores**: ficha completa por proveedor — contacto, condiciones de pago,
   tiempos de entrega.
+- **Órdenes de compra**: todo el ciclo con cada proveedor, de borrador a mercancía
+  en bodega — con recepciones parciales, lote y vencimiento por entrega, y
+  trazabilidad completa (más detalle en
+  [El ciclo de una orden de compra](#-el-ciclo-de-una-orden-de-compra)). Al
+  registrar una recepción, el inventario de Insumos sube solo.
+- **Auditoría**: cadena de hashes de solo lectura sobre todo lo que se crea, edita
+  o borra en Productos, Horneadas, Ajustes de inventario y Órdenes de compra, con
+  verificación de integridad de la cadena.
+- **Analítica de producto** (ya en el backend, sin pantalla propia todavía —
+  aparece como tarjetas dentro de otras vistas): tasa de rotación y sugerencia de
+  cuánto hornear mañana (dentro de Horneadas), y un modelo de pronóstico elegido
+  por backtesting con su margen de error (tarjeta en Productos). Un tercer
+  endpoint, calidad de datos (completitud de Productos/Insumos), existe en el
+  backend pero aún no se consume desde ninguna vista.
 - **Horneadas**: registro diario de producción (qué se horneó, cuánto, a qué hora y
   quién lo hizo), con historial consultable de cualquier fecha.
 - **Inventario**: cuánto pan queda disponible ahora mismo, calculado automáticamente
@@ -141,9 +161,21 @@ PanaderiaLuzMarina/
 ├── server.js                    # Servidor Express + WebSocket (backend)
 ├── db.js                        # Esquema e inicialización de SQLite
 ├── validation.js                 # Validación/saneamiento de todo lo que entra por la API
+├── analyticsEngine.js             # Recalcula estadísticas por producto al vuelo (rotación,
+│                                  #   desviación, estacionalidad, merma, prob. de vencimiento)
+├── estadisticas.js                # Aritmética pura detrás de analyticsEngine (sin acceso a BD)
+├── autoML.js                      # Elige por backtesting el modelo de pronóstico por producto
+├── auditoria.js                   # Cadena de hashes de solo lectura (integridad de cambios)
+├── calidadDatos.js                # Evalúa completitud de Productos/Insumos (sin UI todavía)
+├── units.js                       # Conversión de unidades para Insumos (base de una futura
+│                                  #   resta automática de insumos en Producción — no implementada)
 │
-├── tests/                        # Suite de pruebas (Jest) — 14 archivos
+├── tests/                        # Suite de pruebas (Jest) — 21 archivos
 ├── docs/                         # Documentación adicional (auditoría de seguridad, etc.)
+├── .agents/skills/                # Guías para agentes de IA que trabajen en el repo
+│                                  #   (ej. cómo levantar y probar el panel admin en local)
+├── .github/workflows/             # CI (GitHub Actions)
+├── .husky/                        # Hooks de Git (pre-commit corre lint-staged)
 │
 ├── vercel.json                   # Config de Vercel: URLs limpias (cleanUrls)
 ├── _headers                      # Cabeceras de seguridad para Netlify (CSP, HSTS...)
@@ -248,6 +280,34 @@ este orden:
 El panel admin muestra un botón para avanzar cada orden al siguiente paso; no se
 puede saltar pasos ni retroceder desde la interfaz.
 
+## 🔄 El ciclo de una orden de compra
+
+No hay que confundirlo con el ciclo de arriba: ahí una "orden" es lo que pide un
+_cliente_; aquí una orden de compra es lo que la panadería le pide a un
+_proveedor_. Pasa por siete estados posibles:
+
+1. **Borrador** (`borrador`) — se está armando; se puede editar o eliminar
+   libremente.
+2. **Emitida** (`emitida`) — ya se le envió al proveedor. Deja de poder editarse.
+3. **Confirmada** (`confirmada`) — el proveedor confirmó que la va a surtir.
+4. **Recibida parcial** (`recibida_parcial`) — llegó parte de la mercancía. Este
+   estado (y el siguiente) los pone el servidor solo, a partir de las
+   recepciones registradas — no son transiciones manuales.
+5. **Recibida** (`recibida`) — llegó todo lo pactado.
+6. **Cerrada** (`cerrada`) — ciclo terminado, ya sea completa o dada por
+   concluida.
+7. **Cancelada** (`cancelada`) — se canceló, con motivo obligatorio. No se puede
+   cancelar una orden que ya tenga mercancía recibida, para no dejar stock sin
+   respaldo documental.
+
+Cada recepción se registra por separado (fecha, quién recibió, remisión/factura)
+y, línea por línea, cuánto llegó bien, cuánto se rechazó y por qué, más el lote y
+la fecha de vencimiento de esa entrega puntual — así una misma orden puede tener
+varias recepciones con lotes distintos. El inventario de Insumos sube
+automáticamente con cada recepción; nunca se edita el stock a mano por esta vía.
+Todo queda auditado: cada cambio de estado y cada recepción escriben un evento en
+la bitácora de la orden (pestaña "Trazabilidad" en el panel).
+
 ## 📊 Cómo se calcula el disponible
 
 La pestaña Inventario no guarda un número de "stock" que haya que actualizar a mano
@@ -287,12 +347,17 @@ contra fuerza bruta.
 
 **Productos**
 
-| Método | Ruta             | Auth  | Descripción                                                                                  |
-| ------ | ---------------- | ----- | -------------------------------------------------------------------------------------------- |
-| `GET`  | `/catalogo`      | No    | Catálogo público: id, nombre, categoría, precio, descripción e imagen de lo que está activo. |
-| `GET`  | `/productos`     | Admin | Lista el catálogo completo, incluidos los que no están activos.                              |
-| `POST` | `/productos`     | Admin | Crea un producto.                                                                            |
-| `PUT`  | `/productos/:id` | Admin | Actualiza un producto.                                                                       |
+| Método | Ruta                               | Auth  | Descripción                                                                                                                                      |
+| ------ | ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/catalogo`                        | No    | Catálogo público: id, nombre, categoría, precio, descripción e imagen de lo que está activo.                                                     |
+| `GET`  | `/productos`                       | Admin | Lista el catálogo completo, incluidos los que no están activos.                                                                                  |
+| `POST` | `/productos`                       | Admin | Crea un producto.                                                                                                                                |
+| `PUT`  | `/productos/:id`                   | Admin | Actualiza un producto.                                                                                                                           |
+| `PUT`  | `/productos/:id/stock-minimo`      | Admin | Configura el umbral de alerta de stock bajo de un producto.                                                                                      |
+| `GET`  | `/productos/estadisticas`          | Admin | Tasa de rotación, desviación de demanda y sugerencia de horneado para todos los productos activos. Ver [analyticsEngine.js](analyticsEngine.js). |
+| `GET`  | `/productos/:id/estadisticas`      | Admin | Lo mismo, para un solo producto.                                                                                                                 |
+| `GET`  | `/productos/prediccion-automl`     | Admin | Modelo de pronóstico elegido por backtesting, predicción y margen de error, por producto activo.                                                 |
+| `GET`  | `/productos/:id/prediccion-automl` | Admin | Lo mismo, para un solo producto.                                                                                                                 |
 
 Los productos no se borran: se les cambia el `estado` (`activo`, `borrador`, `agotado`,
 `descontinuado`), porque recetas, producciones, horneadas, ajustes y órdenes guardan su id.
@@ -319,6 +384,40 @@ la descripción en español. Como el catálogo depende de que el backend respond
 | `PUT`    | `/insumos/:id` | Admin | Actualiza un insumo. |
 | `DELETE` | `/insumos/:id` | Admin | Elimina un insumo.   |
 
+**Recetas**
+
+| Método   | Ruta           | Auth  | Descripción                                        |
+| -------- | -------------- | ----- | -------------------------------------------------- |
+| `GET`    | `/recetas`     | Admin | Lista recetas (insumos y cantidades por producto). |
+| `POST`   | `/recetas`     | Admin | Crea la receta de un producto.                     |
+| `PUT`    | `/recetas/:id` | Admin | Actualiza una receta.                              |
+| `DELETE` | `/recetas/:id` | Admin | Elimina una receta.                                |
+
+**Producción**
+
+| Método   | Ruta                                | Auth  | Descripción                                            |
+| -------- | ----------------------------------- | ----- | ------------------------------------------------------ |
+| `GET`    | `/producciones`                     | Admin | Lista producciones (filtro `fecha`).                   |
+| `POST`   | `/producciones`                     | Admin | Registra un lote de producción a partir de una receta. |
+| `POST`   | `/producciones/:id/etapas`          | Admin | Inicia una etapa (pesado, amasado, fermentación...).   |
+| `PUT`    | `/producciones/:id/etapas/:etapaId` | Admin | Cierra una etapa ya iniciada (marca su hora de fin).   |
+| `DELETE` | `/producciones/:id`                 | Admin | Elimina un registro de producción.                     |
+
+Las ocho etapas, en orden, son: `pesado_dosificacion`, `amasado`,
+`primera_fermentacion`, `division_pesado`, `preformado`, `reposo_mesa`,
+`formado_definitivo`, `segunda_fermentacion`. El descuento automático de insumos
+al producir (según la receta) todavía no está implementado — `units.js` ya trae
+las conversiones de unidad que va a necesitar cuando se construya.
+
+**Auditoría**
+
+| Método | Ruta                   | Auth  | Descripción                                                                                                                    |
+| ------ | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/auditoria`           | Admin | Historial crudo (filtra por `entidad` + `entidadId` si se pasan ambos).                                                        |
+| `GET`  | `/auditoria/analisis`  | Admin | Integridad de la cadena + agrupaciones (por entidad, por acción, actividad por día). Arma toda la vista Auditoría del panel.   |
+| `GET`  | `/auditoria/verificar` | Admin | Verifica que la cadena de hashes no fue alterada.                                                                              |
+| `GET`  | `/calidad-datos`       | Admin | Completitud de Productos/Insumos (campos vacíos, hallazgos). Existe en el backend; ninguna vista del panel lo consume todavía. |
+
 **Proveedores**
 
 | Método   | Ruta               | Auth  | Descripción             |
@@ -327,6 +426,22 @@ la descripción en español. Como el catálogo depende de que el backend respond
 | `POST`   | `/proveedores`     | Admin | Crea un proveedor.      |
 | `PUT`    | `/proveedores/:id` | Admin | Actualiza un proveedor. |
 | `DELETE` | `/proveedores/:id` | Admin | Elimina un proveedor.   |
+
+**Órdenes de compra**
+
+| Método   | Ruta                               | Auth  | Descripción                                                             |
+| -------- | ---------------------------------- | ----- | ----------------------------------------------------------------------- |
+| `GET`    | `/ordenes-compra`                  | Admin | Lista órdenes (filtros `estado`, `proveedorId`, `desde`, `hasta`).      |
+| `GET`    | `/ordenes-compra/:id`              | Admin | Detalle de una orden, con sus líneas.                                   |
+| `POST`   | `/ordenes-compra`                  | Admin | Crea una orden (como borrador, o emitida de una vez).                   |
+| `PUT`    | `/ordenes-compra/:id`              | Admin | Edita un borrador (no cambia de estado).                                |
+| `PATCH`  | `/ordenes-compra/:id/estado`       | Admin | Transición manual de estado (emitida/confirmada/cerrada/cancelada).     |
+| `POST`   | `/ordenes-compra/:id/recepciones`  | Admin | Registra una recepción de mercancía (parcial o total, con lote/venc.).  |
+| `GET`    | `/ordenes-compra/:id/trazabilidad` | Admin | Línea de tiempo completa: eventos + recepciones + bloques de auditoría. |
+| `DELETE` | `/ordenes-compra/:id`              | Admin | Elimina un borrador (una orden ya emitida se cancela, no se borra).     |
+
+Ver [El ciclo de una orden de compra](#-el-ciclo-de-una-orden-de-compra) para el
+detalle de los siete estados y cómo se calcula `recibida`/`recibida_parcial`.
 
 **Horneadas**
 
@@ -339,21 +454,28 @@ la descripción en español. Como el catálogo depende de que el backend respond
 
 **Inventario**
 
-| Método   | Ruta                          | Auth  | Descripción                                                  |
-| -------- | ----------------------------- | ----- | ------------------------------------------------------------ |
-| `GET`    | `/inventario`                 | Admin | Disponible por producto para una fecha (ver fórmula arriba). |
-| `GET`    | `/ajustes-inventario`         | Admin | Lista ajustes/mermas (filtro `fecha`).                       |
-| `POST`   | `/ajustes-inventario`         | Admin | Registra un ajuste (merma, error de conteo, etc.).           |
-| `PUT`    | `/ajustes-inventario/:id`     | Admin | Corrige un ajuste ya registrado.                             |
-| `DELETE` | `/ajustes-inventario/:id`     | Admin | Elimina un ajuste.                                           |
-| `PUT`    | `/productos/:id/stock-minimo` | Admin | Configura el umbral de alerta de stock bajo de un producto.  |
+| Método   | Ruta                      | Auth  | Descripción                                                                                                  |
+| -------- | ------------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/inventario`             | Admin | Disponible por producto para una fecha (ver fórmula arriba).                                                 |
+| `GET`    | `/inventario/disponible`  | No    | Versión pública y ligera: solo `productoId` y `disponible` de hoy — la usa el catálogo público, no el panel. |
+| `GET`    | `/ajustes-inventario`     | Admin | Lista ajustes/mermas (filtro `fecha`).                                                                       |
+| `POST`   | `/ajustes-inventario`     | Admin | Registra un ajuste (merma, error de conteo, etc.).                                                           |
+| `PUT`    | `/ajustes-inventario/:id` | Admin | Corrige un ajuste ya registrado.                                                                             |
+| `DELETE` | `/ajustes-inventario/:id` | Admin | Elimina un ajuste.                                                                                           |
 
 \* Protegido por rate limiting (`ORDERS_MAX_PER_WINDOW` peticiones por IP cada 15 min).
 
-Al crear o actualizar una orden, el servidor emite un evento por WebSocket
-(`orden:nueva` / `orden:actualizada`) para que el panel se actualice en vivo. Horneadas
-y Ajustes de inventario emiten sus propios eventos (`horneada:nueva`, `ajuste:nuevo`,
-etc.) con el mismo propósito.
+El servidor emite un evento por WebSocket cada vez que cambia algo relevante:
+`orden:nueva`/`orden:actualizada` (pedidos de cliente), `producto:nuevo`/
+`producto:actualizado`, `orden-compra:nueva`/`actualizada`/`recepcion`/
+`eliminada`, y también `horneada:*`, `ajuste:*` y `produccion:*` — pero **el
+frontend hoy solo escucha activamente los tres primeros grupos** (pedidos,
+productos y órdenes de compra) para refrescar su propia vista en todas las
+pantallas abiertas. Los eventos de Horneadas, Ajustes de inventario y Producción
+sí se emiten desde el servidor, pero el panel todavía no los distingue: caen al
+mismo manejador genérico que solo refresca pedidos, así que esas tres vistas no
+se actualizan solas entre pestañas — hay que recargar o volver a entrar a la
+vista para ver cambios hechos desde otra pantalla.
 
 ## 🧪 Pruebas
 

@@ -223,6 +223,8 @@ const CONFIG = Object.freeze({
     ocLugarEntrega: '#oc-lugar-entrega',
     ocNotas: '#oc-notas',
     tplOcRow: '#tpl-oc-row',
+    btnOcNueva: '#btn-oc-nueva',
+    ocNuevaModal: '#oc-nueva-modal',
     ocItemsLista: '#oc-items-lista',
     ocTotales: '#oc-totales',
     btnOcAgregarItem: '#btn-oc-agregar-item',
@@ -230,7 +232,6 @@ const CONFIG = Object.freeze({
     ocErrorMsg: '#oc-error [data-oc-error-msg]',
     ocSubmitBtn: '#btn-oc-submit',
     ocGuardarEmitirBtn: '#btn-oc-guardar-emitir',
-    ocCancelEditBtn: '#btn-oc-cancel-edit',
     ocFiltroEstado: '#oc-filtro-estado',
     ocFiltroProveedor: '#oc-filtro-proveedor',
     ocFiltroDesde: '#oc-filtro-desde',
@@ -3220,6 +3221,13 @@ const App = {
           this.refreshProductos();
           return;
         }
+        // Cualquier cambio de Órdenes de compra (nueva, actualizada, recepción
+        // registrada, eliminada) refresca la tabla en todas las pantallas
+        // abiertas, sin importar quién lo haya hecho.
+        if (typeof msg?.tipo === 'string' && msg.tipo.startsWith('orden-compra:')) {
+          this.refreshOrdenesCompra();
+          return;
+        }
         this.refresh();
       });
     }
@@ -3815,15 +3823,22 @@ const App = {
 
     document.querySelector(CONFIG.SELECTORS.ocSubmitBtn).innerHTML =
       '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
-    document.querySelector(CONFIG.SELECTORS.ocCancelEditBtn).hidden = false;
 
-    document
-      .querySelector(CONFIG.SELECTORS.ocForm)
-      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this._abrirModal(CONFIG.SELECTORS.ocNuevaModal);
   },
 
+  /** Abre el modal en blanco para capturar una orden nueva. */
+  abrirNuevaOrdenCompra() {
+    this._resetOCForm();
+    this._abrirModal(CONFIG.SELECTORS.ocNuevaModal);
+  },
+
+  /** El botón "Cancelar" del modal hace las dos cosas a la vez: si había
+   *  una edición en curso la descarta, y en cualquier caso cierra el
+   *  modal (crear o editar usan el mismo formulario). */
   cancelEditOrdenCompra() {
     this._resetOCForm();
+    this._cerrarModal(CONFIG.SELECTORS.ocNuevaModal);
   },
 
   _resetOCForm() {
@@ -3835,7 +3850,6 @@ const App = {
     document.querySelector(CONFIG.SELECTORS.ocFechaEmision).value = hoyHouston();
     document.querySelector(CONFIG.SELECTORS.ocSubmitBtn).innerHTML =
       '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Guardar borrador';
-    document.querySelector(CONFIG.SELECTORS.ocCancelEditBtn).hidden = true;
     document.querySelector(CONFIG.SELECTORS.ocError).hidden = true;
     this._recalcularTotalesOC();
   },
@@ -3908,6 +3922,7 @@ const App = {
     }
 
     this._resetOCForm();
+    this._cerrarModal(CONFIG.SELECTORS.ocNuevaModal);
     this.refreshOrdenesCompra();
   },
 
@@ -5032,8 +5047,12 @@ const App = {
       ?.addEventListener('click', () => this._handleOrdenCompraSubmit({ emitir: true }));
 
     document
-      .querySelector(CONFIG.SELECTORS.ocCancelEditBtn)
-      ?.addEventListener('click', () => this.cancelEditOrdenCompra());
+      .querySelector(CONFIG.SELECTORS.btnOcNueva)
+      ?.addEventListener('click', () => this.abrirNuevaOrdenCompra());
+
+    document.querySelectorAll('[data-oc-cerrar-nueva]').forEach((btn) => {
+      btn.addEventListener('click', () => this.cancelEditOrdenCompra());
+    });
 
     document
       .querySelector(CONFIG.SELECTORS.btnOcAgregarItem)

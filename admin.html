@@ -1505,6 +1505,12 @@
               vencimiento de esa entrega.
             </p>
           </div>
+          <div class="dashboard-header__actions">
+            <button type="button" id="btn-oc-nueva" class="btn btn--primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              Nueva orden de compra
+            </button>
+          </div>
         </header>
 
         <section id="oc-resumen" class="stats" aria-label="Resumen de órdenes de compra">
@@ -1554,155 +1560,180 @@
           </button>
         </section>
 
-        <h2 class="section-subtitle">Nueva orden de compra</h2>
-
-        <form id="oc-form" class="insumo-form" novalidate data-component="oc-form">
-          <input type="hidden" id="oc-id" name="id" />
-
-          <div class="form-field">
-            <label for="oc-proveedor" class="form-field__label">Proveedor</label>
-            <select id="oc-proveedor" name="proveedorId" class="form-field__input" required>
-              <option value="" selected disabled>Selecciona un proveedor</option>
-              <!-- Las opciones las llena admin.js desde GET /proveedores -->
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label for="oc-fecha-emision" class="form-field__label">Fecha de emisión</label>
-            <input
-              type="date"
-              id="oc-fecha-emision"
-              name="fechaEmision"
-              class="form-field__input"
-              required
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="oc-fecha-entrega" class="form-field__label">Entrega estimada</label>
-            <input
-              type="date"
-              id="oc-fecha-entrega"
-              name="fechaEntregaEstimada"
-              class="form-field__input"
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="oc-condiciones-pago" class="form-field__label">Condiciones de pago</label>
-            <select id="oc-condiciones-pago" name="condicionesPago" class="form-field__input">
-              <option value="contado">Contado</option>
-              <option value="credito_30">Crédito 30 días</option>
-              <option value="credito_60">Crédito 60 días</option>
-              <option value="credito_90">Crédito 90 días</option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label for="oc-moneda" class="form-field__label">Moneda</label>
-            <select id="oc-moneda" name="moneda" class="form-field__input">
-              <option value="COP">COP</option>
-              <option value="MXN">MXN</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="CLP">CLP</option>
-              <option value="ARS">ARS</option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label for="oc-flete" class="form-field__label">Flete</label>
-            <input
-              type="number"
-              id="oc-flete"
-              name="flete"
-              class="form-field__input"
-              min="0"
-              step="0.01"
-              placeholder="0"
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="oc-solicitado-por" class="form-field__label">Solicitado por</label>
-            <input
-              type="text"
-              id="oc-solicitado-por"
-              name="solicitadoPor"
-              class="form-field__input"
-              placeholder="Ej. Jorge"
-              maxlength="80"
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="oc-lugar-entrega" class="form-field__label">Lugar de entrega</label>
-            <input
-              type="text"
-              id="oc-lugar-entrega"
-              name="lugarEntrega"
-              class="form-field__input"
-              placeholder="Ej. Panadería Luz Marina"
-              maxlength="200"
-            />
-          </div>
-
-          <div class="form-field insumo-form__wide">
-            <div class="receta-form__ingredientes-header">
-              <span class="form-field__label">Líneas de la orden</span>
-              <button type="button" id="btn-oc-agregar-item" class="btn btn--ghost btn--small">
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                Agregar insumo
-              </button>
-            </div>
-            <div id="oc-items-lista" class="receta-form__ingredientes" data-component="oc-items">
-              <!-- Filas de línea inyectadas por admin.js -->
-            </div>
-          </div>
-
-          <div class="form-field insumo-form__wide">
-            <output id="oc-totales" class="oc-totales" aria-live="polite">
-              <!-- Totales recalculados en vivo por admin.js -->
-            </output>
-          </div>
-
-          <div class="form-field insumo-form__wide">
-            <label for="oc-notas" class="form-field__label">Notas</label>
-            <textarea
-              id="oc-notas"
-              name="notas"
-              class="form-field__input"
-              rows="2"
-              placeholder="Opcional"
-              maxlength="500"
-            ></textarea>
-          </div>
-
-          <output
-            id="oc-error"
-            class="form-error insumo-form__wide"
-            role="alert"
-            aria-live="assertive"
-            hidden
+        <!-- Modal: alta y edición de Orden de compra -->
+        <div class="modal-overlay" id="oc-nueva-modal" hidden>
+          <div
+            class="modal modal--lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="oc-nueva-title"
           >
-            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-            <span data-oc-error-msg></span>
-          </output>
+            <header class="modal__header">
+              <h2 class="modal__title" id="oc-nueva-title">Nueva orden de compra</h2>
+              <button type="button" class="modal__close" data-oc-cerrar-nueva aria-label="Cerrar">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </header>
 
-          <div class="insumo-form__actions insumo-form__wide">
-            <button type="submit" id="btn-oc-submit" class="btn btn--primary">
-              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-              Guardar borrador
-            </button>
-            <button type="button" id="btn-oc-guardar-emitir" class="btn btn--primary">
-              <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
-              Guardar y emitir
-            </button>
-            <button type="button" id="btn-oc-cancel-edit" class="btn btn--ghost" hidden>
-              Cancelar edición
-            </button>
+            <form id="oc-form" novalidate data-component="oc-form">
+              <div class="modal__body insumo-form">
+                <input type="hidden" id="oc-id" name="id" />
+
+                <div class="form-field">
+                  <label for="oc-proveedor" class="form-field__label">Proveedor</label>
+                  <select id="oc-proveedor" name="proveedorId" class="form-field__input" required>
+                    <option value="" selected disabled>Selecciona un proveedor</option>
+                    <!-- Las opciones las llena admin.js desde GET /proveedores -->
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-fecha-emision" class="form-field__label">Fecha de emisión</label>
+                  <input
+                    type="date"
+                    id="oc-fecha-emision"
+                    name="fechaEmision"
+                    class="form-field__input"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-fecha-entrega" class="form-field__label">Entrega estimada</label>
+                  <input
+                    type="date"
+                    id="oc-fecha-entrega"
+                    name="fechaEntregaEstimada"
+                    class="form-field__input"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-condiciones-pago" class="form-field__label"
+                    >Condiciones de pago</label
+                  >
+                  <select id="oc-condiciones-pago" name="condicionesPago" class="form-field__input">
+                    <option value="contado">Contado</option>
+                    <option value="credito_30">Crédito 30 días</option>
+                    <option value="credito_60">Crédito 60 días</option>
+                    <option value="credito_90">Crédito 90 días</option>
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-moneda" class="form-field__label">Moneda</label>
+                  <select id="oc-moneda" name="moneda" class="form-field__input">
+                    <option value="COP">COP</option>
+                    <option value="MXN">MXN</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="CLP">CLP</option>
+                    <option value="ARS">ARS</option>
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-flete" class="form-field__label">Flete</label>
+                  <input
+                    type="number"
+                    id="oc-flete"
+                    name="flete"
+                    class="form-field__input"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-solicitado-por" class="form-field__label">Solicitado por</label>
+                  <input
+                    type="text"
+                    id="oc-solicitado-por"
+                    name="solicitadoPor"
+                    class="form-field__input"
+                    placeholder="Ej. Jorge"
+                    maxlength="80"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="oc-lugar-entrega" class="form-field__label">Lugar de entrega</label>
+                  <input
+                    type="text"
+                    id="oc-lugar-entrega"
+                    name="lugarEntrega"
+                    class="form-field__input"
+                    placeholder="Ej. Panadería Luz Marina"
+                    maxlength="200"
+                  />
+                </div>
+
+                <div class="form-field insumo-form__wide">
+                  <div class="receta-form__ingredientes-header">
+                    <span class="form-field__label">Líneas de la orden</span>
+                    <button
+                      type="button"
+                      id="btn-oc-agregar-item"
+                      class="btn btn--ghost btn--small"
+                    >
+                      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                      Agregar insumo
+                    </button>
+                  </div>
+                  <div
+                    id="oc-items-lista"
+                    class="receta-form__ingredientes"
+                    data-component="oc-items"
+                  >
+                    <!-- Filas de línea inyectadas por admin.js -->
+                  </div>
+                </div>
+
+                <div class="form-field insumo-form__wide">
+                  <output id="oc-totales" class="oc-totales" aria-live="polite">
+                    <!-- Totales recalculados en vivo por admin.js -->
+                  </output>
+                </div>
+
+                <div class="form-field insumo-form__wide">
+                  <label for="oc-notas" class="form-field__label">Notas</label>
+                  <textarea
+                    id="oc-notas"
+                    name="notas"
+                    class="form-field__input"
+                    rows="2"
+                    placeholder="Opcional"
+                    maxlength="500"
+                  ></textarea>
+                </div>
+
+                <output
+                  id="oc-error"
+                  class="form-error insumo-form__wide"
+                  role="alert"
+                  aria-live="assertive"
+                  hidden
+                >
+                  <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                  <span data-oc-error-msg></span>
+                </output>
+              </div>
+
+              <footer class="modal__footer">
+                <button type="button" class="btn btn--ghost" data-oc-cerrar-nueva>Cancelar</button>
+                <button type="submit" id="btn-oc-submit" class="btn btn--primary">
+                  <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                  Guardar borrador
+                </button>
+                <button type="button" id="btn-oc-guardar-emitir" class="btn btn--primary">
+                  <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                  Guardar y emitir
+                </button>
+              </footer>
+            </form>
           </div>
-        </form>
+        </div>
 
         <section
           id="ordenes-compra-container"

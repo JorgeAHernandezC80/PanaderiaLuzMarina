@@ -931,6 +931,12 @@ button {
   font-size: 0.95rem;
 }
 
+.dashboard-header__actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 /* Subtítulo de sección reutilizado dentro de varias vistas (Inventario,
    Producción...) — no es parte del header de arriba, es un separador
    de contenido genérico, por eso vive aquí y no dentro de dashboard-header. */
