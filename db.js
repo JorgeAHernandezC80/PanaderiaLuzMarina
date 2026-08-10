@@ -800,6 +800,156 @@ try {
     'CREATE INDEX IF NOT EXISTS idx_produccion_etapas_produccion ON produccion_etapas(produccion_id)',
   );
 
+  /* ÓRDENES DE COMPRA — el documento que se le manda al proveedor.
+     Cinco tablas, cada una con un propósito distinto y a propósito
+     separadas (ver docs/modelo-ordenes-compra.md):
+
+       ordenes_compra                → lo PACTADO (cabecera)
+       orden_compra_items            → lo PACTADO (detalle por insumo)
+       orden_compra_recepciones      → lo OCURRIDO (cada entrega física)
+       orden_compra_recepcion_items  → lo OCURRIDO (línea a línea, con lote)
+       orden_compra_eventos          → la BITÁCORA (append-only)
+
+     Los totales de la cabecera y cantidad_recibida de cada ítem son
+     derivados: los calcula server.js, nunca llegan del cliente. Los
+     campos *_nombre / *_razon_social son fotos del momento de emitir,
+     mismo criterio que horneadas.producto_nombre. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ordenes_compra (
+      id                      TEXT PRIMARY KEY,
+      numero                  TEXT NOT NULL UNIQUE,
+      proveedor_id            TEXT NOT NULL REFERENCES proveedores(id),
+      proveedor_razon_social  TEXT NOT NULL,
+      estado                  TEXT NOT NULL DEFAULT 'borrador',
+      fecha_emision           TEXT NOT NULL,
+      fecha_entrega_estimada  TEXT,
+      condiciones_pago        TEXT NOT NULL DEFAULT 'contado',
+      moneda                  TEXT NOT NULL DEFAULT 'COP',
+      subtotal                REAL NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
+      impuestos               REAL NOT NULL DEFAULT 0 CHECK (impuestos >= 0),
+      descuento               REAL NOT NULL DEFAULT 0 CHECK (descuento >= 0),
+      flete                   REAL NOT NULL DEFAULT 0 CHECK (flete >= 0),
+      total                   REAL NOT NULL DEFAULT 0 CHECK (total >= 0),
+      solicitado_por          TEXT,
+      aprobado_por            TEXT,
+      aprobado_en             TEXT,
+      lugar_entrega           TEXT,
+      notas                   TEXT,
+      motivo_cancelacion      TEXT,
+      creado_en               TEXT NOT NULL DEFAULT (datetime('now')),
+      actualizado_en          TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_compra_estado ON ordenes_compra(estado)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_compra_proveedor ON ordenes_compra(proveedor_id)',
+  );
+  db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_compra_fecha ON ordenes_compra(fecha_emision)');
+
+  /* cantidad_recibida NO la escribe nadie a mano: la recalcula server.js
+     sumando las recepciones después de cada entrega. El CHECK impide que
+     una recepción registre más de lo pedido (la sobre-entrega se anota
+     como cantidad_rechazada en la línea de recepción). */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orden_compra_items (
+      id                     TEXT PRIMARY KEY,
+      orden_compra_id        TEXT NOT NULL REFERENCES ordenes_compra(id) ON DELETE CASCADE,
+      insumo_id              TEXT NOT NULL REFERENCES insumos(id),
+      insumo_nombre          TEXT NOT NULL,
+      cantidad_pedida        REAL NOT NULL CHECK (cantidad_pedida > 0),
+      unidad                 TEXT NOT NULL,
+      costo_unitario         REAL NOT NULL CHECK (costo_unitario >= 0),
+      impuesto_porcentaje    REAL NOT NULL DEFAULT 0 CHECK (impuesto_porcentaje >= 0 AND impuesto_porcentaje <= 100),
+      descuento_porcentaje   REAL NOT NULL DEFAULT 0 CHECK (descuento_porcentaje >= 0 AND descuento_porcentaje <= 100),
+      subtotal               REAL NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
+      total_linea            REAL NOT NULL DEFAULT 0 CHECK (total_linea >= 0),
+      cantidad_recibida      REAL NOT NULL DEFAULT 0 CHECK (cantidad_recibida >= 0 AND cantidad_recibida <= cantidad_pedida),
+      orden                  INTEGER NOT NULL DEFAULT 0,
+      notas                  TEXT
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_items_orden ON orden_compra_items(orden_compra_id)',
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_items_insumo ON orden_compra_items(insumo_id)',
+  );
+
+  /* Una orden puede llegar en varias entregas. Cada recepción es un
+     documento propio e inmutable: no hay UPDATE ni DELETE sobre estas dos
+     tablas desde la API — corregir una recepción mal cargada se hace
+     registrando otra, igual que un asiento contable. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orden_compra_recepciones (
+      id                    TEXT PRIMARY KEY,
+      orden_compra_id       TEXT NOT NULL REFERENCES ordenes_compra(id) ON DELETE CASCADE,
+      fecha                 TEXT NOT NULL,
+      hora                  TEXT NOT NULL,
+      recibido_por          TEXT,
+      documento_referencia  TEXT,
+      notas                 TEXT,
+      creado_en             TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_recepciones_orden ON orden_compra_recepciones(orden_compra_id)',
+  );
+
+  /* El eslabón fino de la trazabilidad: lote_proveedor y
+     fecha_vencimiento se copian al insumo al recibir, y son lo que
+     permite rastrear hacia atrás desde una tanda de masa hasta la
+     orden de compra y el lote del proveedor que la surtió. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orden_compra_recepcion_items (
+      id                       TEXT PRIMARY KEY,
+      recepcion_id             TEXT NOT NULL REFERENCES orden_compra_recepciones(id) ON DELETE CASCADE,
+      item_id                  TEXT NOT NULL REFERENCES orden_compra_items(id) ON DELETE CASCADE,
+      insumo_id                TEXT NOT NULL REFERENCES insumos(id),
+      insumo_nombre            TEXT NOT NULL,
+      cantidad_recibida        REAL NOT NULL CHECK (cantidad_recibida >= 0),
+      cantidad_rechazada       REAL NOT NULL DEFAULT 0 CHECK (cantidad_rechazada >= 0),
+      motivo_rechazo           TEXT,
+      lote_proveedor           TEXT,
+      fecha_vencimiento        TEXT,
+      temperatura_recepcion_c  REAL CHECK (temperatura_recepcion_c IS NULL OR (temperatura_recepcion_c >= -50 AND temperatura_recepcion_c <= 100)),
+      notas                    TEXT
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_recepcion_items_recepcion ON orden_compra_recepcion_items(recepcion_id)',
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_recepcion_items_item ON orden_compra_recepcion_items(item_id)',
+  );
+
+  /* Bitácora append-only de la orden: quién hizo qué y cuándo. Es la
+     línea de tiempo que se pinta en el panel; la copia a prueba de
+     manipulación vive además en auditoria_cadena. El id es un entero
+     autoincremental, no un UUID: creado_en solo tiene precisión de
+     segundos, así que dos eventos del mismo segundo (crear + emitir en
+     la misma petición) necesitan el id para desempatar el orden. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orden_compra_eventos (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      orden_compra_id  TEXT NOT NULL REFERENCES ordenes_compra(id) ON DELETE CASCADE,
+      tipo             TEXT NOT NULL,
+      estado_anterior  TEXT,
+      estado_nuevo     TEXT,
+      descripcion      TEXT NOT NULL,
+      datos            TEXT,
+      usuario          TEXT,
+      creado_en        TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_compra_eventos_orden ON orden_compra_eventos(orden_compra_id)',
+  );
+
   /* Cadena de auditoría (hash-chain, estilo blockchain): un registro
      append-only donde cada bloque incluye el hash del bloque anterior.
      No es una blockchain distribuida (no hay red ni consenso — es un

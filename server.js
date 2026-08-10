@@ -10,7 +10,7 @@ const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const db = require('./db');
-const { convertirAGramos, costoPorGramo } = require('./units');
+const { convertirAGramos, costoPorGramo, FACTOR_A_ML, UNIDADES_DE_VOLUMEN } = require('./units');
 const AnalyticsEngine = require('./analyticsEngine');
 const Auditoria = require('./auditoria');
 const CalidadDatos = require('./calidadDatos');
@@ -63,6 +63,12 @@ const {
   validarInicioEtapa,
   validarFinEtapa,
   ETAPA_ID_RE,
+  validarOrdenCompra,
+  validarCambioEstadoOrdenCompra,
+  validarRecepcionOrdenCompra,
+  ORDEN_COMPRA_ID_RE,
+  OC_ESTADOS,
+  OC_ESTADOS_RECEPCION,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -320,6 +326,15 @@ app.get('/', (req, res) => {
       eliminarProduccion: 'DELETE /producciones/:id (Authorization: Bearer token)',
       iniciarEtapa: 'POST /producciones/:id/etapas (Authorization: Bearer token)',
       finalizarEtapa: 'PUT /producciones/:id/etapas/:etapaId (Authorization: Bearer token)',
+      listarOrdenesCompra:
+        'GET /ordenes-compra?estado=&proveedorId=&desde=&hasta= (Authorization: Bearer token)',
+      verOrdenCompra: 'GET /ordenes-compra/:id (Authorization: Bearer token)',
+      crearOrdenCompra: 'POST /ordenes-compra (Authorization: Bearer token)',
+      actualizarOrdenCompra: 'PUT /ordenes-compra/:id (solo en borrador)',
+      cambiarEstadoOrdenCompra: 'PATCH /ordenes-compra/:id/estado (Authorization: Bearer token)',
+      recibirOrdenCompra: 'POST /ordenes-compra/:id/recepciones (Authorization: Bearer token)',
+      trazabilidadOrdenCompra: 'GET /ordenes-compra/:id/trazabilidad (Authorization: Bearer token)',
+      eliminarOrdenCompra: 'DELETE /ordenes-compra/:id (solo en borrador y sin recepciones)',
     },
   });
 });
@@ -2394,6 +2409,941 @@ app.put('/producciones/:id/etapas/:etapaId', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[PUT /producciones/:id/etapas/:etapaId]', err.message);
     res.status(500).json({ error: 'Error al cerrar la etapa.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   ÓRDENES DE COMPRA — el documento que se le manda al proveedor, con su
+   detalle, sus recepciones parciales y su bitácora. Ver
+   docs/modelo-ordenes-compra.md para el modelo completo.
+
+   Tres reglas que se sostienen en todo este bloque:
+     1. Los totales de la orden y cantidad_recibida de cada ítem SIEMPRE
+        se recalculan acá; nunca se aceptan del cliente.
+     2. Los ítems solo se pueden tocar mientras la orden esté en
+        borrador — después la corrección es cancelar y emitir otra.
+     3. Todo cambio deja dos rastros: una fila en orden_compra_eventos
+        (la línea de tiempo que ve el panel) y un bloque en
+        auditoria_cadena (la copia encadenada por hash).
+   ═══════════════════════════════════════════ */
+
+/** Genera el número visible de la orden: OC-AAAAMMDD-NNNN, correlativo
+ *  dentro del día de emisión. Mismo formato que LM-... de los pedidos. */
+function generarNumeroOrdenCompra(fechaEmision) {
+  const dia = fechaEmision.replace(/-/g, '');
+  const { usados } = db
+    .prepare('SELECT COUNT(*) AS usados FROM ordenes_compra WHERE numero LIKE ?')
+    .get(`OC-${dia}-%`);
+  return `OC-${dia}-${String(usados + 1).padStart(4, '0')}`;
+}
+
+/** Redondeo a centavos: sin esto, sumar líneas con impuestos arrastra el
+ *  error de coma flotante y el total de la orden termina en .30000000004. */
+function redondearDinero(valor) {
+  return Math.round(valor * 100) / 100;
+}
+
+/** Totales de una línea y de la orden completa, calculados siempre acá.
+ *  descuento e impuesto son porcentajes por línea; el flete es un monto
+ *  fijo de la cabecera que se suma al final. */
+function calcularTotalesOrdenCompra(items, flete) {
+  let subtotalBruto = 0;
+  let descuento = 0;
+  let impuestos = 0;
+
+  const itemsConTotales = items.map((item) => {
+    const bruto = item.cantidadPedida * item.costoUnitario;
+    const descuentoLinea = bruto * (item.descuentoPorcentaje / 100);
+    const subtotal = bruto - descuentoLinea;
+    const impuestoLinea = subtotal * (item.impuestoPorcentaje / 100);
+
+    subtotalBruto += bruto;
+    descuento += descuentoLinea;
+    impuestos += impuestoLinea;
+
+    return {
+      ...item,
+      subtotal: redondearDinero(subtotal),
+      totalLinea: redondearDinero(subtotal + impuestoLinea),
+    };
+  });
+
+  const subtotal = redondearDinero(subtotalBruto);
+  const descuentoTotal = redondearDinero(descuento);
+  const impuestosTotal = redondearDinero(impuestos);
+
+  return {
+    items: itemsConTotales,
+    subtotal,
+    descuento: descuentoTotal,
+    impuestos: impuestosTotal,
+    flete: redondearDinero(flete),
+    total: redondearDinero(subtotal - descuentoTotal + impuestosTotal + flete),
+  };
+}
+
+/** Cruza cada insumoId contra el catálogo real y devuelve el mapa
+ *  id -> fila. Mismo criterio que resolverInsumos (recetas): validation.js
+ *  no consulta la base, así que la existencia se verifica acá. */
+function resolverInsumosCompra(items) {
+  const porId = new Map();
+  for (const item of items) {
+    const insumo = db.prepare('SELECT * FROM insumos WHERE id = ?').get(item.insumoId);
+    if (!insumo) {
+      throw new ValidationError(
+        `El insumo "${item.insumoId}" no existe en el catálogo de Insumos.`,
+      );
+    }
+    porId.set(item.insumoId, insumo);
+  }
+  return porId;
+}
+
+/** Convierte lo recibido (en la unidad de la línea de la orden) a la
+ *  unidad en la que el insumo lleva su existencia. Si no hay forma de
+ *  convertir con los datos cargados (ej. litros contra kilos, sin
+ *  densidad), lanza en vez de sumar peras con manzanas. */
+function convertirAUnidadDelInsumo(cantidad, unidadOrigen, insumo) {
+  if (unidadOrigen === insumo.unidad) return cantidad;
+
+  if (UNIDADES_DE_VOLUMEN.includes(unidadOrigen) && UNIDADES_DE_VOLUMEN.includes(insumo.unidad)) {
+    return (cantidad * FACTOR_A_ML[unidadOrigen]) / FACTOR_A_ML[insumo.unidad];
+  }
+
+  const equivalenciaGramos = insumo.equivalencia_gramos;
+  const gramosRecibidos = convertirAGramos({ unidad: unidadOrigen, cantidad, equivalenciaGramos });
+  const gramosPorUnidadDestino = convertirAGramos({
+    unidad: insumo.unidad,
+    cantidad: 1,
+    equivalenciaGramos,
+  });
+
+  if (!gramosRecibidos || !gramosPorUnidadDestino) {
+    throw new ValidationError(
+      `No se puede convertir ${unidadOrigen} a ${insumo.unidad} para "${insumo.nombre}". Carga la equivalencia en gramos del insumo o usa la misma unidad en la orden.`,
+    );
+  }
+
+  return gramosRecibidos / gramosPorUnidadDestino;
+}
+
+function registrarEventoOrdenCompra({
+  ordenCompraId,
+  tipo,
+  estadoAnterior = null,
+  estadoNuevo = null,
+  descripcion,
+  datos = null,
+  usuario = null,
+}) {
+  db.prepare(
+    `INSERT INTO orden_compra_eventos
+       (orden_compra_id, tipo, estado_anterior, estado_nuevo, descripcion, datos, usuario)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    ordenCompraId,
+    tipo,
+    estadoAnterior,
+    estadoNuevo,
+    descripcion,
+    datos ? JSON.stringify(datos) : null,
+    usuario || null,
+  );
+}
+
+function serializeOrdenCompraItem(row) {
+  return {
+    id: row.id,
+    insumoId: row.insumo_id,
+    insumoNombre: row.insumo_nombre,
+    cantidadPedida: row.cantidad_pedida,
+    unidad: row.unidad,
+    costoUnitario: row.costo_unitario,
+    impuestoPorcentaje: row.impuesto_porcentaje,
+    descuentoPorcentaje: row.descuento_porcentaje,
+    subtotal: row.subtotal,
+    totalLinea: row.total_linea,
+    cantidadRecibida: row.cantidad_recibida,
+    cantidadPendiente: redondearDinero(row.cantidad_pedida - row.cantidad_recibida),
+    orden: row.orden,
+    notas: row.notas,
+  };
+}
+
+function serializeOrdenCompra(row, items, recepciones, eventos) {
+  const pedido = items.reduce((acc, i) => acc + i.cantidad_pedida, 0);
+  const recibido = items.reduce((acc, i) => acc + i.cantidad_recibida, 0);
+
+  return {
+    id: row.id,
+    numero: row.numero,
+    proveedorId: row.proveedor_id,
+    proveedorRazonSocial: row.proveedor_razon_social,
+    estado: row.estado,
+    fechaEmision: row.fecha_emision,
+    fechaEntregaEstimada: row.fecha_entrega_estimada,
+    condicionesPago: row.condiciones_pago,
+    moneda: row.moneda,
+    subtotal: row.subtotal,
+    impuestos: row.impuestos,
+    descuento: row.descuento,
+    flete: row.flete,
+    total: row.total,
+    solicitadoPor: row.solicitado_por,
+    aprobadoPor: row.aprobado_por,
+    aprobadoEn: sqliteDatetimeAIso(row.aprobado_en),
+    lugarEntrega: row.lugar_entrega,
+    notas: row.notas,
+    motivoCancelacion: row.motivo_cancelacion,
+    // Avance de recepción en porcentaje: lo que pinta la barra del panel
+    // sin que el navegador tenga que recorrer los ítems otra vez.
+    avanceRecepcionPct: pedido > 0 ? Math.round((recibido / pedido) * 1000) / 10 : 0,
+    items: items.map(serializeOrdenCompraItem),
+    recepciones: recepciones.map((recepcion) => ({
+      id: recepcion.id,
+      fecha: recepcion.fecha,
+      hora: recepcion.hora,
+      recibidoPor: recepcion.recibido_por,
+      documentoReferencia: recepcion.documento_referencia,
+      notas: recepcion.notas,
+      creadoEn: sqliteDatetimeAIso(recepcion.creado_en),
+      items: recepcion.items.map((linea) => ({
+        id: linea.id,
+        itemId: linea.item_id,
+        insumoId: linea.insumo_id,
+        insumoNombre: linea.insumo_nombre,
+        cantidadRecibida: linea.cantidad_recibida,
+        cantidadRechazada: linea.cantidad_rechazada,
+        motivoRechazo: linea.motivo_rechazo,
+        loteProveedor: linea.lote_proveedor,
+        fechaVencimiento: linea.fecha_vencimiento,
+        temperaturaRecepcionC: linea.temperatura_recepcion_c,
+        notas: linea.notas,
+      })),
+    })),
+    eventos: eventos.map((evento) => ({
+      id: evento.id,
+      tipo: evento.tipo,
+      estadoAnterior: evento.estado_anterior,
+      estadoNuevo: evento.estado_nuevo,
+      descripcion: evento.descripcion,
+      datos: evento.datos ? JSON.parse(evento.datos) : null,
+      usuario: evento.usuario,
+      creadoEn: sqliteDatetimeAIso(evento.creado_en),
+    })),
+    creadoEn: sqliteDatetimeAIso(row.creado_en),
+    actualizadoEn: sqliteDatetimeAIso(row.actualizado_en),
+  };
+}
+
+function cargarOrdenCompra(id) {
+  const fila = db.prepare('SELECT * FROM ordenes_compra WHERE id = ?').get(id);
+  if (!fila) return null;
+
+  const items = db
+    .prepare('SELECT * FROM orden_compra_items WHERE orden_compra_id = ? ORDER BY orden ASC')
+    .all(id);
+
+  const recepciones = db
+    .prepare(
+      `SELECT * FROM orden_compra_recepciones
+       WHERE orden_compra_id = ? ORDER BY fecha ASC, hora ASC, creado_en ASC`,
+    )
+    .all(id)
+    .map((recepcion) => ({
+      ...recepcion,
+      items: db
+        .prepare('SELECT * FROM orden_compra_recepcion_items WHERE recepcion_id = ?')
+        .all(recepcion.id),
+    }));
+
+  const eventos = db
+    .prepare('SELECT * FROM orden_compra_eventos WHERE orden_compra_id = ? ORDER BY id ASC')
+    .all(id);
+
+  return serializeOrdenCompra(fila, items, recepciones, eventos);
+}
+
+/** Recalcula cantidad_recibida de cada ítem sumando sus recepciones y
+ *  deduce el estado de la orden: todo recibido => 'recibida', algo
+ *  recibido => 'recibida_parcial'. Se llama dentro de la transacción de
+ *  recepción, nunca suelto. */
+function recalcularAvanceOrdenCompra(ordenCompraId) {
+  db.prepare(
+    `UPDATE orden_compra_items
+     SET cantidad_recibida = (
+       SELECT COALESCE(SUM(ri.cantidad_recibida), 0)
+       FROM orden_compra_recepcion_items ri
+       WHERE ri.item_id = orden_compra_items.id
+     )
+     WHERE orden_compra_id = ?`,
+  ).run(ordenCompraId);
+
+  const items = db
+    .prepare(
+      'SELECT cantidad_pedida, cantidad_recibida FROM orden_compra_items WHERE orden_compra_id = ?',
+    )
+    .all(ordenCompraId);
+
+  const completa = items.every((i) => i.cantidad_recibida >= i.cantidad_pedida);
+  const algo = items.some((i) => i.cantidad_recibida > 0);
+
+  return completa ? 'recibida' : algo ? 'recibida_parcial' : null;
+}
+
+app.get('/ordenes-compra', requireAuth, (req, res) => {
+  const { estado, proveedorId, desde, hasta } = req.query;
+
+  let sql = 'SELECT id FROM ordenes_compra WHERE 1=1';
+  const params = [];
+
+  if (estado) {
+    if (!OC_ESTADOS.includes(estado)) {
+      return res.status(400).json({ error: 'Estado de orden de compra inválido.' });
+    }
+    sql += ' AND estado = ?';
+    params.push(estado);
+  }
+  if (proveedorId) {
+    if (!PROVEEDOR_ID_RE.test(proveedorId)) {
+      return res.status(400).json({ error: 'Identificador de proveedor inválido.' });
+    }
+    sql += ' AND proveedor_id = ?';
+    params.push(proveedorId);
+  }
+  if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) {
+    sql += ' AND fecha_emision >= ?';
+    params.push(desde);
+  }
+  if (hasta && /^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
+    sql += ' AND fecha_emision <= ?';
+    params.push(hasta);
+  }
+  sql += ' ORDER BY fecha_emision DESC, numero DESC';
+
+  try {
+    const ids = db
+      .prepare(sql)
+      .all(...params)
+      .map((r) => r.id);
+    res.json(ids.map(cargarOrdenCompra));
+  } catch (err) {
+    console.error('[GET /ordenes-compra]', err.message);
+    res.status(500).json({ error: 'Error al consultar órdenes de compra.' });
+  }
+});
+
+app.get('/ordenes-compra/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+  try {
+    const orden = cargarOrdenCompra(id);
+    if (!orden) return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+    res.json(orden);
+  } catch (err) {
+    console.error('[GET /ordenes-compra/:id]', err.message);
+    res.status(500).json({ error: 'Error al consultar la orden de compra.' });
+  }
+});
+
+app.post('/ordenes-compra', requireAuth, (req, res) => {
+  let datos;
+  let proveedor;
+  let insumosPorId;
+  try {
+    datos = validarOrdenCompra(req.body);
+    proveedor = db.prepare('SELECT * FROM proveedores WHERE id = ?').get(datos.proveedorId);
+    if (!proveedor) {
+      throw new ValidationError('El proveedor no existe en el catálogo de Proveedores.');
+    }
+    insumosPorId = resolverInsumosCompra(datos.items);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const emitirDeInmediato = req.body?.emitir === true;
+  const estadoInicial = emitirDeInmediato ? 'emitida' : 'borrador';
+  const totales = calcularTotalesOrdenCompra(datos.items, datos.flete);
+  const id = crypto.randomUUID();
+
+  try {
+    const numero = generarNumeroOrdenCompra(datos.fechaEmision);
+
+    const crear = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO ordenes_compra (
+           id, numero, proveedor_id, proveedor_razon_social, estado, fecha_emision,
+           fecha_entrega_estimada, condiciones_pago, moneda, subtotal, impuestos, descuento,
+           flete, total, solicitado_por, aprobado_por, aprobado_en, lugar_entrega, notas
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        numero,
+        datos.proveedorId,
+        proveedor.razon_social,
+        estadoInicial,
+        datos.fechaEmision,
+        datos.fechaEntregaEstimada,
+        datos.condicionesPago,
+        datos.moneda,
+        totales.subtotal,
+        totales.impuestos,
+        totales.descuento,
+        totales.flete,
+        totales.total,
+        datos.solicitadoPor,
+        emitirDeInmediato ? datos.solicitadoPor : null,
+        emitirDeInmediato ? new Date().toISOString() : null,
+        datos.lugarEntrega,
+        datos.notas,
+      );
+
+      totales.items.forEach((item, idx) => {
+        db.prepare(
+          `INSERT INTO orden_compra_items (
+             id, orden_compra_id, insumo_id, insumo_nombre, cantidad_pedida, unidad,
+             costo_unitario, impuesto_porcentaje, descuento_porcentaje, subtotal,
+             total_linea, orden, notas
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          crypto.randomUUID(),
+          id,
+          item.insumoId,
+          insumosPorId.get(item.insumoId).nombre,
+          item.cantidadPedida,
+          item.unidad,
+          item.costoUnitario,
+          item.impuestoPorcentaje,
+          item.descuentoPorcentaje,
+          item.subtotal,
+          item.totalLinea,
+          idx,
+          item.notas,
+        );
+      });
+
+      registrarEventoOrdenCompra({
+        ordenCompraId: id,
+        tipo: 'creada',
+        estadoNuevo: estadoInicial,
+        descripcion: `Orden ${numero} creada para ${proveedor.razon_social} con ${totales.items.length} línea(s).`,
+        datos: { total: totales.total, moneda: datos.moneda },
+        usuario: datos.solicitadoPor,
+      });
+
+      if (emitirDeInmediato) {
+        registrarEventoOrdenCompra({
+          ordenCompraId: id,
+          tipo: 'emitida',
+          estadoAnterior: 'borrador',
+          estadoNuevo: 'emitida',
+          descripcion: 'Orden emitida al proveedor.',
+          usuario: datos.solicitadoPor,
+        });
+      }
+    });
+    crear();
+
+    Auditoria.registrarEnCadena({
+      entidad: 'ordenes_compra',
+      entidadId: id,
+      accion: 'crear',
+      datos: {
+        numero,
+        proveedor: proveedor.razon_social,
+        estado: estadoInicial,
+        total: totales.total,
+        lineas: totales.items.length,
+      },
+      actualizadoPor: datos.solicitadoPor || null,
+    });
+
+    const orden = cargarOrdenCompra(id);
+    broadcast({ tipo: 'orden-compra:nueva', ordenCompra: orden });
+    res.status(201).json(orden);
+  } catch (err) {
+    console.error('[POST /ordenes-compra]', err.message);
+    res.status(500).json({ error: 'Error al guardar la orden de compra.' });
+  }
+});
+
+app.put('/ordenes-compra/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+
+  const existente = db.prepare('SELECT * FROM ordenes_compra WHERE id = ?').get(id);
+  if (!existente) {
+    return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+  }
+  if (existente.estado !== 'borrador') {
+    return res.status(409).json({
+      error:
+        'Solo se puede editar una orden en borrador. Una orden ya emitida se corrige cancelándola y emitiendo otra.',
+    });
+  }
+
+  let datos;
+  let proveedor;
+  let insumosPorId;
+  try {
+    datos = validarOrdenCompra(req.body);
+    proveedor = db.prepare('SELECT * FROM proveedores WHERE id = ?').get(datos.proveedorId);
+    if (!proveedor) {
+      throw new ValidationError('El proveedor no existe en el catálogo de Proveedores.');
+    }
+    insumosPorId = resolverInsumosCompra(datos.items);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const totales = calcularTotalesOrdenCompra(datos.items, datos.flete);
+
+  try {
+    const actualizar = db.transaction(() => {
+      db.prepare(
+        `UPDATE ordenes_compra
+         SET proveedor_id = ?, proveedor_razon_social = ?, fecha_emision = ?,
+             fecha_entrega_estimada = ?, condiciones_pago = ?, moneda = ?, subtotal = ?,
+             impuestos = ?, descuento = ?, flete = ?, total = ?, solicitado_por = ?,
+             lugar_entrega = ?, notas = ?, actualizado_en = datetime('now')
+         WHERE id = ?`,
+      ).run(
+        datos.proveedorId,
+        proveedor.razon_social,
+        datos.fechaEmision,
+        datos.fechaEntregaEstimada,
+        datos.condicionesPago,
+        datos.moneda,
+        totales.subtotal,
+        totales.impuestos,
+        totales.descuento,
+        totales.flete,
+        totales.total,
+        datos.solicitadoPor,
+        datos.lugarEntrega,
+        datos.notas,
+        id,
+      );
+
+      db.prepare('DELETE FROM orden_compra_items WHERE orden_compra_id = ?').run(id);
+      totales.items.forEach((item, idx) => {
+        db.prepare(
+          `INSERT INTO orden_compra_items (
+             id, orden_compra_id, insumo_id, insumo_nombre, cantidad_pedida, unidad,
+             costo_unitario, impuesto_porcentaje, descuento_porcentaje, subtotal,
+             total_linea, orden, notas
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          crypto.randomUUID(),
+          id,
+          item.insumoId,
+          insumosPorId.get(item.insumoId).nombre,
+          item.cantidadPedida,
+          item.unidad,
+          item.costoUnitario,
+          item.impuestoPorcentaje,
+          item.descuentoPorcentaje,
+          item.subtotal,
+          item.totalLinea,
+          idx,
+          item.notas,
+        );
+      });
+
+      registrarEventoOrdenCompra({
+        ordenCompraId: id,
+        tipo: 'editada',
+        estadoAnterior: 'borrador',
+        estadoNuevo: 'borrador',
+        descripcion: 'Borrador editado.',
+        datos: { antes: { total: existente.total }, despues: { total: totales.total } },
+        usuario: datos.solicitadoPor,
+      });
+    });
+    actualizar();
+
+    Auditoria.registrarEnCadena({
+      entidad: 'ordenes_compra',
+      entidadId: id,
+      accion: 'actualizar',
+      datos: {
+        numero: existente.numero,
+        antes: { total: existente.total, proveedor: existente.proveedor_razon_social },
+        despues: { total: totales.total, proveedor: proveedor.razon_social },
+      },
+      actualizadoPor: datos.solicitadoPor || null,
+    });
+
+    const orden = cargarOrdenCompra(id);
+    broadcast({ tipo: 'orden-compra:actualizada', ordenCompra: orden });
+    res.json(orden);
+  } catch (err) {
+    console.error('[PUT /ordenes-compra/:id]', err.message);
+    res.status(500).json({ error: 'Error al actualizar la orden de compra.' });
+  }
+});
+
+app.patch('/ordenes-compra/:id/estado', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+
+  const existente = db.prepare('SELECT * FROM ordenes_compra WHERE id = ?').get(id);
+  if (!existente) {
+    return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+  }
+
+  let datos;
+  try {
+    datos = validarCambioEstadoOrdenCompra(req.body, existente.estado);
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  // Una orden que ya movió inventario no se anula: lo recibido existe de
+  // verdad en la bodega, y cancelarla dejaría el stock sin respaldo documental.
+  if (datos.estado === 'cancelada') {
+    const { recibidas } = db
+      .prepare(
+        'SELECT COUNT(*) AS recibidas FROM orden_compra_recepciones WHERE orden_compra_id = ?',
+      )
+      .get(id);
+    if (recibidas > 0) {
+      return res.status(409).json({
+        error:
+          'No se puede cancelar: la orden ya tiene mercancía recibida. Registra la diferencia como rechazo en una recepción.',
+      });
+    }
+  }
+
+  try {
+    const cambiar = db.transaction(() => {
+      db.prepare(
+        `UPDATE ordenes_compra
+         SET estado = ?,
+             motivo_cancelacion = CASE WHEN ? = 'cancelada' THEN ? ELSE motivo_cancelacion END,
+             aprobado_por = CASE WHEN ? = 'emitida' THEN ? ELSE aprobado_por END,
+             aprobado_en = CASE WHEN ? = 'emitida' THEN ? ELSE aprobado_en END,
+             actualizado_en = datetime('now')
+         WHERE id = ?`,
+      ).run(
+        datos.estado,
+        datos.estado,
+        datos.motivo,
+        datos.estado,
+        datos.usuario || null,
+        datos.estado,
+        new Date().toISOString(),
+        id,
+      );
+
+      registrarEventoOrdenCompra({
+        ordenCompraId: id,
+        tipo: datos.estado,
+        estadoAnterior: existente.estado,
+        estadoNuevo: datos.estado,
+        descripcion: datos.motivo
+          ? `Estado: ${existente.estado} → ${datos.estado}. Motivo: ${datos.motivo}`
+          : `Estado: ${existente.estado} → ${datos.estado}.`,
+        usuario: datos.usuario,
+      });
+    });
+    cambiar();
+
+    Auditoria.registrarEnCadena({
+      entidad: 'ordenes_compra',
+      entidadId: id,
+      accion: 'actualizar',
+      datos: {
+        numero: existente.numero,
+        antes: { estado: existente.estado },
+        despues: { estado: datos.estado },
+        motivo: datos.motivo || null,
+      },
+      actualizadoPor: datos.usuario || null,
+    });
+
+    const orden = cargarOrdenCompra(id);
+    broadcast({ tipo: 'orden-compra:actualizada', ordenCompra: orden });
+    res.json(orden);
+  } catch (err) {
+    console.error('[PATCH /ordenes-compra/:id/estado]', err.message);
+    res.status(500).json({ error: 'Error al cambiar el estado de la orden de compra.' });
+  }
+});
+
+app.post('/ordenes-compra/:id/recepciones', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+
+  const existente = db.prepare('SELECT * FROM ordenes_compra WHERE id = ?').get(id);
+  if (!existente) {
+    return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+  }
+  if (!OC_ESTADOS_RECEPCION.includes(existente.estado)) {
+    return res.status(409).json({
+      error: `Una orden en estado "${existente.estado}" no admite recepciones. Emítela primero.`,
+    });
+  }
+
+  let datos;
+  let lineas;
+  try {
+    datos = validarRecepcionOrdenCompra(req.body);
+
+    // Cada línea de la recepción tiene que apuntar a una línea real de ESTA
+    // orden y caber en lo que todavía falta por recibir. Lo que llegue de
+    // más se anota como rechazo, no se suma al inventario en silencio.
+    lineas = datos.items.map((linea) => {
+      const item = db
+        .prepare('SELECT * FROM orden_compra_items WHERE id = ? AND orden_compra_id = ?')
+        .get(linea.itemId, id);
+      if (!item) {
+        throw new ValidationError('Una de las líneas no pertenece a esta orden de compra.');
+      }
+      const pendiente = item.cantidad_pedida - item.cantidad_recibida;
+      if (linea.cantidadRecibida > pendiente + 1e-9) {
+        throw new ValidationError(
+          `"${item.insumo_nombre}": se intenta recibir ${linea.cantidadRecibida} ${item.unidad} y solo faltan ${redondearDinero(pendiente)} ${item.unidad}.`,
+        );
+      }
+      const insumo = db.prepare('SELECT * FROM insumos WHERE id = ?').get(item.insumo_id);
+      if (!insumo) {
+        throw new ValidationError(`El insumo "${item.insumo_nombre}" ya no existe en el catálogo.`);
+      }
+      const cantidadEnUnidadInsumo = convertirAUnidadDelInsumo(
+        linea.cantidadRecibida,
+        item.unidad,
+        insumo,
+      );
+      return { linea, item, insumo, cantidadEnUnidadInsumo };
+    });
+  } catch (err) {
+    if (err instanceof ValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+
+  const recepcionId = crypto.randomUUID();
+
+  try {
+    let estadoFinal = existente.estado;
+
+    const recibir = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO orden_compra_recepciones
+           (id, orden_compra_id, fecha, hora, recibido_por, documento_referencia, notas)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        recepcionId,
+        id,
+        datos.fecha,
+        datos.hora,
+        datos.recibidoPor,
+        datos.documentoReferencia,
+        datos.notas,
+      );
+
+      for (const { linea, item, insumo, cantidadEnUnidadInsumo } of lineas) {
+        db.prepare(
+          `INSERT INTO orden_compra_recepcion_items (
+             id, recepcion_id, item_id, insumo_id, insumo_nombre, cantidad_recibida,
+             cantidad_rechazada, motivo_rechazo, lote_proveedor, fecha_vencimiento,
+             temperatura_recepcion_c, notas
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          crypto.randomUUID(),
+          recepcionId,
+          item.id,
+          item.insumo_id,
+          item.insumo_nombre,
+          linea.cantidadRecibida,
+          linea.cantidadRechazada,
+          linea.motivoRechazo,
+          linea.loteProveedor,
+          linea.fechaVencimiento,
+          linea.temperaturaRecepcionC,
+          linea.notas,
+        );
+
+        // El efecto real en bodega: sube la existencia del insumo y se le
+        // copia el costo pactado y el lote/vencimiento de ESTA entrega, que
+        // es lo que después permite rastrear una tanda de masa hasta su
+        // orden de compra.
+        if (linea.cantidadRecibida > 0) {
+          db.prepare(
+            `UPDATE insumos
+             SET cantidad = cantidad + ?,
+                 costo_unitario = ?,
+                 lote_proveedor = COALESCE(NULLIF(?, ''), lote_proveedor),
+                 fecha_vencimiento = COALESCE(?, fecha_vencimiento),
+                 actualizado_en = datetime('now')
+             WHERE id = ?`,
+          ).run(
+            cantidadEnUnidadInsumo,
+            item.unidad === insumo.unidad
+              ? item.costo_unitario
+              : (insumo.costo_unitario ?? item.costo_unitario),
+            linea.loteProveedor,
+            linea.fechaVencimiento,
+            insumo.id,
+          );
+        }
+      }
+
+      const estadoDerivado = recalcularAvanceOrdenCompra(id);
+      if (estadoDerivado && estadoDerivado !== existente.estado) {
+        estadoFinal = estadoDerivado;
+        db.prepare(
+          "UPDATE ordenes_compra SET estado = ?, actualizado_en = datetime('now') WHERE id = ?",
+        ).run(estadoDerivado, id);
+      }
+
+      const resumen = lineas
+        .map(({ linea, item }) => `${item.insumo_nombre}: ${linea.cantidadRecibida} ${item.unidad}`)
+        .join(', ');
+
+      registrarEventoOrdenCompra({
+        ordenCompraId: id,
+        tipo: 'recepcion_registrada',
+        estadoAnterior: existente.estado,
+        estadoNuevo: estadoFinal,
+        descripcion: `Recepción del ${datos.fecha} ${datos.hora}: ${resumen}.`,
+        datos: {
+          recepcionId,
+          documentoReferencia: datos.documentoReferencia || null,
+          lineas: lineas.map(({ linea, item }) => ({
+            insumo: item.insumo_nombre,
+            recibido: linea.cantidadRecibida,
+            rechazado: linea.cantidadRechazada,
+            lote: linea.loteProveedor || null,
+          })),
+        },
+        usuario: datos.recibidoPor,
+      });
+    });
+    recibir();
+
+    Auditoria.registrarEnCadena({
+      entidad: 'ordenes_compra',
+      entidadId: id,
+      accion: 'actualizar',
+      datos: {
+        numero: existente.numero,
+        recepcionId,
+        fecha: datos.fecha,
+        hora: datos.hora,
+        estado: estadoFinal,
+        lineas: lineas.map(({ linea, item }) => ({
+          insumo: item.insumo_nombre,
+          recibido: linea.cantidadRecibida,
+          rechazado: linea.cantidadRechazada,
+          lote: linea.loteProveedor || null,
+        })),
+      },
+      actualizadoPor: datos.recibidoPor || null,
+    });
+
+    const orden = cargarOrdenCompra(id);
+    broadcast({ tipo: 'orden-compra:recepcion', ordenCompra: orden });
+    res.status(201).json(orden);
+  } catch (err) {
+    console.error('[POST /ordenes-compra/:id/recepciones]', err.message);
+    res.status(500).json({ error: 'Error al registrar la recepción.' });
+  }
+});
+
+/** Trazabilidad completa: la bitácora legible de la orden más los bloques
+ *  de la cadena de hashes que le corresponden, con el veredicto de
+ *  integridad de la cadena. */
+app.get('/ordenes-compra/:id/trazabilidad', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+  try {
+    const orden = cargarOrdenCompra(id);
+    if (!orden) return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+
+    res.json({
+      numero: orden.numero,
+      estado: orden.estado,
+      eventos: orden.eventos,
+      recepciones: orden.recepciones,
+      bloques: Auditoria.historialDe('ordenes_compra', id).map((b) => ({
+        id: b.id,
+        accion: b.accion,
+        datos: JSON.parse(b.datos),
+        actualizadoPor: b.actualizado_por,
+        hash: b.hash,
+        hashAnterior: b.hash_anterior,
+        creadoEn: b.creado_en,
+      })),
+      integridadCadena: Auditoria.verificarCadena(),
+    });
+  } catch (err) {
+    console.error('[GET /ordenes-compra/:id/trazabilidad]', err.message);
+    res.status(500).json({ error: 'Error al consultar la trazabilidad.' });
+  }
+});
+
+app.delete('/ordenes-compra/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!ORDEN_COMPRA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de orden de compra inválido.' });
+  }
+
+  const existente = db.prepare('SELECT * FROM ordenes_compra WHERE id = ?').get(id);
+  if (!existente) {
+    return res.status(404).json({ error: 'Orden de compra no encontrada.' });
+  }
+  // Solo el borrador es descartable. Una orden emitida ya salió del negocio
+  // hacia el proveedor: se cancela (queda el rastro), no se borra.
+  if (existente.estado !== 'borrador') {
+    return res.status(409).json({
+      error: 'Solo se puede eliminar un borrador. Una orden emitida se cancela, no se borra.',
+    });
+  }
+
+  try {
+    db.prepare('DELETE FROM ordenes_compra WHERE id = ?').run(id);
+    Auditoria.registrarEnCadena({
+      entidad: 'ordenes_compra',
+      entidadId: id,
+      accion: 'eliminar',
+      datos: {
+        numero: existente.numero,
+        proveedor: existente.proveedor_razon_social,
+        total: existente.total,
+      },
+      actualizadoPor: existente.solicitado_por,
+    });
+    broadcast({ tipo: 'orden-compra:eliminada', id });
+    res.status(204).end();
+  } catch (err) {
+    console.error('[DELETE /ordenes-compra/:id]', err.message);
+    res.status(500).json({ error: 'Error al eliminar la orden de compra.' });
   }
 });
 

@@ -1087,6 +1087,315 @@ function validarFinEtapa(datos) {
   return { horaFin: datos.horaFin, notas };
 }
 
+/* ═══════════════════════════════════════════
+   ÓRDENES DE COMPRA
+   ═══════════════════════════════════════════
+   Ver docs/modelo-ordenes-compra.md. Igual que validarReceta, estas
+   funciones NO tocan la base de datos para comprobar que el proveedor y
+   los insumos existan: eso lo cruza server.js al guardar, que es quien
+   además calcula los totales (nunca se confía en los que mande el
+   cliente). */
+const ORDEN_COMPRA_ID_RE = /^[a-zA-Z0-9-]{1,64}$/;
+const NUMERO_ORDEN_COMPRA_RE = /^OC-\d{8}-\d{4}$/;
+const MAX_OC_ITEMS = 60;
+const MAX_OC_CANTIDAD = 999999;
+const MAX_OC_COSTO = 999999;
+const MAX_OC_FLETE = 9999999;
+const MAX_OC_TEXTO_LEN = 120;
+const MAX_OC_LARGO_LEN = 500;
+const MAX_OC_TEMPERATURA_C = 100;
+const MIN_OC_TEMPERATURA_C = -50;
+
+/* Ciclo de vida de una orden de compra. `recibida_parcial` y `recibida`
+   NO son transiciones manuales: las fija el servidor al comparar lo
+   recibido contra lo pedido después de cada recepción — por eso no
+   aparecen como destino de ninguna transición manual acá. */
+const OC_ESTADOS = [
+  'borrador',
+  'emitida',
+  'confirmada',
+  'recibida_parcial',
+  'recibida',
+  'cerrada',
+  'cancelada',
+];
+
+const OC_TRANSICIONES = Object.freeze({
+  borrador: ['emitida', 'cancelada'],
+  emitida: ['confirmada', 'cancelada'],
+  confirmada: ['cancelada'],
+  recibida_parcial: ['cancelada'],
+  recibida: ['cerrada'],
+  cerrada: [],
+  cancelada: [],
+});
+
+/** Estados en los que la orden todavía admite recepciones de mercancía. */
+const OC_ESTADOS_RECEPCION = ['emitida', 'confirmada', 'recibida_parcial'];
+
+function textoOC(valor, max = MAX_OC_TEXTO_LEN) {
+  return typeof valor === 'string' ? valor.trim().slice(0, max) : '';
+}
+
+function numeroOC(valor, max, campo, { permitirCero = true } = {}) {
+  const num = Number(valor);
+  if (!Number.isFinite(num) || num < 0 || num > max || (!permitirCero && num === 0)) {
+    throw new ValidationError(`${campo} inválido.`);
+  }
+  return num;
+}
+
+/** Valida las líneas de una orden de compra (una por insumo). */
+function validarItemsOrdenCompra(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new ValidationError('La orden de compra debe tener al menos un insumo.');
+  }
+  if (items.length > MAX_OC_ITEMS) {
+    throw new ValidationError(`Una orden de compra no puede tener más de ${MAX_OC_ITEMS} líneas.`);
+  }
+
+  const insumosVistos = new Set();
+
+  return items.map((item, idx) => {
+    if (!item || typeof item !== 'object') {
+      throw new ValidationError(`Línea #${idx + 1}: se esperaba un objeto.`);
+    }
+    const insumoId = textoOC(item.insumoId, 64);
+    if (!insumoId) {
+      throw new ValidationError(`Línea #${idx + 1}: falta el insumo.`);
+    }
+    if (insumosVistos.has(insumoId)) {
+      throw new ValidationError(
+        `Línea #${idx + 1}: el insumo está repetido. Súmalo en una sola línea.`,
+      );
+    }
+    insumosVistos.add(insumoId);
+
+    const cantidadPedida = numeroOC(
+      item.cantidadPedida,
+      MAX_OC_CANTIDAD,
+      `Línea #${idx + 1}: cantidad`,
+      { permitirCero: false },
+    );
+    const costoUnitario = numeroOC(
+      item.costoUnitario,
+      MAX_OC_COSTO,
+      `Línea #${idx + 1}: costo unitario`,
+    );
+    const impuestoPorcentaje = numeroOC(
+      item.impuestoPorcentaje ?? 0,
+      100,
+      `Línea #${idx + 1}: impuesto`,
+    );
+    const descuentoPorcentaje = numeroOC(
+      item.descuentoPorcentaje ?? 0,
+      100,
+      `Línea #${idx + 1}: descuento`,
+    );
+
+    if (!UNIDADES_INSUMO.includes(item.unidad)) {
+      throw new ValidationError(`Línea #${idx + 1}: unidad inválida.`);
+    }
+
+    return {
+      insumoId,
+      cantidadPedida,
+      unidad: item.unidad,
+      costoUnitario,
+      impuestoPorcentaje,
+      descuentoPorcentaje,
+      notas: textoOC(item.notas, 280),
+    };
+  });
+}
+
+/**
+ * Valida la cabecera y el detalle de una orden de compra tal como los
+ * envía admin.js. Los totales no se leen del cuerpo: se recalculan en
+ * server.js a partir de las líneas ya validadas acá.
+ * @param {*} datos
+ * @returns {object} orden de compra saneada (sin totales)
+ */
+function validarOrdenCompra(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  const proveedorId = textoOC(datos.proveedorId, 64);
+  if (!proveedorId) {
+    throw new ValidationError('Proveedor inválido.');
+  }
+
+  if (typeof datos.fechaEmision !== 'string' || !FECHA_RE.test(datos.fechaEmision)) {
+    throw new ValidationError('Fecha de emisión inválida.');
+  }
+
+  let fechaEntregaEstimada = null;
+  if (datos.fechaEntregaEstimada) {
+    if (
+      typeof datos.fechaEntregaEstimada !== 'string' ||
+      !FECHA_RE.test(datos.fechaEntregaEstimada)
+    ) {
+      throw new ValidationError('Fecha de entrega estimada inválida.');
+    }
+    if (datos.fechaEntregaEstimada < datos.fechaEmision) {
+      throw new ValidationError('La entrega estimada no puede ser anterior a la emisión.');
+    }
+    fechaEntregaEstimada = datos.fechaEntregaEstimada;
+  }
+
+  if (!CONDICIONES_PAGO.includes(datos.condicionesPago)) {
+    throw new ValidationError('Condiciones de pago inválidas.');
+  }
+  if (!MONEDAS_PROVEEDOR.includes(datos.moneda)) {
+    throw new ValidationError('Moneda inválida.');
+  }
+
+  const flete = numeroOC(datos.flete ?? 0, MAX_OC_FLETE, 'Flete');
+  const items = validarItemsOrdenCompra(datos.items);
+
+  return {
+    proveedorId,
+    fechaEmision: datos.fechaEmision,
+    fechaEntregaEstimada,
+    condicionesPago: datos.condicionesPago,
+    moneda: datos.moneda,
+    flete,
+    solicitadoPor: textoOC(datos.solicitadoPor, 80),
+    lugarEntrega: textoOC(datos.lugarEntrega, MAX_OC_LARGO_LEN),
+    notas: textoOC(datos.notas, MAX_OC_LARGO_LEN),
+    items,
+  };
+}
+
+/**
+ * Valida una transición manual de estado. El motivo solo es obligatorio
+ * al cancelar: una orden anulada sin explicación no sirve para auditar.
+ * @param {*} datos
+ * @param {string} estadoActual
+ */
+function validarCambioEstadoOrdenCompra(datos, estadoActual) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+  if (!OC_ESTADOS.includes(datos.estado)) {
+    throw new ValidationError('Estado de orden de compra inválido.');
+  }
+  const permitidos = OC_TRANSICIONES[estadoActual] ?? [];
+  if (!permitidos.includes(datos.estado)) {
+    throw new ValidationError(`No se puede pasar de "${estadoActual}" a "${datos.estado}".`);
+  }
+
+  const motivo = textoOC(datos.motivo, MAX_OC_LARGO_LEN);
+  if (datos.estado === 'cancelada' && motivo === '') {
+    throw new ValidationError('Indica el motivo de la cancelación.');
+  }
+
+  return {
+    estado: datos.estado,
+    usuario: textoOC(datos.usuario, 80),
+    motivo,
+  };
+}
+
+/**
+ * Valida una recepción de mercancía: cabecera del documento (fecha, hora,
+ * quién recibió, remisión) y las líneas efectivamente entregadas. No
+ * comprueba que las cantidades quepan en lo pendiente de cada ítem — eso
+ * necesita la orden guardada, así que lo hace server.js.
+ * @param {*} datos
+ * @returns {object} recepción saneada
+ */
+function validarRecepcionOrdenCompra(datos) {
+  if (!datos || typeof datos !== 'object') {
+    throw new ValidationError('Cuerpo de la petición inválido.');
+  }
+
+  if (typeof datos.fecha !== 'string' || !FECHA_RE.test(datos.fecha)) {
+    throw new ValidationError('Fecha de recepción inválida.');
+  }
+  if (typeof datos.hora !== 'string' || !HORA_RE.test(datos.hora)) {
+    throw new ValidationError('Hora de recepción inválida.');
+  }
+
+  if (!Array.isArray(datos.items) || datos.items.length === 0) {
+    throw new ValidationError('La recepción debe tener al menos una línea.');
+  }
+  if (datos.items.length > MAX_OC_ITEMS) {
+    throw new ValidationError(`Una recepción no puede tener más de ${MAX_OC_ITEMS} líneas.`);
+  }
+
+  const items = datos.items.map((item, idx) => {
+    if (!item || typeof item !== 'object') {
+      throw new ValidationError(`Línea #${idx + 1}: se esperaba un objeto.`);
+    }
+    const itemId = textoOC(item.itemId, 64);
+    if (!itemId) {
+      throw new ValidationError(`Línea #${idx + 1}: falta la línea de la orden.`);
+    }
+
+    const cantidadRecibida = numeroOC(
+      item.cantidadRecibida ?? 0,
+      MAX_OC_CANTIDAD,
+      `Línea #${idx + 1}: cantidad recibida`,
+    );
+    const cantidadRechazada = numeroOC(
+      item.cantidadRechazada ?? 0,
+      MAX_OC_CANTIDAD,
+      `Línea #${idx + 1}: cantidad rechazada`,
+    );
+    if (cantidadRecibida === 0 && cantidadRechazada === 0) {
+      throw new ValidationError(`Línea #${idx + 1}: no registra ni recibido ni rechazado.`);
+    }
+
+    const motivoRechazo = textoOC(item.motivoRechazo, 280);
+    if (cantidadRechazada > 0 && motivoRechazo === '') {
+      throw new ValidationError(`Línea #${idx + 1}: indica el motivo del rechazo.`);
+    }
+
+    let fechaVencimiento = null;
+    if (item.fechaVencimiento) {
+      if (typeof item.fechaVencimiento !== 'string' || !FECHA_RE.test(item.fechaVencimiento)) {
+        throw new ValidationError(`Línea #${idx + 1}: fecha de vencimiento inválida.`);
+      }
+      fechaVencimiento = item.fechaVencimiento;
+    }
+
+    let temperaturaRecepcionC = null;
+    if (
+      item.temperaturaRecepcionC !== undefined &&
+      item.temperaturaRecepcionC !== null &&
+      item.temperaturaRecepcionC !== ''
+    ) {
+      const val = Number(item.temperaturaRecepcionC);
+      if (!Number.isFinite(val) || val < MIN_OC_TEMPERATURA_C || val > MAX_OC_TEMPERATURA_C) {
+        throw new ValidationError(`Línea #${idx + 1}: temperatura de recepción inválida.`);
+      }
+      temperaturaRecepcionC = val;
+    }
+
+    return {
+      itemId,
+      cantidadRecibida,
+      cantidadRechazada,
+      motivoRechazo,
+      loteProveedor: textoOC(item.loteProveedor, 80),
+      fechaVencimiento,
+      temperaturaRecepcionC,
+      notas: textoOC(item.notas, 280),
+    };
+  });
+
+  return {
+    fecha: datos.fecha,
+    hora: datos.hora,
+    recibidoPor: textoOC(datos.recibidoPor, 80),
+    documentoReferencia: textoOC(datos.documentoReferencia, 80),
+    notas: textoOC(datos.notas, MAX_OC_LARGO_LEN),
+    items,
+  };
+}
+
 module.exports = {
   validarOrden,
   ValidationError,
@@ -1119,4 +1428,12 @@ module.exports = {
   validarFinEtapa,
   ETAPAS_PRODUCCION,
   ETAPA_ID_RE,
+  validarOrdenCompra,
+  validarCambioEstadoOrdenCompra,
+  validarRecepcionOrdenCompra,
+  ORDEN_COMPRA_ID_RE,
+  NUMERO_ORDEN_COMPRA_RE,
+  OC_ESTADOS,
+  OC_TRANSICIONES,
+  OC_ESTADOS_RECEPCION,
 };

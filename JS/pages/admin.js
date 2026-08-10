@@ -204,6 +204,51 @@ const CONFIG = Object.freeze({
     proveedorSubmitBtn: '#btn-proveedor-submit',
     proveedorCancelEditBtn: '#btn-proveedor-cancel-edit',
 
+    // Órdenes de compra
+    ordenesCompraView: '#ordenes-compra-view',
+    ordenesCompraCount: '#ordenes-compra-count',
+    ordenesCompraContainer: '#ordenes-compra-container',
+    ocResumen: '#oc-resumen',
+    tplOcItemRow: '#tpl-oc-item-row',
+    tplOcRecepcionRow: '#tpl-oc-recepcion-row',
+    ocForm: '#oc-form',
+    ocId: '#oc-id',
+    ocProveedor: '#oc-proveedor',
+    ocFechaEmision: '#oc-fecha-emision',
+    ocFechaEntrega: '#oc-fecha-entrega',
+    ocCondicionesPago: '#oc-condiciones-pago',
+    ocMoneda: '#oc-moneda',
+    ocFlete: '#oc-flete',
+    ocSolicitadoPor: '#oc-solicitado-por',
+    ocLugarEntrega: '#oc-lugar-entrega',
+    ocNotas: '#oc-notas',
+    ocItemsLista: '#oc-items-lista',
+    ocTotales: '#oc-totales',
+    btnOcAgregarItem: '#btn-oc-agregar-item',
+    ocError: '#oc-error',
+    ocErrorMsg: '#oc-error [data-oc-error-msg]',
+    ocSubmitBtn: '#btn-oc-submit',
+    ocGuardarEmitirBtn: '#btn-oc-guardar-emitir',
+    ocCancelEditBtn: '#btn-oc-cancel-edit',
+    ocFiltroEstado: '#oc-filtro-estado',
+    ocFiltroProveedor: '#oc-filtro-proveedor',
+    ocFiltroDesde: '#oc-filtro-desde',
+    ocFiltroHasta: '#oc-filtro-hasta',
+    btnOcFiltrar: '#btn-oc-filtrar',
+    btnOcLimpiarFiltros: '#btn-oc-limpiar-filtros',
+    ocRecepcionModal: '#oc-recepcion-modal',
+    ocRecepcionForm: '#oc-recepcion-form',
+    ocRecepcionOrdenId: '#oc-recepcion-orden-id',
+    ocRecepcionFecha: '#oc-recepcion-fecha',
+    ocRecepcionHora: '#oc-recepcion-hora',
+    ocRecepcionRecibidoPor: '#oc-recepcion-recibido-por',
+    ocRecepcionDocumento: '#oc-recepcion-documento',
+    ocRecepcionLineas: '#oc-recepcion-lineas',
+    ocRecepcionError: '#oc-recepcion-error',
+    ocRecepcionErrorMsg: '#oc-recepcion-error [data-oc-recepcion-error-msg]',
+    ocTrazabilidadModal: '#oc-trazabilidad-modal',
+    ocTrazabilidadBody: '#oc-trazabilidad-body',
+
     // Horneadas
     horneadasView: '#horneadas-view',
     horneadasCount: '#horneadas-count',
@@ -1197,6 +1242,149 @@ const Recetas = {
     }
   },
 };
+
+/* ═══════════════════════════════════════════
+   6f-bis. MÓDULO: ÓRDENES DE COMPRA
+   ═══════════════════════════════════════════
+   Mismo contrato que los demás módulos (401 => sesión expirada, red caída
+   => null / ok:false). Lo específico de compras son las dos operaciones
+   que no son un CRUD: cambiar de estado y registrar una recepción; ambas
+   devuelven la orden completa ya recalculada por el servidor, así que la
+   UI nunca tiene que deducir totales ni avance por su cuenta. */
+const OrdenesCompra = {
+  async listar(filtros = {}) {
+    const params = new URLSearchParams();
+    if (filtros.estado) params.set('estado', filtros.estado);
+    if (filtros.proveedorId) params.set('proveedorId', filtros.proveedorId);
+    if (filtros.desde) params.set('desde', filtros.desde);
+    if (filtros.hasta) params.set('hasta', filtros.hasta);
+    const query = params.toString();
+
+    try {
+      const res = await apiFetch(`/ordenes-compra${query ? `?${query}` : ''}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[OrdenesCompra] Error obteniendo órdenes de compra:', err.message);
+      return null;
+    }
+  },
+
+  async trazabilidad(id) {
+    try {
+      const res = await apiFetch(`/ordenes-compra/${encodeURIComponent(id)}/trazabilidad`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[OrdenesCompra] Error obteniendo trazabilidad:', err.message);
+      return null;
+    }
+  },
+
+  async crear(datos) {
+    return this._enviar('/ordenes-compra', 'POST', datos);
+  },
+
+  async actualizar(id, datos) {
+    return this._enviar(`/ordenes-compra/${encodeURIComponent(id)}`, 'PUT', datos);
+  },
+
+  async cambiarEstado(id, datos) {
+    return this._enviar(`/ordenes-compra/${encodeURIComponent(id)}/estado`, 'PATCH', datos);
+  },
+
+  async registrarRecepcion(id, datos) {
+    return this._enviar(`/ordenes-compra/${encodeURIComponent(id)}/recepciones`, 'POST', datos);
+  },
+
+  async _enviar(path, method, datos) {
+    try {
+      const res = await apiFetch(path, {
+        method,
+        timeout: 10_000,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+        body: JSON.stringify(datos),
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: body.error };
+      }
+      return { ok: true, ordenCompra: await res.json() };
+    } catch (err) {
+      console.error(`[OrdenesCompra] Error en ${method} ${path}:`, err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+
+  async eliminar(id) {
+    try {
+      const res = await apiFetch(`/ordenes-compra/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return { ok: false, reason: 'unauthorized' };
+      }
+      if (!res.ok && res.status !== 204) {
+        const cuerpo = await res.json().catch(() => ({}));
+        return { ok: false, reason: 'error', message: cuerpo.error };
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[OrdenesCompra] Error eliminando orden de compra:', err.message);
+      return { ok: false, reason: 'network' };
+    }
+  },
+};
+
+/* Etiqueta y color de cada estado del ciclo de vida (ver
+   docs/modelo-ordenes-compra.md). Las transiciones que se ofrecen como
+   botón son solo las manuales: recibida_parcial y recibida las decide el
+   servidor al registrar recepciones, nunca el usuario. */
+const OC_ESTADO_LABEL = {
+  borrador: 'Borrador',
+  emitida: 'Emitida',
+  confirmada: 'Confirmada',
+  recibida_parcial: 'Recibida parcial',
+  recibida: 'Recibida',
+  cerrada: 'Cerrada',
+  cancelada: 'Cancelada',
+};
+
+const OC_TRANSICIONES_UI = {
+  borrador: [{ estado: 'emitida', label: 'Emitir', icono: 'fa-paper-plane' }],
+  emitida: [{ estado: 'confirmada', label: 'Confirmar', icono: 'fa-handshake' }],
+  confirmada: [],
+  recibida_parcial: [],
+  recibida: [{ estado: 'cerrada', label: 'Cerrar', icono: 'fa-lock' }],
+  cerrada: [],
+  cancelada: [],
+};
+
+const OC_ESTADOS_RECEPCION_UI = ['emitida', 'confirmada', 'recibida_parcial'];
 
 /* ═══════════════════════════════════════════
    6g. MÓDULO: PRODUCCIÓN (tandas de masa + etapas)
@@ -2584,6 +2772,265 @@ const Render = {
     return row.querySelector('tr');
   },
 
+  updateOrdenesCompraCount(ordenes) {
+    const el = document.querySelector(CONFIG.SELECTORS.ordenesCompraCount);
+    // El badge del nav cuenta lo que sigue vivo (ni cerrada ni cancelada):
+    // el número que importa es "cuántas compras están en curso".
+    if (el)
+      el.textContent = ordenes.filter((o) => !['cerrada', 'cancelada'].includes(o.estado)).length;
+  },
+
+  renderResumenOrdenesCompra(ordenes) {
+    const container = document.querySelector(CONFIG.SELECTORS.ocResumen);
+    if (!container) return;
+
+    const abiertas = ordenes.filter((o) => !['cerrada', 'cancelada'].includes(o.estado));
+    const porRecibir = ordenes.filter((o) =>
+      ['emitida', 'confirmada', 'recibida_parcial'].includes(o.estado),
+    );
+    const mes = hoyHouston().slice(0, 7);
+    const delMes = ordenes.filter(
+      (o) => o.fechaEmision?.startsWith(mes) && o.estado !== 'cancelada',
+    );
+    const valorMes = delMes.reduce((acc, o) => acc + o.total, 0);
+
+    const tarjetas = [
+      { icono: '📄', valor: abiertas.length, label: 'Órdenes abiertas' },
+      { icono: '🚚', valor: porRecibir.length, label: 'Esperando mercancía' },
+      { icono: '🧾', valor: delMes.length, label: 'Emitidas este mes' },
+      { icono: '💵', valor: Format.currency(valorMes), label: 'Comprado este mes' },
+    ];
+
+    container.innerHTML = tarjetas
+      .map(
+        (t) => `
+        <article class="stat-card">
+          <span class="stat-card__icon" aria-hidden="true">${t.icono}</span>
+          <div class="stat-card__body">
+            <span class="stat-card__value">${escapeHTML(String(t.valor))}</span>
+            <span class="stat-card__label">${t.label}</span>
+          </div>
+        </article>`,
+      )
+      .join('');
+  },
+
+  renderOrdenesCompra(ordenes, huboErrorConexion) {
+    const container = document.querySelector(CONFIG.SELECTORS.ordenesCompraContainer);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (huboErrorConexion) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">⚠️</span>
+        <h2 class="empty-state__title">No se pudo conectar con el servidor</h2>
+        <p class="empty-state__text">Verifica que el backend esté corriendo e intenta de nuevo.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    if (!ordenes || ordenes.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <span class="empty-state__icon" aria-hidden="true">🧾</span>
+        <h2 class="empty-state__title">Sin órdenes de compra</h2>
+        <p class="empty-state__text">Crea la primera con el formulario de arriba, o ajusta los filtros.</p>
+      `;
+      container.appendChild(div);
+      return;
+    }
+
+    ordenes.forEach((orden) => container.appendChild(this._renderOrdenCompraCard(orden)));
+  },
+
+  _renderOrdenCompraCard(orden) {
+    const card = document.createElement('article');
+    card.className = `oc-card oc-card--${orden.estado}`;
+
+    const lineas = orden.items
+      .map(
+        (item) => `
+        <tr>
+          <td data-label="Insumo">${escapeHTML(item.insumoNombre)}</td>
+          <td data-label="Pedido">${Format.cantidad(item.cantidadPedida)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Recibido">${Format.cantidad(item.cantidadRecibida)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Pendiente">${Format.cantidad(item.cantidadPendiente)} ${escapeHTML(item.unidad)}</td>
+          <td data-label="Costo unit.">${Format.currency(item.costoUnitario)}</td>
+          <td data-label="Total línea">${Format.currency(item.totalLinea)}</td>
+        </tr>`,
+      )
+      .join('');
+
+    card.innerHTML = `
+      <header class="oc-card__header">
+        <div>
+          <h3 class="oc-card__numero">${escapeHTML(orden.numero)}</h3>
+          <p class="oc-card__proveedor">${escapeHTML(orden.proveedorRazonSocial)}</p>
+        </div>
+        <span class="oc-badge oc-badge--${orden.estado}">${OC_ESTADO_LABEL[orden.estado] ?? orden.estado}</span>
+      </header>
+
+      <dl class="oc-card__meta">
+        <div><dt>Emitida</dt><dd>${escapeHTML(orden.fechaEmision)}</dd></div>
+        <div><dt>Entrega estimada</dt><dd>${escapeHTML(orden.fechaEntregaEstimada || '—')}</dd></div>
+        <div><dt>Total</dt><dd>${Format.currency(orden.total)} ${escapeHTML(orden.moneda)}</dd></div>
+        <div><dt>Solicitó</dt><dd>${escapeHTML(orden.solicitadoPor || '—')}</dd></div>
+      </dl>
+
+      <div class="oc-card__avance">
+        <div class="oc-progress" role="img" aria-label="Recepción al ${orden.avanceRecepcionPct}%">
+          <span class="oc-progress__barra" style="width: ${Math.min(orden.avanceRecepcionPct, 100)}%"></span>
+        </div>
+        <span class="oc-card__avance-label">${orden.avanceRecepcionPct}% recibido</span>
+      </div>
+
+      <table class="insumo-table oc-card__items">
+        <caption class="visually-hidden">Líneas de la orden ${escapeHTML(orden.numero)}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Insumo</th>
+            <th scope="col">Pedido</th>
+            <th scope="col">Recibido</th>
+            <th scope="col">Pendiente</th>
+            <th scope="col">Costo unit.</th>
+            <th scope="col">Total línea</th>
+          </tr>
+        </thead>
+        <tbody>${lineas}</tbody>
+      </table>
+
+      ${orden.motivoCancelacion ? `<p class="oc-card__cancelacion">Cancelada: ${escapeHTML(orden.motivoCancelacion)}</p>` : ''}
+
+      <footer class="oc-card__acciones"></footer>
+    `;
+
+    const acciones = card.querySelector('.oc-card__acciones');
+
+    const agregarBoton = (label, icono, clase, onClick) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = clase;
+      btn.innerHTML = `<i class="fa-solid ${icono}" aria-hidden="true"></i> ${label}`;
+      btn.addEventListener('click', onClick);
+      acciones.appendChild(btn);
+    };
+
+    if (orden.estado === 'borrador') {
+      agregarBoton('Editar', 'fa-pen', 'btn btn--action', () => App.startEditOrdenCompra(orden.id));
+    }
+
+    (OC_TRANSICIONES_UI[orden.estado] ?? []).forEach((t) => {
+      agregarBoton(t.label, t.icono, 'btn btn--action', () =>
+        App.cambiarEstadoOrdenCompra(orden.id, t.estado),
+      );
+    });
+
+    if (OC_ESTADOS_RECEPCION_UI.includes(orden.estado)) {
+      agregarBoton('Registrar recepción', 'fa-truck-ramp-box', 'btn btn--primary btn--small', () =>
+        App.abrirRecepcionOrdenCompra(orden.id),
+      );
+    }
+
+    agregarBoton('Trazabilidad', 'fa-timeline', 'btn btn--ghost', () =>
+      App.verTrazabilidadOrdenCompra(orden.id),
+    );
+
+    if (!['cerrada', 'cancelada'].includes(orden.estado)) {
+      agregarBoton('Cancelar', 'fa-ban', 'btn btn--ghost btn--danger', () =>
+        App.cambiarEstadoOrdenCompra(orden.id, 'cancelada'),
+      );
+    }
+
+    if (orden.estado === 'borrador') {
+      agregarBoton('Eliminar', 'fa-trash', 'btn btn--ghost btn--danger', () =>
+        App.deleteOrdenCompra(orden.id, orden.numero),
+      );
+    }
+
+    return card;
+  },
+
+  /** Línea de tiempo de la orden: cada evento de la bitácora con su
+   *  usuario y su hora, más el veredicto de integridad de la cadena. */
+  renderTrazabilidadOrdenCompra(traza) {
+    const body = document.querySelector(CONFIG.SELECTORS.ocTrazabilidadBody);
+    if (!body) return;
+
+    const eventos = traza.eventos
+      .map(
+        (evento) => `
+        <li class="oc-timeline__item oc-timeline__item--${evento.tipo}">
+          <div class="oc-timeline__marca"></div>
+          <div class="oc-timeline__contenido">
+            <p class="oc-timeline__titulo">${escapeHTML(evento.descripcion)}</p>
+            <p class="oc-timeline__meta">
+              ${escapeHTML(evento.usuario || 'Sin usuario')} ·
+              ${escapeHTML(
+                String(evento.creadoEn || '')
+                  .replace('T', ' ')
+                  .slice(0, 16),
+              )}
+              ${evento.estadoNuevo ? `· ${OC_ESTADO_LABEL[evento.estadoNuevo] ?? evento.estadoNuevo}` : ''}
+            </p>
+          </div>
+        </li>`,
+      )
+      .join('');
+
+    const lotes = traza.recepciones
+      .flatMap((r) =>
+        r.items.map(
+          (linea) => `
+          <tr>
+            <td data-label="Fecha">${escapeHTML(r.fecha)} ${escapeHTML(r.hora)}</td>
+            <td data-label="Insumo">${escapeHTML(linea.insumoNombre)}</td>
+            <td data-label="Recibido">${Format.cantidad(linea.cantidadRecibida)}</td>
+            <td data-label="Rechazado">${Format.cantidad(linea.cantidadRechazada)}</td>
+            <td data-label="Lote">${escapeHTML(linea.loteProveedor || '—')}</td>
+            <td data-label="Vence">${escapeHTML(linea.fechaVencimiento || '—')}</td>
+            <td data-label="Recibió">${escapeHTML(r.recibidoPor || '—')}</td>
+          </tr>`,
+        ),
+      )
+      .join('');
+
+    body.innerHTML = `
+      <p class="oc-trazabilidad__cabecera">
+        <strong>${escapeHTML(traza.numero)}</strong> ·
+        ${OC_ESTADO_LABEL[traza.estado] ?? traza.estado} ·
+        cadena de auditoría
+        ${traza.integridadCadena?.integra ? '<span class="oc-chip oc-chip--ok">íntegra</span>' : '<span class="oc-chip oc-chip--alerta">alterada</span>'}
+        (${traza.bloques.length} ${pluralizeEs(traza.bloques.length, 'bloque', 'bloques')})
+      </p>
+
+      <ol class="oc-timeline">${eventos}</ol>
+
+      ${
+        lotes
+          ? `<h3 class="section-subtitle">Mercancía recibida</h3>
+             <table class="insumo-table">
+               <thead>
+                 <tr>
+                   <th scope="col">Fecha</th>
+                   <th scope="col">Insumo</th>
+                   <th scope="col">Recibido</th>
+                   <th scope="col">Rechazado</th>
+                   <th scope="col">Lote</th>
+                   <th scope="col">Vence</th>
+                   <th scope="col">Recibió</th>
+                 </tr>
+               </thead>
+               <tbody>${lotes}</tbody>
+             </table>`
+          : '<p class="oc-trazabilidad__vacio">Todavía no se ha recibido mercancía de esta orden.</p>'
+      }
+    `;
+  },
+
   updateProduccionCount(producciones) {
     const el = document.querySelector(CONFIG.SELECTORS.produccionCount);
     if (el) el.textContent = producciones.length;
@@ -2714,6 +3161,8 @@ const App = {
   _insumosCacheGeneral: [], // insumos reales, para poblar los selects de ingredientes
   _produccionesCache: [],
   _produccionFechaConsulta: hoyHouston(),
+  _ordenesCompraCache: [],
+  _ocFiltros: {},
 
   init() {
     this._bindEvents();
@@ -3163,6 +3612,441 @@ const App = {
 
     this._resetRecetaForm();
     this.refreshRecetas();
+  },
+
+  /* ───────────────────────── ÓRDENES DE COMPRA ───────────────────────── */
+
+  async refreshOrdenesCompra() {
+    const [insumos, proveedores, ordenes] = await Promise.all([
+      Insumos.listar(),
+      Proveedores.listar(),
+      OrdenesCompra.listar(this._ocFiltros),
+    ]);
+
+    if ([insumos, proveedores, ordenes].includes('UNAUTHORIZED')) {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    this._insumosCacheGeneral = Array.isArray(insumos) ? insumos : this._insumosCacheGeneral;
+    this._proveedoresCache = Array.isArray(proveedores) ? proveedores : this._proveedoresCache;
+    this._ordenesCompraCache = Array.isArray(ordenes) ? ordenes : [];
+
+    this._llenarSelectsProveedorOC();
+    Render.updateOrdenesCompraCount(this._ordenesCompraCache);
+    Render.renderResumenOrdenesCompra(this._ordenesCompraCache);
+    Render.renderOrdenesCompra(this._ordenesCompraCache, ordenes === null);
+  },
+
+  _llenarSelectsProveedorOC() {
+    const opciones = this._proveedoresCache
+      .map((p) => `<option value="${escapeHTML(p.id)}">${escapeHTML(p.razonSocial)}</option>`)
+      .join('');
+
+    const select = document.querySelector(CONFIG.SELECTORS.ocProveedor);
+    if (select) {
+      const seleccionado = select.value;
+      select.innerHTML = `<option value="" disabled>Selecciona un proveedor</option>${opciones}`;
+      select.value = seleccionado;
+    }
+
+    const filtro = document.querySelector(CONFIG.SELECTORS.ocFiltroProveedor);
+    if (filtro) {
+      const seleccionado = filtro.value;
+      filtro.innerHTML = `<option value="">Todos</option>${opciones}`;
+      filtro.value = seleccionado;
+    }
+  },
+
+  /** Agrega una línea al formulario de orden. Al elegir el insumo se
+   *  prellenan unidad, costo e impuesto con los del catálogo: casi siempre
+   *  se compra en la misma unidad y al último precio conocido. */
+  agregarFilaItemOC(valores) {
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplOcItemRow);
+    if (!tpl) return;
+    const row = tpl.content.cloneNode(true);
+    const select = row.querySelector('.oc-item-row__insumo');
+    const inputCantidad = row.querySelector('.oc-item-row__cantidad');
+    const selectUnidad = row.querySelector('.oc-item-row__unidad');
+    const inputCosto = row.querySelector('.oc-item-row__costo');
+    const inputImpuesto = row.querySelector('.oc-item-row__impuesto');
+    const inputDescuento = row.querySelector('.oc-item-row__descuento');
+    const btnQuitar = row.querySelector('.oc-item-row__quitar');
+
+    this._insumosCacheGeneral.forEach((insumo) => {
+      const opt = document.createElement('option');
+      opt.value = insumo.id;
+      opt.textContent = insumo.nombre;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener('change', () => {
+      const insumo = this._insumosCacheGeneral.find((i) => i.id === select.value);
+      if (!insumo) return;
+      selectUnidad.value = insumo.unidad;
+      if (!inputCosto.value && insumo.costoUnitario != null)
+        inputCosto.value = insumo.costoUnitario;
+      if (!inputImpuesto.value && insumo.impuestoPorcentaje != null) {
+        inputImpuesto.value = insumo.impuestoPorcentaje;
+      }
+      this._recalcularTotalesOC();
+    });
+
+    [inputCantidad, inputCosto, inputImpuesto, inputDescuento].forEach((input) => {
+      input.addEventListener('input', () => this._recalcularTotalesOC());
+    });
+
+    btnQuitar.addEventListener('click', () => {
+      select.closest('.oc-item-row').remove();
+      this._recalcularTotalesOC();
+    });
+
+    if (valores) {
+      select.value = valores.insumoId;
+      inputCantidad.value = valores.cantidadPedida;
+      selectUnidad.value = valores.unidad;
+      inputCosto.value = valores.costoUnitario;
+      inputImpuesto.value = valores.impuestoPorcentaje ?? '';
+      inputDescuento.value = valores.descuentoPorcentaje ?? '';
+    }
+
+    document.querySelector(CONFIG.SELECTORS.ocItemsLista).appendChild(row);
+    this._recalcularTotalesOC();
+  },
+
+  _leerItemsOC() {
+    const filas = document.querySelectorAll(`${CONFIG.SELECTORS.ocItemsLista} .oc-item-row`);
+    return [...filas].map((fila) => ({
+      insumoId: fila.querySelector('.oc-item-row__insumo').value,
+      cantidadPedida: Number(fila.querySelector('.oc-item-row__cantidad').value),
+      unidad: fila.querySelector('.oc-item-row__unidad').value,
+      costoUnitario: Number(fila.querySelector('.oc-item-row__costo').value),
+      impuestoPorcentaje: Number(fila.querySelector('.oc-item-row__impuesto').value) || 0,
+      descuentoPorcentaje: Number(fila.querySelector('.oc-item-row__descuento').value) || 0,
+    }));
+  },
+
+  /** Vista previa de los totales mientras se escribe. El cálculo válido
+   *  es el del servidor (mismas fórmulas, ver calcularTotalesOrdenCompra);
+   *  esto solo evita que el usuario tenga que guardar para ver cuánto va. */
+  _recalcularTotalesOC() {
+    const salida = document.querySelector(CONFIG.SELECTORS.ocTotales);
+    if (!salida) return;
+
+    const items = this._leerItemsOC();
+    const flete = Number(document.querySelector(CONFIG.SELECTORS.ocFlete)?.value) || 0;
+
+    let subtotal = 0;
+    let descuento = 0;
+    let impuestos = 0;
+
+    items.forEach((item, idx) => {
+      const bruto = (item.cantidadPedida || 0) * (item.costoUnitario || 0);
+      const descuentoLinea = bruto * (item.descuentoPorcentaje / 100);
+      const neto = bruto - descuentoLinea;
+      const impuestoLinea = neto * (item.impuestoPorcentaje / 100);
+
+      subtotal += bruto;
+      descuento += descuentoLinea;
+      impuestos += impuestoLinea;
+
+      const celda = document.querySelectorAll(
+        `${CONFIG.SELECTORS.ocItemsLista} .oc-item-row__total`,
+      )[idx];
+      if (celda) celda.textContent = Format.currency(neto + impuestoLinea);
+    });
+
+    const total = subtotal - descuento + impuestos + flete;
+    salida.innerHTML = `
+      <span>Subtotal: <strong>${Format.currency(subtotal)}</strong></span>
+      <span>Descuento: <strong>${Format.currency(descuento)}</strong></span>
+      <span>Impuestos: <strong>${Format.currency(impuestos)}</strong></span>
+      <span>Flete: <strong>${Format.currency(flete)}</strong></span>
+      <span class="oc-totales__total">Total: <strong>${Format.currency(total)}</strong></span>
+    `;
+  },
+
+  startEditOrdenCompra(id) {
+    const orden = this._ordenesCompraCache.find((o) => o.id === id);
+    if (!orden) return;
+
+    document.querySelector(CONFIG.SELECTORS.ocId).value = orden.id;
+    document.querySelector(CONFIG.SELECTORS.ocProveedor).value = orden.proveedorId;
+    document.querySelector(CONFIG.SELECTORS.ocFechaEmision).value = orden.fechaEmision;
+    document.querySelector(CONFIG.SELECTORS.ocFechaEntrega).value =
+      orden.fechaEntregaEstimada ?? '';
+    document.querySelector(CONFIG.SELECTORS.ocCondicionesPago).value = orden.condicionesPago;
+    document.querySelector(CONFIG.SELECTORS.ocMoneda).value = orden.moneda;
+    document.querySelector(CONFIG.SELECTORS.ocFlete).value = orden.flete || '';
+    document.querySelector(CONFIG.SELECTORS.ocSolicitadoPor).value = orden.solicitadoPor ?? '';
+    document.querySelector(CONFIG.SELECTORS.ocLugarEntrega).value = orden.lugarEntrega ?? '';
+    document.querySelector(CONFIG.SELECTORS.ocNotas).value = orden.notas ?? '';
+
+    document.querySelector(CONFIG.SELECTORS.ocItemsLista).innerHTML = '';
+    orden.items.forEach((item) => this.agregarFilaItemOC(item));
+
+    document.querySelector(CONFIG.SELECTORS.ocSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-check" aria-hidden="true"></i> Guardar cambios';
+    document.querySelector(CONFIG.SELECTORS.ocCancelEditBtn).hidden = false;
+
+    document
+      .querySelector(CONFIG.SELECTORS.ocForm)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  cancelEditOrdenCompra() {
+    this._resetOCForm();
+  },
+
+  _resetOCForm() {
+    const form = document.querySelector(CONFIG.SELECTORS.ocForm);
+    if (!form) return;
+    form.reset();
+    document.querySelector(CONFIG.SELECTORS.ocId).value = '';
+    document.querySelector(CONFIG.SELECTORS.ocItemsLista).innerHTML = '';
+    document.querySelector(CONFIG.SELECTORS.ocFechaEmision).value = hoyHouston();
+    document.querySelector(CONFIG.SELECTORS.ocSubmitBtn).innerHTML =
+      '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Guardar borrador';
+    document.querySelector(CONFIG.SELECTORS.ocCancelEditBtn).hidden = true;
+    document.querySelector(CONFIG.SELECTORS.ocError).hidden = true;
+    this._recalcularTotalesOC();
+  },
+
+  async _handleOrdenCompraSubmit({ emitir = false } = {}) {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.ocError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.ocErrorMsg);
+
+    const proveedorId = document.querySelector(CONFIG.SELECTORS.ocProveedor).value;
+    const fechaEmision = document.querySelector(CONFIG.SELECTORS.ocFechaEmision).value;
+    const items = this._leerItemsOC();
+
+    const mostrarError = (mensaje) => {
+      errorMsgEl.textContent = mensaje;
+      errorEl.hidden = false;
+    };
+
+    if (!proveedorId) return mostrarError('Selecciona un proveedor.');
+    if (!fechaEmision) return mostrarError('Indica la fecha de emisión.');
+    if (items.length === 0)
+      return mostrarError('Agrega al menos un insumo con "+ Agregar insumo".');
+    if (items.some((i) => !i.insumoId || !i.cantidadPedida || i.cantidadPedida <= 0)) {
+      return mostrarError('Cada línea necesita un insumo y una cantidad mayor a 0.');
+    }
+    errorEl.hidden = true;
+
+    const idExistente = document.querySelector(CONFIG.SELECTORS.ocId).value || null;
+    const datos = {
+      proveedorId,
+      fechaEmision,
+      fechaEntregaEstimada: document.querySelector(CONFIG.SELECTORS.ocFechaEntrega).value || null,
+      condicionesPago: document.querySelector(CONFIG.SELECTORS.ocCondicionesPago).value,
+      moneda: document.querySelector(CONFIG.SELECTORS.ocMoneda).value,
+      flete: Number(document.querySelector(CONFIG.SELECTORS.ocFlete).value) || 0,
+      solicitadoPor: document.querySelector(CONFIG.SELECTORS.ocSolicitadoPor).value.trim(),
+      lugarEntrega: document.querySelector(CONFIG.SELECTORS.ocLugarEntrega).value.trim(),
+      notas: document.querySelector(CONFIG.SELECTORS.ocNotas).value.trim(),
+      items,
+      emitir,
+    };
+
+    const submitBtn = document.querySelector(CONFIG.SELECTORS.ocSubmitBtn);
+    submitBtn.disabled = true;
+
+    const resultado = idExistente
+      ? await OrdenesCompra.actualizar(idExistente, datos)
+      : await OrdenesCompra.crear(datos);
+
+    submitBtn.disabled = false;
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      return mostrarError(
+        resultado.message || 'No se pudo guardar la orden de compra. Intenta de nuevo.',
+      );
+    }
+
+    // Editar un borrador y pedir "guardar y emitir" son dos pasos distintos
+    // en el backend a propósito (PUT no cambia de estado), así que el
+    // segundo se dispara aquí sobre la orden ya guardada.
+    if (emitir && idExistente) {
+      await OrdenesCompra.cambiarEstado(idExistente, {
+        estado: 'emitida',
+        usuario: datos.solicitadoPor,
+      });
+    }
+
+    this._resetOCForm();
+    this.refreshOrdenesCompra();
+  },
+
+  async cambiarEstadoOrdenCompra(id, estado) {
+    const orden = this._ordenesCompraCache.find((o) => o.id === id);
+    let motivo = '';
+
+    if (estado === 'cancelada') {
+      motivo =
+        window.prompt('¿Por qué se cancela esta orden? (queda registrado en la trazabilidad)') ??
+        '';
+      if (motivo.trim() === '') return;
+    }
+
+    const resultado = await OrdenesCompra.cambiarEstado(id, {
+      estado,
+      usuario: orden?.solicitadoPor || '',
+      motivo,
+    });
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert(resultado.message || 'No se pudo cambiar el estado de la orden.');
+      return;
+    }
+    this.refreshOrdenesCompra();
+  },
+
+  async deleteOrdenCompra(id, numero) {
+    const confirmado = window.confirm(
+      `¿Eliminar el borrador ${numero}? Solo se pueden eliminar borradores; una orden ya emitida se cancela para conservar su rastro.`,
+    );
+    if (!confirmado) return;
+
+    const resultado = await OrdenesCompra.eliminar(id);
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      window.alert(resultado.message || 'No se pudo eliminar la orden de compra.');
+      return;
+    }
+    this.refreshOrdenesCompra();
+  },
+
+  abrirRecepcionOrdenCompra(id) {
+    const orden = this._ordenesCompraCache.find((o) => o.id === id);
+    if (!orden) return;
+
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionOrdenId).value = id;
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionFecha).value = hoyHouston();
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionHora).value = ahoraHoraHouston();
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionRecibidoPor).value = '';
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionDocumento).value = '';
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionError).hidden = true;
+
+    const lista = document.querySelector(CONFIG.SELECTORS.ocRecepcionLineas);
+    const tpl = document.querySelector(CONFIG.SELECTORS.tplOcRecepcionRow);
+    lista.innerHTML = '';
+
+    // Solo se ofrecen las líneas que todavía tienen algo pendiente: lo ya
+    // recibido no se puede volver a recibir (el backend también lo rechaza).
+    orden.items
+      .filter((item) => item.cantidadPendiente > 0)
+      .forEach((item) => {
+        const fila = tpl.content.cloneNode(true);
+        const contenedor = fila.querySelector('.oc-recepcion-row');
+        contenedor.dataset.itemId = item.id;
+        fila.querySelector('.oc-recepcion-row__insumo').textContent = item.insumoNombre;
+        fila.querySelector('.oc-recepcion-row__pendiente').textContent =
+          `Faltan ${Format.cantidad(item.cantidadPendiente)} ${item.unidad}`;
+        const inputRecibido = fila.querySelector('.oc-recepcion-row__recibido');
+        inputRecibido.max = item.cantidadPendiente;
+        inputRecibido.value = item.cantidadPendiente;
+        lista.appendChild(fila);
+      });
+
+    this._abrirModal(CONFIG.SELECTORS.ocRecepcionModal);
+  },
+
+  async _handleRecepcionOrdenCompraSubmit() {
+    const errorEl = document.querySelector(CONFIG.SELECTORS.ocRecepcionError);
+    const errorMsgEl = document.querySelector(CONFIG.SELECTORS.ocRecepcionErrorMsg);
+    const id = document.querySelector(CONFIG.SELECTORS.ocRecepcionOrdenId).value;
+
+    const items = [...document.querySelectorAll('.oc-recepcion-row')]
+      .map((fila) => ({
+        itemId: fila.dataset.itemId,
+        cantidadRecibida: Number(fila.querySelector('.oc-recepcion-row__recibido').value) || 0,
+        cantidadRechazada: Number(fila.querySelector('.oc-recepcion-row__rechazado').value) || 0,
+        motivoRechazo: fila.querySelector('.oc-recepcion-row__motivo').value.trim(),
+        loteProveedor: fila.querySelector('.oc-recepcion-row__lote').value.trim(),
+        fechaVencimiento: fila.querySelector('.oc-recepcion-row__vencimiento').value || null,
+      }))
+      .filter((item) => item.cantidadRecibida > 0 || item.cantidadRechazada > 0);
+
+    if (items.length === 0) {
+      errorMsgEl.textContent = 'Indica al menos una cantidad recibida o rechazada.';
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+
+    const resultado = await OrdenesCompra.registrarRecepcion(id, {
+      fecha: document.querySelector(CONFIG.SELECTORS.ocRecepcionFecha).value,
+      hora: document.querySelector(CONFIG.SELECTORS.ocRecepcionHora).value,
+      recibidoPor: document.querySelector(CONFIG.SELECTORS.ocRecepcionRecibidoPor).value.trim(),
+      documentoReferencia: document
+        .querySelector(CONFIG.SELECTORS.ocRecepcionDocumento)
+        .value.trim(),
+      items,
+    });
+
+    if (resultado.reason === 'unauthorized') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!resultado.ok) {
+      errorMsgEl.textContent = resultado.message || 'No se pudo registrar la recepción.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    this._cerrarModal(CONFIG.SELECTORS.ocRecepcionModal);
+    // La recepción movió inventario, así que Insumos también quedó viejo.
+    this.refreshOrdenesCompra();
+    this.refreshInsumos();
+  },
+
+  async verTrazabilidadOrdenCompra(id) {
+    const traza = await OrdenesCompra.trazabilidad(id);
+    if (traza === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!traza) {
+      window.alert('No se pudo cargar la trazabilidad. Intenta de nuevo en unos segundos.');
+      return;
+    }
+    Render.renderTrazabilidadOrdenCompra(traza);
+    this._abrirModal(CONFIG.SELECTORS.ocTrazabilidadModal);
+  },
+
+  _abrirModal(selector) {
+    const modal = document.querySelector(selector);
+    if (!modal) return;
+    modal.hidden = false;
+    // El reflow fuerza a que el navegador registre el estado inicial antes
+    // de la clase que dispara la transición; si no, aparece de golpe.
+    void modal.offsetWidth;
+    modal.classList.add('is-open');
+  },
+
+  _cerrarModal(selector) {
+    const modal = document.querySelector(selector);
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.hidden = true;
   },
 
   /* ───────────────────────── PRODUCCIÓN ───────────────────────── */
@@ -4109,6 +4993,60 @@ const App = {
       .querySelector(CONFIG.SELECTORS.proveedorCancelEditBtn)
       ?.addEventListener('click', () => this.cancelEditProveedor());
 
+    // Órdenes de compra: formulario, líneas, filtros y modales
+    document.querySelector(CONFIG.SELECTORS.ocForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleOrdenCompraSubmit();
+    });
+
+    document
+      .querySelector(CONFIG.SELECTORS.ocGuardarEmitirBtn)
+      ?.addEventListener('click', () => this._handleOrdenCompraSubmit({ emitir: true }));
+
+    document
+      .querySelector(CONFIG.SELECTORS.ocCancelEditBtn)
+      ?.addEventListener('click', () => this.cancelEditOrdenCompra());
+
+    document
+      .querySelector(CONFIG.SELECTORS.btnOcAgregarItem)
+      ?.addEventListener('click', () => this.agregarFilaItemOC());
+
+    document
+      .querySelector(CONFIG.SELECTORS.ocFlete)
+      ?.addEventListener('input', () => this._recalcularTotalesOC());
+
+    document.querySelector(CONFIG.SELECTORS.btnOcFiltrar)?.addEventListener('click', () => {
+      this._ocFiltros = {
+        estado: document.querySelector(CONFIG.SELECTORS.ocFiltroEstado).value,
+        proveedorId: document.querySelector(CONFIG.SELECTORS.ocFiltroProveedor).value,
+        desde: document.querySelector(CONFIG.SELECTORS.ocFiltroDesde).value,
+        hasta: document.querySelector(CONFIG.SELECTORS.ocFiltroHasta).value,
+      };
+      this.refreshOrdenesCompra();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.btnOcLimpiarFiltros)?.addEventListener('click', () => {
+      document.querySelector(CONFIG.SELECTORS.ocFiltroEstado).value = '';
+      document.querySelector(CONFIG.SELECTORS.ocFiltroProveedor).value = '';
+      document.querySelector(CONFIG.SELECTORS.ocFiltroDesde).value = '';
+      document.querySelector(CONFIG.SELECTORS.ocFiltroHasta).value = '';
+      this._ocFiltros = {};
+      this.refreshOrdenesCompra();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.ocRecepcionForm)?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleRecepcionOrdenCompraSubmit();
+    });
+
+    document.querySelectorAll('[data-oc-cerrar-recepcion]').forEach((btn) => {
+      btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.ocRecepcionModal));
+    });
+
+    document.querySelectorAll('[data-oc-cerrar-trazabilidad]').forEach((btn) => {
+      btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.ocTrazabilidadModal));
+    });
+
     // Formulario de horneadas: alta y edición
     document.querySelector(CONFIG.SELECTORS.horneadaForm)?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -4293,6 +5231,7 @@ const App = {
       CONFIG.SELECTORS.insumosView,
       CONFIG.SELECTORS.productosView,
       CONFIG.SELECTORS.proveedoresView,
+      CONFIG.SELECTORS.ordenesCompraView,
       CONFIG.SELECTORS.horneadasView,
       CONFIG.SELECTORS.inventarioView,
       CONFIG.SELECTORS.recetasView,
@@ -4322,6 +5261,11 @@ const App = {
     }
     if (targetId === CONFIG.SELECTORS.auditoriaView.slice(1)) {
       this.refreshAuditoria();
+    }
+    if (targetId === CONFIG.SELECTORS.ordenesCompraView.slice(1)) {
+      const emisionEl = document.querySelector(CONFIG.SELECTORS.ocFechaEmision);
+      if (emisionEl && !emisionEl.value) emisionEl.value = hoyHouston();
+      this.refreshOrdenesCompra();
     }
     // Vistas que trabajan sobre un producto del catálogo: sus selects se
     // llenan desde la tabla productos, así que hay que tener el catálogo
@@ -4376,6 +5320,7 @@ const App = {
     const insumosView = document.querySelector(CONFIG.SELECTORS.insumosView);
     const productosView = document.querySelector(CONFIG.SELECTORS.productosView);
     const proveedoresView = document.querySelector(CONFIG.SELECTORS.proveedoresView);
+    const ordenesCompraView = document.querySelector(CONFIG.SELECTORS.ordenesCompraView);
     const horneadasView = document.querySelector(CONFIG.SELECTORS.horneadasView);
     const inventarioView = document.querySelector(CONFIG.SELECTORS.inventarioView);
     const recetasView = document.querySelector(CONFIG.SELECTORS.recetasView);
@@ -4389,6 +5334,7 @@ const App = {
       if (insumosView) insumosView.hidden = true;
       if (productosView) productosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
+      if (ordenesCompraView) ordenesCompraView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;
       if (recetasView) recetasView.hidden = true;
@@ -4409,6 +5355,7 @@ const App = {
       if (insumosView) insumosView.hidden = true;
       if (productosView) productosView.hidden = true;
       if (proveedoresView) proveedoresView.hidden = true;
+      if (ordenesCompraView) ordenesCompraView.hidden = true;
       if (horneadasView) horneadasView.hidden = true;
       if (inventarioView) inventarioView.hidden = true;
       if (recetasView) recetasView.hidden = true;
