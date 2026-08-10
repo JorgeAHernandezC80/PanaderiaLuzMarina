@@ -274,14 +274,15 @@
               </button>
               <button
                 type="button"
-                class="admin-nav__btn admin-nav__btn--soon"
-                data-tooltip="Órdenes de compra (pronto)"
-                disabled
-                aria-disabled="true"
+                class="admin-nav__btn"
+                data-view-target="ordenes-compra-view"
+                data-tooltip="Órdenes de compra"
+                role="tab"
+                aria-selected="false"
               >
                 <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
                 <span class="admin-nav__btn-label">Órdenes compra</span>
-                <span class="admin-nav__soon">Pronto</span>
+                <span class="admin-nav__count" id="ordenes-compra-count">0</span>
               </button>
               <button
                 type="button"
@@ -1487,6 +1488,335 @@
         </section>
       </section>
 
+      <!-- ÓRDENES DE COMPRA -->
+      <section
+        id="ordenes-compra-view"
+        class="view view--ordenes-compra"
+        hidden
+        aria-labelledby="ordenes-compra-title"
+        data-component="ordenes-compra"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="ordenes-compra-title">Órdenes de compra</h1>
+            <p class="dashboard-header__subtitle">
+              Lo que se le pide a cada proveedor, lo que de verdad llega y quién hizo cada cosa. Al
+              registrar una recepción, el inventario de Insumos sube solo y queda el lote y el
+              vencimiento de esa entrega.
+            </p>
+          </div>
+        </header>
+
+        <section id="oc-resumen" class="stats" aria-label="Resumen de órdenes de compra">
+          <!-- Se inyecta dinámicamente por admin.js (Render.renderResumenOrdenesCompra) -->
+        </section>
+
+        <section
+          class="horneadas-toolbar"
+          aria-label="Filtrar órdenes de compra"
+          data-component="oc-toolbar"
+        >
+          <div class="form-field">
+            <label for="oc-filtro-estado" class="form-field__label">Estado</label>
+            <select id="oc-filtro-estado" class="form-field__input">
+              <option value="">Todos</option>
+              <option value="borrador">Borrador</option>
+              <option value="emitida">Emitida</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="recibida_parcial">Recibida parcial</option>
+              <option value="recibida">Recibida</option>
+              <option value="cerrada">Cerrada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="oc-filtro-proveedor" class="form-field__label">Proveedor</label>
+            <select id="oc-filtro-proveedor" class="form-field__input">
+              <option value="">Todos</option>
+              <!-- Las opciones las llena admin.js desde GET /proveedores -->
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="oc-filtro-desde" class="form-field__label">Desde</label>
+            <input type="date" id="oc-filtro-desde" class="form-field__input" />
+          </div>
+          <div class="form-field">
+            <label for="oc-filtro-hasta" class="form-field__label">Hasta</label>
+            <input type="date" id="oc-filtro-hasta" class="form-field__input" />
+          </div>
+          <button type="button" id="btn-oc-filtrar" class="btn btn--ghost">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Filtrar
+          </button>
+          <button type="button" id="btn-oc-limpiar-filtros" class="btn btn--ghost">
+            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+            Limpiar
+          </button>
+        </section>
+
+        <h2 class="section-subtitle">Nueva orden de compra</h2>
+
+        <form id="oc-form" class="insumo-form" novalidate data-component="oc-form">
+          <input type="hidden" id="oc-id" name="id" />
+
+          <div class="form-field">
+            <label for="oc-proveedor" class="form-field__label">Proveedor</label>
+            <select id="oc-proveedor" name="proveedorId" class="form-field__input" required>
+              <option value="" selected disabled>Selecciona un proveedor</option>
+              <!-- Las opciones las llena admin.js desde GET /proveedores -->
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="oc-fecha-emision" class="form-field__label">Fecha de emisión</label>
+            <input
+              type="date"
+              id="oc-fecha-emision"
+              name="fechaEmision"
+              class="form-field__input"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="oc-fecha-entrega" class="form-field__label">Entrega estimada</label>
+            <input
+              type="date"
+              id="oc-fecha-entrega"
+              name="fechaEntregaEstimada"
+              class="form-field__input"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="oc-condiciones-pago" class="form-field__label">Condiciones de pago</label>
+            <select id="oc-condiciones-pago" name="condicionesPago" class="form-field__input">
+              <option value="contado">Contado</option>
+              <option value="credito_30">Crédito 30 días</option>
+              <option value="credito_60">Crédito 60 días</option>
+              <option value="credito_90">Crédito 90 días</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="oc-moneda" class="form-field__label">Moneda</label>
+            <select id="oc-moneda" name="moneda" class="form-field__input">
+              <option value="COP">COP</option>
+              <option value="MXN">MXN</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="CLP">CLP</option>
+              <option value="ARS">ARS</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="oc-flete" class="form-field__label">Flete</label>
+            <input
+              type="number"
+              id="oc-flete"
+              name="flete"
+              class="form-field__input"
+              min="0"
+              step="0.01"
+              placeholder="0"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="oc-solicitado-por" class="form-field__label">Solicitado por</label>
+            <input
+              type="text"
+              id="oc-solicitado-por"
+              name="solicitadoPor"
+              class="form-field__input"
+              placeholder="Ej. Jorge"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="oc-lugar-entrega" class="form-field__label">Lugar de entrega</label>
+            <input
+              type="text"
+              id="oc-lugar-entrega"
+              name="lugarEntrega"
+              class="form-field__input"
+              placeholder="Ej. Panadería Luz Marina"
+              maxlength="200"
+            />
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <div class="receta-form__ingredientes-header">
+              <span class="form-field__label">Líneas de la orden</span>
+              <button type="button" id="btn-oc-agregar-item" class="btn btn--ghost btn--small">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                Agregar insumo
+              </button>
+            </div>
+            <div id="oc-items-lista" class="receta-form__ingredientes" data-component="oc-items">
+              <!-- Filas de línea inyectadas por admin.js -->
+            </div>
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <output id="oc-totales" class="oc-totales" aria-live="polite">
+              <!-- Totales recalculados en vivo por admin.js -->
+            </output>
+          </div>
+
+          <div class="form-field insumo-form__wide">
+            <label for="oc-notas" class="form-field__label">Notas</label>
+            <textarea
+              id="oc-notas"
+              name="notas"
+              class="form-field__input"
+              rows="2"
+              placeholder="Opcional"
+              maxlength="500"
+            ></textarea>
+          </div>
+
+          <output
+            id="oc-error"
+            class="form-error insumo-form__wide"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          >
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span data-oc-error-msg></span>
+          </output>
+
+          <div class="insumo-form__actions insumo-form__wide">
+            <button type="submit" id="btn-oc-submit" class="btn btn--primary">
+              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+              Guardar borrador
+            </button>
+            <button type="button" id="btn-oc-guardar-emitir" class="btn btn--primary">
+              <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+              Guardar y emitir
+            </button>
+            <button type="button" id="btn-oc-cancel-edit" class="btn btn--ghost" hidden>
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+
+        <section
+          id="ordenes-compra-container"
+          class="insumos"
+          aria-label="Listado de órdenes de compra"
+          aria-live="polite"
+          data-component="ordenes-compra-list"
+        >
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+      </section>
+
+      <!-- Modal de recepción de mercancía (lo abre y llena admin.js) -->
+      <div class="modal-overlay" id="oc-recepcion-modal" hidden>
+        <div
+          class="modal modal--lg"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="oc-recepcion-title"
+        >
+          <header class="modal__header">
+            <h2 class="modal__title" id="oc-recepcion-title">Registrar recepción</h2>
+            <button type="button" class="modal__close" data-oc-cerrar-recepcion aria-label="Cerrar">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </header>
+          <form id="oc-recepcion-form" novalidate>
+            <div class="modal__body">
+              <input type="hidden" id="oc-recepcion-orden-id" />
+              <div class="oc-recepcion__cabecera">
+                <div class="form-field">
+                  <label for="oc-recepcion-fecha" class="form-field__label">Fecha</label>
+                  <input type="date" id="oc-recepcion-fecha" class="form-field__input" required />
+                </div>
+                <div class="form-field">
+                  <label for="oc-recepcion-hora" class="form-field__label">Hora</label>
+                  <input type="time" id="oc-recepcion-hora" class="form-field__input" required />
+                </div>
+                <div class="form-field">
+                  <label for="oc-recepcion-recibido-por" class="form-field__label">
+                    Recibido por
+                  </label>
+                  <input
+                    type="text"
+                    id="oc-recepcion-recibido-por"
+                    class="form-field__input"
+                    maxlength="80"
+                    placeholder="Ej. Marina"
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="oc-recepcion-documento" class="form-field__label">
+                    Remisión o factura
+                  </label>
+                  <input
+                    type="text"
+                    id="oc-recepcion-documento"
+                    class="form-field__input"
+                    maxlength="80"
+                    placeholder="Ej. REM-4471"
+                  />
+                </div>
+              </div>
+
+              <div id="oc-recepcion-lineas" data-component="oc-recepcion-lineas">
+                <!-- Una fila por línea pendiente, inyectada por admin.js -->
+              </div>
+
+              <output id="oc-recepcion-error" class="form-error" role="alert" hidden>
+                <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                <span data-oc-recepcion-error-msg></span>
+              </output>
+            </div>
+            <footer class="modal__footer">
+              <button type="button" class="btn btn--ghost" data-oc-cerrar-recepcion>
+                Cancelar
+              </button>
+              <button type="submit" class="btn btn--primary">
+                <i class="fa-solid fa-truck-ramp-box" aria-hidden="true"></i>
+                Registrar recepción
+              </button>
+            </footer>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal de trazabilidad (línea de tiempo de la orden) -->
+      <div class="modal-overlay" id="oc-trazabilidad-modal" hidden>
+        <div
+          class="modal modal--lg"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="oc-trazabilidad-title"
+        >
+          <header class="modal__header">
+            <h2 class="modal__title" id="oc-trazabilidad-title">Trazabilidad</h2>
+            <button
+              type="button"
+              class="modal__close"
+              data-oc-cerrar-trazabilidad
+              aria-label="Cerrar"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </header>
+          <div class="modal__body" id="oc-trazabilidad-body">
+            <!-- Línea de tiempo inyectada por admin.js -->
+          </div>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-oc-cerrar-trazabilidad>Cerrar</button>
+          </footer>
+        </div>
+      </div>
+
       <!-- HORNEADAS / PRODUCCIÓN -->
       <section
         id="horneadas-view"
@@ -2540,6 +2870,109 @@
         >
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
+      </div>
+    </template>
+
+    <!-- Plantilla: línea (insumo pedido) en el formulario de Orden de compra -->
+    <template id="tpl-oc-item-row">
+      <div class="oc-item-row" data-component="oc-item-row">
+        <select class="form-field__input oc-item-row__insumo" aria-label="Insumo" required>
+          <option value="" selected disabled>Selecciona un insumo</option>
+        </select>
+        <input
+          type="number"
+          class="form-field__input oc-item-row__cantidad"
+          min="0.01"
+          step="0.01"
+          placeholder="Cantidad"
+          aria-label="Cantidad pedida"
+          required
+        />
+        <select class="form-field__input oc-item-row__unidad" aria-label="Unidad">
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">l</option>
+          <option value="ml">ml</option>
+          <option value="lb">lb</option>
+          <option value="gal">gal</option>
+          <option value="unidad">unidad</option>
+          <option value="paquete">paquete</option>
+          <option value="caja">caja</option>
+        </select>
+        <input
+          type="number"
+          class="form-field__input oc-item-row__costo"
+          min="0"
+          step="0.01"
+          placeholder="Costo unit."
+          aria-label="Costo unitario"
+          required
+        />
+        <input
+          type="number"
+          class="form-field__input oc-item-row__impuesto"
+          min="0"
+          max="100"
+          step="0.01"
+          placeholder="Imp. %"
+          aria-label="Impuesto en porcentaje"
+        />
+        <input
+          type="number"
+          class="form-field__input oc-item-row__descuento"
+          min="0"
+          max="100"
+          step="0.01"
+          placeholder="Desc. %"
+          aria-label="Descuento en porcentaje"
+        />
+        <span class="oc-item-row__total" aria-label="Total de la línea"></span>
+        <button type="button" class="btn btn--ghost btn--danger btn--small oc-item-row__quitar">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+    </template>
+
+    <!-- Plantilla: línea pendiente en el modal de recepción -->
+    <template id="tpl-oc-recepcion-row">
+      <div class="oc-recepcion-row" data-component="oc-recepcion-row">
+        <span class="oc-recepcion-row__insumo"></span>
+        <span class="oc-recepcion-row__pendiente"></span>
+        <input
+          type="number"
+          class="form-field__input oc-recepcion-row__recibido"
+          min="0"
+          step="0.01"
+          placeholder="Recibido"
+          aria-label="Cantidad recibida"
+        />
+        <input
+          type="number"
+          class="form-field__input oc-recepcion-row__rechazado"
+          min="0"
+          step="0.01"
+          placeholder="Rechazado"
+          aria-label="Cantidad rechazada"
+        />
+        <input
+          type="text"
+          class="form-field__input oc-recepcion-row__motivo"
+          maxlength="280"
+          placeholder="Motivo del rechazo"
+          aria-label="Motivo del rechazo"
+        />
+        <input
+          type="text"
+          class="form-field__input oc-recepcion-row__lote"
+          maxlength="80"
+          placeholder="Lote"
+          aria-label="Lote del proveedor"
+        />
+        <input
+          type="date"
+          class="form-field__input oc-recepcion-row__vencimiento"
+          aria-label="Fecha de vencimiento"
+        />
       </div>
     </template>
 

@@ -1600,6 +1600,235 @@ button {
   font-size: 0.9rem;
 }
 
+/* ── Órdenes de compra ── */
+.oc-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.8fr 1fr 0.7fr 0.7fr auto auto;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.oc-item-row__total {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.oc-totales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-soft-bg);
+  font-size: 0.9rem;
+}
+
+.oc-totales__total {
+  color: var(--color-success);
+  font-size: 1rem;
+}
+
+.oc-card {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.oc-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.oc-card__numero {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.oc-card__proveedor {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.oc-card__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.oc-card__meta dt {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.oc-card__meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.oc-card__avance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.oc-progress {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-soft-bg);
+  overflow: hidden;
+}
+
+.oc-progress__barra {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+
+.oc-card__avance-label {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.oc-card__cancelacion {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-size: 0.88rem;
+}
+
+.oc-card__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Los estados terminales (cerrada/cancelada) se ven apagados a propósito:
+   en el listado hay que distinguir de un vistazo lo que sigue vivo. */
+.oc-badge {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--color-soft-bg);
+  color: var(--color-text-muted);
+}
+
+.oc-badge--emitida,
+.oc-badge--confirmada {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.oc-badge--recibida_parcial {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.oc-badge--recibida {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.oc-badge--cancelada {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.oc-recepcion__cabecera {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.oc-recepcion-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr 1.2fr 1fr 1fr;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.oc-recepcion-row__insumo {
+  font-weight: 600;
+}
+
+.oc-recepcion-row__pendiente {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.oc-timeline {
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0 0 0 var(--space-4);
+  border-left: 2px solid var(--color-border);
+}
+
+.oc-timeline__item {
+  position: relative;
+  padding-bottom: var(--space-4);
+}
+
+.oc-timeline__marca {
+  position: absolute;
+  left: calc(-1 * var(--space-4) - 5px);
+  top: 0.35rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.oc-timeline__titulo {
+  margin: 0;
+  font-weight: 600;
+}
+
+.oc-timeline__meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.oc-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.oc-chip--ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.oc-chip--alerta {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.oc-trazabilidad__vacio {
+  color: var(--color-text-muted);
+}
+
 /* ── Toolbar de fecha (Horneadas / Inventario / Producción) ── */
 .horneadas-toolbar {
   display: flex;
@@ -2119,6 +2348,13 @@ button {
   .receta-ingrediente-row {
     grid-template-columns: 1fr;
     gap: var(--space-2);
+  }
+
+  /* Mismo criterio para las líneas de compra y de recepción: con 7-8
+     celdas por fila no hay ancho útil en un teléfono. */
+  .oc-item-row,
+  .oc-recepcion-row {
+    grid-template-columns: 1fr;
   }
 
   /* Encabezados internos con botón a la derecha: que bajen en vez de
