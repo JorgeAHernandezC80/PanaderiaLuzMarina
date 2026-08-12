@@ -26,6 +26,8 @@ module.exports = [
       'auditoria.js',
       'calidadDatos.js',
       'autoML.js',
+      'lotes.js',
+      'lotesAnalitica.js',
       'babel.config.js',
       'jest.config.js',
       'eslint.config.js',
