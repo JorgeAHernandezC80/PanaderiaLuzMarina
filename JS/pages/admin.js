@@ -379,7 +379,7 @@ const CONFIG = Object.freeze({
     lotesTendencia: '#lotes-tendencia',
     lotesVariable: '#lotes-variable',
     lotesHistograma: '#lotes-histograma',
-    lotesTablaDescriptivas: '#lotes-tabla-descriptivas tbody',
+    lotesDescriptivas: '#lotes-descriptivas',
     lotesGraficoProducto: '#lotes-grafico-producto',
     lotesGraficoHora: '#lotes-grafico-hora',
     lotesCorrelaciones: '#lotes-correlaciones',
@@ -2665,27 +2665,90 @@ const Render = {
     );
   },
 
-  _renderLotesDescriptivas(descriptivas) {
-    const tbody = document.querySelector(CONFIG.SELECTORS.lotesTablaDescriptivas);
-    if (!tbody) return;
+  /** Qué tan disperso está el dato, en palabras: el coeficiente de
+   *  variación es la desviación como porcentaje de la media, así que se
+   *  puede leer igual para gramos, horas o porcentajes. */
+  _lotesDispersion(cv) {
+    if (cv === null || cv === undefined) return null;
+    if (cv < 15) return { texto: 'Muy consistente', clase: 'lotes-cv--baja' };
+    if (cv < 35) return { texto: 'Variación normal', clase: 'lotes-cv--media' };
+    return { texto: 'Muy dispersa', clase: 'lotes-cv--alta' };
+  },
 
-    tbody.innerHTML = descriptivas
-      .map(
-        (d) => `
-      <tr>
-        <td>${escapeHTML(d.etiqueta)} <span class="lotes-unidad">(${escapeHTML(d.unidad)})</span></td>
-        <td>${d.n}</td>
-        <td>${this._lotesNum(d.media)}</td>
-        <td>${this._lotesNum(d.mediana)}</td>
-        <td>${this._lotesNum(d.desviacion)}</td>
-        <td>${this._lotesNum(d.coeficienteVariacion, '%')}</td>
-        <td>${this._lotesNum(d.minimo)}</td>
-        <td>${this._lotesNum(d.p25)}</td>
-        <td>${this._lotesNum(d.p75)}</td>
-        <td>${this._lotesNum(d.maximo)}</td>
-      </tr>`,
-      )
-      .join('');
+  /** Una ficha por variable, con un resumen de cinco números dibujado como
+   *  caja (mín — P25 — mediana — P75 — máx). Reemplaza a la tabla de diez
+   *  columnas: se lee sin desplazarse en horizontal y la caja muestra de
+   *  una la asimetría, que en la tabla había que deducir comparando
+   *  números. */
+  _renderLotesDescriptivas(descriptivas) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesDescriptivas);
+    if (!container) return;
+
+    container.innerHTML = `<div class="lotes-descriptivas">${descriptivas
+      .map((d) => this._renderLotesFichaDescriptiva(d))
+      .join('')}</div>`;
+  },
+
+  _renderLotesFichaDescriptiva(d) {
+    const cabecera = `
+      <header class="lotes-ficha__header">
+        <h4 class="lotes-ficha__titulo">${escapeHTML(d.etiqueta)}</h4>
+        <span class="lotes-ficha__n">n = ${d.n}</span>
+      </header>`;
+
+    if (d.n === 0) {
+      return `
+      <article class="lotes-ficha lotes-ficha--sin-datos">
+        ${cabecera}
+        <p class="lotes-ficha__vacio">Ningún lote del período tiene este dato registrado.</p>
+      </article>`;
+    }
+
+    const dispersion = this._lotesDispersion(d.coeficienteVariacion);
+    const rango = d.maximo - d.minimo;
+    // Con todos los valores iguales la caja no tiene ancho: se dibuja
+    // centrada en vez de dividir por cero.
+    const pos = (valor) => (rango === 0 ? 50 : ((valor - d.minimo) / rango) * 100);
+    const izquierda = pos(d.p25);
+    const ancho = Math.max(pos(d.p75) - izquierda, 1);
+
+    return `
+      <article class="lotes-ficha">
+        ${cabecera}
+        <p class="lotes-ficha__valor">
+          <data value="${d.media}">${d.media}</data>
+          <span class="lotes-ficha__unidad">${escapeHTML(d.unidad)}</span>
+          <span class="lotes-ficha__valor-etiqueta">promedio</span>
+        </p>
+        <p class="lotes-ficha__mediana">Mediana ${d.mediana} ${escapeHTML(d.unidad)}</p>
+
+        <div
+          class="lotes-caja"
+          role="img"
+          aria-label="Mínimo ${d.minimo}, primer cuartil ${d.p25}, mediana ${d.mediana}, tercer cuartil ${d.p75}, máximo ${d.maximo} ${escapeHTML(d.unidad)}"
+        >
+          <span class="lotes-caja__rango"></span>
+          <span class="lotes-caja__iqr" style="left: ${izquierda}%; width: ${ancho}%"></span>
+          <span class="lotes-caja__mediana" style="left: ${pos(d.mediana)}%"></span>
+        </div>
+        <div class="lotes-caja__escala">
+          <span>${d.minimo}</span>
+          <span>${d.p25} – ${d.p75} <small>(50% central)</small></span>
+          <span>${d.maximo}</span>
+        </div>
+
+        <dl class="lotes-ficha__metricas">
+          <div>
+            <dt>Desviación</dt>
+            <dd>${this._lotesNum(d.desviacion)}</dd>
+          </div>
+          <div>
+            <dt>Coef. variación</dt>
+            <dd>${this._lotesNum(d.coeficienteVariacion, '%')}</dd>
+          </div>
+        </dl>
+        ${dispersion ? `<p class="lotes-cv ${dispersion.clase}">${dispersion.texto}</p>` : ''}
+      </article>`;
   },
 
   /** Fuerza de la asociación en palabras. El texto dice "se mueven juntas",
