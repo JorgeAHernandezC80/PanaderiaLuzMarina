@@ -2995,6 +2995,184 @@ button {
 }
 
 /* ═══════════════════════════════════════════
+   14c. LOTES — análisis exploratorio y tendencias
+   ═══════════════════════════════════════════
+   Reutiliza .auditoria-barra para los histogramas y los cortes por
+   producto/hora (mismo componente de barras CSS, sin librería de
+   gráficos). Lo propio de acá es el panel, la rejilla de dos columnas y
+   la línea de tendencia en SVG. */
+.lotes-periodo {
+  margin: 0 0 var(--space-4);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.lotes-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.lotes-graficos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+  align-items: start;
+}
+
+.lotes-grafico {
+  min-width: 0; /* sin esto una tabla ancha estira su columna del grid */
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.lotes-grafico__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.lotes-grafico__titulo {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
+.lotes-grafico__header .lotes-grafico__titulo {
+  margin-bottom: 0;
+}
+/* El select de variable vive dentro del encabezado del gráfico: no debe
+   ocupar el ancho completo como los campos de los formularios. */
+.lotes-grafico__header .form-field--inline {
+  margin: 0;
+  min-width: 12rem;
+}
+
+/* La serie diaria se dibuja en un viewBox fijo y se estira al ancho
+   disponible (preserveAspectRatio="none"), así que el grosor de la línea
+   se compensa con vector-effect para que no se deforme. */
+.lotes-serie {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+.lotes-serie__linea,
+.lotes-serie__media {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.lotes-serie__linea {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.lotes-serie__media {
+  stroke: var(--color-text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.lotes-serie__pie {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.lotes-veredictos {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-3);
+}
+.lotes-veredictos li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-bg);
+  font-size: 0.85rem;
+}
+.lotes-veredictos i {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--color-accent);
+}
+.lotes-veredictos span {
+  color: var(--color-text-muted);
+}
+
+.lotes-correlaciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+.lotes-correlacion {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.lotes-correlacion h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9rem;
+}
+.lotes-correlacion p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.lotes-correlacion__valor {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+.lotes-correlacion--sin-datos .lotes-correlacion__valor {
+  color: var(--color-text-muted);
+}
+
+.lotes-hallazgos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.lotes-hallazgos li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+}
+.lotes-hallazgos span:last-child {
+  color: var(--color-text-muted);
+}
+
+.lotes-unidad {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .lotes-graficos {
+    grid-template-columns: 1fr;
+  }
+  .lotes-hallazgos li {
+    grid-template-columns: auto 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════
    15. MODO OSCURO (opcional)
    ═══════════════════════════════════════════
    Dato importante: `theme-init.js` YA corre en admin.html y puede

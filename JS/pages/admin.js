@@ -365,6 +365,31 @@ const CONFIG = Object.freeze({
     produccionFiltroFecha: '#produccion-filtro-fecha',
     btnProduccionFiltrar: '#btn-produccion-filtrar',
     btnProduccionHoy: '#btn-produccion-hoy',
+
+    // Lotes
+    lotesView: '#lotes-view',
+    lotesCount: '#lotes-count',
+    lotesFiltroDesde: '#lotes-filtro-desde',
+    lotesFiltroHasta: '#lotes-filtro-hasta',
+    lotesFiltroProducto: '#lotes-filtro-producto',
+    btnLotesFiltrar: '#btn-lotes-filtrar',
+    btnLotesLimpiar: '#btn-lotes-limpiar',
+    lotesPeriodo: '#lotes-periodo',
+    lotesResumen: '#lotes-resumen',
+    lotesTendencia: '#lotes-tendencia',
+    lotesVariable: '#lotes-variable',
+    lotesHistograma: '#lotes-histograma',
+    lotesTablaDescriptivas: '#lotes-tabla-descriptivas tbody',
+    lotesGraficoProducto: '#lotes-grafico-producto',
+    lotesGraficoHora: '#lotes-grafico-hora',
+    lotesCorrelaciones: '#lotes-correlaciones',
+    lotesTablaAtipicos: '#lotes-tabla-atipicos tbody',
+    lotesCalidad: '#lotes-calidad',
+    lotesCompletitud: '#lotes-completitud',
+    lotesHallazgos: '#lotes-hallazgos',
+    lotesTabla: '#lotes-tabla tbody',
+    loteTrazaModal: '#lote-traza-modal',
+    loteTrazaBody: '#lote-traza-body',
   },
   /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
      leer el formulario sea una sola iteración en lugar de 24 querySelector. */
@@ -846,6 +871,61 @@ const Auditoria = {
       return bloques;
     } catch (err) {
       console.error('[Auditoria] Error obteniendo los bloques:', err.message);
+      return null;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   MÓDULO: LOTES (backend real)
+   ═══════════════════════════════════════════
+   Solo lectura, igual que Auditoría: un lote se crea registrando una
+   horneada (vista Horneadas), no desde acá. El backend (lotes.js) ya hace
+   todo el trabajo de datos — cruces, indicadores derivados, estadística,
+   tendencias y validación — así que el panel solo pide y pinta. */
+const LotesApi = {
+  /** GET /lotes/analisis — el reporte completo del período: resumen,
+   *  descriptivas con histograma, atípicos, cortes, correlaciones,
+   *  tendencias, validación y los lotes ya derivados. */
+  async analisis({ desde, hasta, productoId } = {}) {
+    const params = new URLSearchParams();
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+    if (productoId) params.set('productoId', productoId);
+    const query = params.toString();
+
+    try {
+      const res = await apiFetch(`/lotes/analisis${query ? `?${query}` : ''}`, {
+        timeout: 15_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Lotes] Error obteniendo el análisis:', err.message);
+      return null;
+    }
+  },
+
+  /** GET /lotes/:id — un lote con su trazabilidad hacia atrás. */
+  async detalle(id) {
+    try {
+      const res = await apiFetch(`/lotes/${encodeURIComponent(id)}`, {
+        timeout: 10_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Lotes] Error obteniendo el lote:', err.message);
       return null;
     }
   },
@@ -1781,6 +1861,8 @@ const Render = {
       CONFIG.SELECTORS.ajusteProducto,
     ];
 
+    this.fillLotesProductoSelect(lista);
+
     for (const selector of selectores) {
       const select = document.querySelector(selector);
       if (!select) continue;
@@ -1802,6 +1884,24 @@ const Render = {
 
       if (valorActual) select.value = valorActual;
     }
+  },
+
+  /** El select de producto del filtro de Lotes va aparte: acá los productos
+   *  inactivos NO se deshabilitan, porque sus lotes históricos existen y son
+   *  justamente los que se quiere poder revisar. */
+  fillLotesProductoSelect(lista) {
+    const select = document.querySelector(CONFIG.SELECTORS.lotesFiltroProducto);
+    if (!select) return;
+
+    const valorActual = select.value;
+    select.innerHTML = '<option value="">Todos</option>';
+    for (const p of lista) {
+      const opt = document.createElement('option');
+      opt.value = String(p.id);
+      opt.textContent = p.nombre;
+      select.appendChild(opt);
+    }
+    if (valorActual) select.value = valorActual;
   },
 
   /** Tabla de Productos: mismo patrón que renderDiagnosticoPedidos (tabla
@@ -2364,6 +2464,455 @@ const Render = {
       </div>`,
       )
       .join('');
+  },
+
+  /* ───────────────────────── LOTES ─────────────────────────
+     Todo lo que se pinta acá viene calculado del backend (lotes.js):
+     el panel no recalcula ni redondea nada, solo formatea. Los gráficos
+     son CSS/SVG a mano, mismo criterio que Auditoría — sin librería. */
+
+  LOTES_ESTADO_LABELS: {
+    fresco: { texto: 'Fresco', badgeClase: 'insumo-badge--exito' },
+    por_vencer: { texto: 'Por vencer', badgeClase: 'insumo-badge--por-vencer' },
+    vencido: { texto: 'Vencido', badgeClase: 'insumo-badge--bajo-stock' },
+    agotado: { texto: 'Agotado', badgeClase: 'insumo-badge--neutral' },
+    sin_dato: { texto: 'Sin vida útil', badgeClase: 'insumo-badge--neutral' },
+  },
+  LOTES_SEVERIDAD_LABELS: {
+    alta: { texto: 'Alta', badgeClase: 'insumo-badge--bajo-stock' },
+    media: { texto: 'Media', badgeClase: 'insumo-badge--por-vencer' },
+    baja: { texto: 'Baja', badgeClase: 'insumo-badge--neutral' },
+  },
+  LOTES_TENDENCIA_LABELS: {
+    sube: { texto: 'Va en subida', icono: 'fa-arrow-trend-up' },
+    baja: { texto: 'Va en bajada', icono: 'fa-arrow-trend-down' },
+    estable: { texto: 'Estable', icono: 'fa-equals' },
+    sin_datos: { texto: 'Sin datos suficientes', icono: 'fa-circle-question' },
+  },
+
+  /** Un número que puede ser null: "—" en vez de "null" o un 0 falso. */
+  _lotesNum(valor, sufijo = '') {
+    return valor === null || valor === undefined ? '—' : `${valor}${sufijo}`;
+  },
+
+  /** Pinta la vista Lotes completa a partir de GET /lotes/analisis. */
+  renderLotes(analisis, variableHistograma) {
+    if (!analisis) return;
+
+    const periodoEl = document.querySelector(CONFIG.SELECTORS.lotesPeriodo);
+    if (periodoEl) {
+      const { desde, hasta, dias } = analisis.periodo;
+      periodoEl.textContent = `Período analizado: ${desde} a ${hasta} (${dias} día(s)) · ${analisis.resumen.totalLotes} lote(s).`;
+    }
+
+    this._renderLotesResumen(analisis.resumen);
+    this._renderLotesTendencia(analisis.tendencias);
+    this._renderLotesHistograma(analisis.descriptivas, variableHistograma);
+    this._renderLotesDescriptivas(analisis.descriptivas);
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.lotesGraficoProducto,
+      analisis.porProducto.map((p) => ({ etiqueta: p.clave, total: p.unidades })),
+    );
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.lotesGraficoHora,
+      analisis.porHora.map((h) => ({
+        etiqueta: `${String(h.clave).padStart(2, '0')}:00`,
+        total: h.lotes,
+      })),
+    );
+
+    this._renderLotesCorrelaciones(analisis.correlaciones);
+    this._renderLotesAtipicos(analisis.atipicos);
+    this._renderLotesCalidad(analisis.calidad);
+    this._renderLotesTabla(analisis.lotes);
+  },
+
+  _renderLotesResumen(resumen) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesResumen);
+    if (!container) return;
+
+    const porEstado = new Map(resumen.lotesPorEstado.map((e) => [e.estado, e.total]));
+    const enRiesgo = (porEstado.get('por_vencer') ?? 0) + (porEstado.get('vencido') ?? 0);
+
+    container.innerHTML = `
+      <article class="stat-card stat-card--accent">
+        <span class="stat-card__label">Lotes en el período</span>
+        <data class="stat-card__value" value="${resumen.totalLotes}">${resumen.totalLotes}</data>
+        <span class="stat-card__hint">${resumen.totalUnidades} unidad(es) horneada(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Vendido el mismo día</span>
+        <data class="stat-card__value" value="${resumen.tasaVentaPct ?? 0}">${this._lotesNum(resumen.tasaVentaPct, '%')}</data>
+        <span class="stat-card__hint">${resumen.unidadesVendidas} vendida(s), ${resumen.unidadesNoVendidas} sin vender</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Merma real promedio</span>
+        <data class="stat-card__value" value="${resumen.mermaPromedioPct ?? 0}">${this._lotesNum(resumen.mermaPromedioPct, '%')}</data>
+        <span class="stat-card__hint">Desvío vs. receta: ${this._lotesNum(resumen.desvioMermaPromedioPp, ' pp')}</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Segunda calidad</span>
+        <data class="stat-card__value" value="${resumen.segundaCalidadPromedioPct ?? 0}">${this._lotesNum(resumen.segundaCalidadPromedioPct, '%')}</data>
+        <span class="stat-card__hint">Promedio por lote</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Lotes por vencer o vencidos</span>
+        <data class="stat-card__value" value="${enRiesgo}">${enRiesgo}</data>
+        <span class="stat-card__hint">${porEstado.get('agotado') ?? 0} agotado(s), ${porEstado.get('fresco') ?? 0} fresco(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Lotes trazables al proveedor</span>
+        <data class="stat-card__value" value="${resumen.lotesTrazables}">${resumen.lotesTrazables}</data>
+        <span class="stat-card__hint">Tiempo promedio en venderse: ${this._lotesNum(resumen.horasPromedioHastaAgotarse, ' h')}</span>
+      </article>
+    `;
+  },
+
+  /** Serie diaria como gráfico de líneas en SVG inline (unidades + media
+   *  móvil de 7 días), más el veredicto de tendencia y la comparación
+   *  entre la última semana y la anterior. */
+  _renderLotesTendencia(tendencias) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesTendencia);
+    if (!container) return;
+
+    const { serie, mediaMovilUnidades, unidades, merma, comparacionUnidades } = tendencias;
+    if (!serie.length) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin lotes en el período.</p>';
+      return;
+    }
+
+    const ANCHO = 640;
+    const ALTO = 180;
+    const maximo = Math.max(...serie.map((d) => d.unidades), 1);
+    const x = (i) => (serie.length === 1 ? 0 : (i / (serie.length - 1)) * ANCHO);
+    const y = (valor) => ALTO - (valor / maximo) * ALTO;
+    const puntos = (valores) =>
+      valores
+        .map((valor, i) => (Number.isFinite(valor) ? `${x(i)},${y(valor)}` : null))
+        .filter(Boolean)
+        .join(' ');
+
+    const veredicto = this.LOTES_TENDENCIA_LABELS[unidades.direccion];
+    const veredictoMerma = this.LOTES_TENDENCIA_LABELS[merma.direccion];
+
+    container.innerHTML = `
+      <svg
+        class="lotes-serie"
+        viewBox="0 0 ${ANCHO} ${ALTO}"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Unidades horneadas por día y su media móvil de 7 días"
+      >
+        <polyline class="lotes-serie__linea" points="${puntos(serie.map((d) => d.unidades))}" />
+        <polyline class="lotes-serie__media" points="${puntos(mediaMovilUnidades)}" />
+      </svg>
+      <div class="lotes-serie__pie">
+        <span>${escapeHTML(serie[0].fecha)}</span>
+        <span>máximo ${maximo} u/día</span>
+        <span>${escapeHTML(serie[serie.length - 1].fecha)}</span>
+      </div>
+      <ul class="lotes-veredictos">
+        <li>
+          <i class="fa-solid ${veredicto.icono}" aria-hidden="true"></i>
+          <strong>Unidades horneadas: ${escapeHTML(veredicto.texto)}</strong>
+          ${
+            unidades.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con datos (hay ${unidades.dias}).</span>`
+              : `<span>${unidades.pendientePorDia > 0 ? '+' : ''}${unidades.pendientePorDia} u/día · la recta explica el ${Math.round(unidades.r2 * 100)}% de la variación.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid ${veredictoMerma.icono}" aria-hidden="true"></i>
+          <strong>Merma real: ${escapeHTML(veredictoMerma.texto)}</strong>
+          ${
+            merma.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con merma registrada (hay ${merma.dias}).</span>`
+              : `<span>${merma.pendientePorDia > 0 ? '+' : ''}${merma.pendientePorDia} pp/día.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+          <strong>Últimos 7 días vs. los 7 anteriores</strong>
+          ${
+            comparacionUnidades.datosInsuficientes
+              ? '<span>El período es más corto que dos semanas.</span>'
+              : `<span>${comparacionUnidades.actual} u/día vs. ${comparacionUnidades.previa} u/día (${this._lotesNum(comparacionUnidades.variacionPct, '%')}).</span>`
+          }
+        </li>
+      </ul>
+    `;
+  },
+
+  _renderLotesHistograma(descriptivas, variable) {
+    const elegida = descriptivas.find((d) => d.campo === variable) ?? descriptivas[0];
+    const container = document.querySelector(CONFIG.SELECTORS.lotesHistograma);
+    if (!container || !elegida) return;
+
+    if (!elegida.histograma.length) {
+      container.innerHTML = `<p class="insumo-form__hint">Ningún lote del período tiene ${escapeHTML(
+        elegida.etiqueta.toLowerCase(),
+      )} registrada.</p>`;
+      return;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.lotesHistograma,
+      elegida.histograma.map((tramo) => ({
+        etiqueta: `${tramo.desde}–${tramo.hasta} ${elegida.unidad}`,
+        total: tramo.total,
+      })),
+    );
+  },
+
+  _renderLotesDescriptivas(descriptivas) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.lotesTablaDescriptivas);
+    if (!tbody) return;
+
+    tbody.innerHTML = descriptivas
+      .map(
+        (d) => `
+      <tr>
+        <td>${escapeHTML(d.etiqueta)} <span class="lotes-unidad">(${escapeHTML(d.unidad)})</span></td>
+        <td>${d.n}</td>
+        <td>${this._lotesNum(d.media)}</td>
+        <td>${this._lotesNum(d.mediana)}</td>
+        <td>${this._lotesNum(d.desviacion)}</td>
+        <td>${this._lotesNum(d.coeficienteVariacion, '%')}</td>
+        <td>${this._lotesNum(d.minimo)}</td>
+        <td>${this._lotesNum(d.p25)}</td>
+        <td>${this._lotesNum(d.p75)}</td>
+        <td>${this._lotesNum(d.maximo)}</td>
+      </tr>`,
+      )
+      .join('');
+  },
+
+  /** Fuerza de la asociación en palabras. El texto dice "se mueven juntas",
+   *  no "una causa la otra": con estos datos no se puede afirmar causa. */
+  _lotesFuerzaCorrelacion(r) {
+    const abs = Math.abs(r);
+    if (abs >= 0.7) return 'fuerte';
+    if (abs >= 0.4) return 'moderada';
+    if (abs >= 0.2) return 'débil';
+    return 'casi nula';
+  },
+
+  _renderLotesCorrelaciones(correlaciones) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesCorrelaciones);
+    if (!container) return;
+
+    container.innerHTML = `<div class="lotes-correlaciones">${correlaciones
+      .map((c) => {
+        if (c.datosInsuficientes) {
+          return `
+          <article class="lotes-correlacion lotes-correlacion--sin-datos">
+            <h4>${escapeHTML(c.etiqueta)}</h4>
+            <p>Sin datos suficientes (${c.n} lote(s) con ambas variables registradas).</p>
+          </article>`;
+        }
+        const sentido = c.r > 0 ? 'en el mismo sentido' : 'en sentido contrario';
+        return `
+        <article class="lotes-correlacion">
+          <h4>${escapeHTML(c.etiqueta)}</h4>
+          <data class="lotes-correlacion__valor" value="${c.r}">r = ${c.r}</data>
+          <p>Asociación ${this._lotesFuerzaCorrelacion(c.r)}, ${sentido}, sobre ${c.n} lote(s). Es asociación, no causa.</p>
+        </article>`;
+      })
+      .join('')}</div>`;
+  },
+
+  _renderLotesAtipicos(atipicos) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.lotesTablaAtipicos);
+    if (!tbody) return;
+
+    tbody.innerHTML = atipicos.length
+      ? atipicos
+          .map(
+            (a) => `
+        <tr>
+          <td><code>${escapeHTML(a.codigo)}</code></td>
+          <td>${escapeHTML(a.productoNombre)}</td>
+          <td>${escapeHTML(a.fecha)}</td>
+          <td>${escapeHTML(a.etiqueta)}</td>
+          <td>
+            ${a.valor} ${escapeHTML(a.unidad)}
+            <span class="insumo-badge ${a.lado === 'alto' ? 'insumo-badge--bajo-stock' : 'insumo-badge--por-vencer'}">
+              ${a.lado === 'alto' ? 'Muy alto' : 'Muy bajo'}
+            </span>
+          </td>
+        </tr>`,
+          )
+          .join('')
+      : '<tr><td colspan="5">Ningún lote se sale del rango habitual del período.</td></tr>';
+  },
+
+  _renderLotesCalidad(calidad) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesCalidad);
+    if (container) {
+      container.innerHTML = `
+        <div class="stats">
+          <article class="stat-card stat-card--accent">
+            <span class="stat-card__label">Lotes sin observaciones</span>
+            <data class="stat-card__value" value="${calidad.porcentajeSano}">${calidad.porcentajeSano}%</data>
+            <span class="stat-card__hint">${calidad.lotesConHallazgos} de ${calidad.totalLotes} lote(s) con algo que revisar</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Hallazgos de severidad alta</span>
+            <data class="stat-card__value" value="${calidad.porSeveridad.alta}">${calidad.porSeveridad.alta}</data>
+            <span class="stat-card__hint">${calidad.porSeveridad.media} media(s), ${calidad.porSeveridad.baja} baja(s)</span>
+          </article>
+        </div>
+      `;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.lotesCompletitud,
+      Array.isArray(calidad.completitud)
+        ? calidad.completitud.map((c) => ({ etiqueta: c.etiqueta, total: c.porcentaje }))
+        : [],
+    );
+
+    const hallazgosEl = document.querySelector(CONFIG.SELECTORS.lotesHallazgos);
+    if (!hallazgosEl) return;
+    hallazgosEl.innerHTML = calidad.porRegla.length
+      ? `<ul class="lotes-hallazgos">${calidad.porRegla
+          .map((r) => {
+            const sev = this.LOTES_SEVERIDAD_LABELS[r.severidad];
+            return `
+          <li>
+            <span class="insumo-badge ${sev.badgeClase}">${sev.texto}</span>
+            <strong>${r.total} lote(s)</strong>
+            <span>${escapeHTML(r.mensaje)}</span>
+          </li>`;
+          })
+          .join('')}</ul>`
+      : '<p class="insumo-form__hint">Ninguna regla de validación se disparó en el período.</p>';
+  },
+
+  _renderLotesTabla(lotes) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.lotesTabla);
+    if (!tbody) return;
+
+    if (!lotes.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="9">No hay lotes en el período. Registra horneadas para verlos acá.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = lotes
+      .map((lote) => {
+        const estado = this.LOTES_ESTADO_LABELS[lote.estadoFrescura];
+        const severidadPeor = ['alta', 'media', 'baja'].find((sev) =>
+          lote.hallazgos.some((h) => h.severidad === sev),
+        );
+        const validacion = severidadPeor
+          ? `<span class="insumo-badge ${this.LOTES_SEVERIDAD_LABELS[severidadPeor].badgeClase}" title="${escapeHTML(
+              lote.hallazgos.map((h) => h.mensaje).join(' '),
+            )}">${lote.hallazgos.length} observación(es)</span>`
+          : '<span class="insumo-badge insumo-badge--exito">Sin observaciones</span>';
+
+        return `
+      <tr>
+        <td><code>${escapeHTML(lote.codigo)}</code></td>
+        <td>${escapeHTML(lote.productoNombre)}</td>
+        <td>${escapeHTML(lote.fecha)} ${escapeHTML(lote.hora)}</td>
+        <td>${lote.cantidad}</td>
+        <td>${this._lotesNum(lote.unidadesVendidas)}</td>
+        <td>${this._lotesNum(lote.mermaRealPct, '%')}</td>
+        <td><span class="insumo-badge ${estado.badgeClase}">${estado.texto}</span></td>
+        <td>${validacion}</td>
+        <td>
+          <button
+            type="button"
+            class="btn btn--ghost btn--small"
+            data-lote-accion="trazabilidad"
+            data-id="${escapeHTML(lote.id)}"
+          >
+            <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+            Ver
+          </button>
+        </td>
+      </tr>`;
+      })
+      .join('');
+  },
+
+  /** Modal de trazabilidad: el lote, su tanda de masa y, por cada insumo,
+   *  el lote del proveedor con el que se hizo (y de qué orden de compra
+   *  vino). Lo que no se puede rastrear se dice, no se rellena. */
+  renderTrazabilidadLote(lote) {
+    const body = document.querySelector(CONFIG.SELECTORS.loteTrazaBody);
+    if (!body) return;
+
+    const filas = lote.trazabilidad.length
+      ? lote.trazabilidad
+          .map(
+            (t) => `
+        <tr>
+          <td>${escapeHTML(t.insumoNombre)}</td>
+          <td>${t.gramos} g</td>
+          <td>${t.loteProveedor ? `<code>${escapeHTML(t.loteProveedor)}</code>` : '<span class="insumo-badge insumo-badge--por-vencer">Sin lote</span>'}</td>
+          <td>${escapeHTML(t.proveedor ?? '—')}</td>
+          <td>${escapeHTML(t.ordenNumero ?? '—')}</td>
+          <td>${escapeHTML(t.fechaVencimiento ?? '—')}</td>
+        </tr>`,
+          )
+          .join('')
+      : '<tr><td colspan="6">La tanda de masa no tiene ingredientes registrados.</td></tr>';
+
+    body.innerHTML = `
+      <p class="oc-trazabilidad__cabecera">
+        Lote <strong>${escapeHTML(lote.codigo)}</strong> · ${escapeHTML(lote.productoNombre)} ·
+        ${escapeHTML(lote.fecha)} ${escapeHTML(lote.hora)} · ${lote.cantidad} unidad(es)
+      </p>
+      <div class="stats">
+        <article class="stat-card">
+          <span class="stat-card__label">Merma real / receta</span>
+          <data class="stat-card__value" value="${lote.mermaRealPct ?? 0}">${this._lotesNum(lote.mermaRealPct, '%')}</data>
+          <span class="stat-card__hint">Receta: ${this._lotesNum(lote.mermaEsperadaPct, '%')} · desvío ${this._lotesNum(lote.desvioMermaPp, ' pp')}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Horneado real / receta</span>
+          <data class="stat-card__value" value="${lote.temperaturaHorneadoRealC ?? 0}">${this._lotesNum(lote.temperaturaHorneadoRealC, ' °C')}</data>
+          <span class="stat-card__hint">Receta: ${this._lotesNum(lote.temperaturaRecetaC, ' °C')} · ${this._lotesNum(lote.tiempoHorneadoRealMin, ' min')} vs. ${this._lotesNum(lote.tiempoRecetaMin, ' min')}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Vence</span>
+          <data class="stat-card__value" value="0">${escapeHTML(lote.vencimientoIso?.replace('T', ' ') ?? '—')}</data>
+          <span class="stat-card__hint">Vida útil: ${this._lotesNum(lote.vidaUtilHoras, ' h')}</span>
+        </article>
+      </div>
+      <h3 class="section-subtitle">Tanda de masa de origen</h3>
+      ${
+        lote.produccionId
+          ? `<p class="insumo-form__hint">Tanda del ${escapeHTML(lote.produccionFecha ?? '—')} ·
+             masa ${this._lotesNum(lote.pesoTotalMasaG, ' g')} ·
+             estimadas ${this._lotesNum(lote.unidadesEstimadas, ' u')} ·
+             rendimiento vs. estimado ${this._lotesNum(lote.desvioRendimientoPct, '%')}</p>`
+          : '<p class="insumo-form__hint">Este lote no tiene tanda de masa vinculada: la trazabilidad hacia los insumos se corta acá.</p>'
+      }
+      <div class="tabla-shell">
+        <table class="insumo-table">
+          <thead>
+            <tr>
+              <th scope="col">Insumo</th>
+              <th scope="col">Usado</th>
+              <th scope="col">Lote del proveedor</th>
+              <th scope="col">Proveedor</th>
+              <th scope="col">Orden de compra</th>
+              <th scope="col">Vence (insumo)</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  updateLotesCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.lotesCount);
+    if (el) el.textContent = String(total);
   },
 
   /** Tarjetas de resumen: total de panes horneados en la fecha consultada y
@@ -3191,6 +3740,12 @@ const App = {
   _produccionFechaConsulta: hoyHouston(),
   _ordenesCompraCache: [],
   _ocFiltros: {},
+  // Lotes: sin filtros el backend analiza los últimos 30 días. El análisis
+  // se guarda para poder cambiar la variable del histograma sin volver a
+  // pedirlo (ya viene el de todas las variables).
+  _lotesFiltros: {},
+  _lotesVariable: 'mermaRealPct',
+  _lotesAnalisisCache: null,
 
   init() {
     this._bindEvents();
@@ -3312,6 +3867,56 @@ const App = {
     }
 
     Render.renderAuditoria(analisis, bloques);
+  },
+
+  /* ───────────────────────── LOTES ─────────────────────────
+     Una sola llamada trae todo (los lotes derivados y sus agregados van
+     juntos en GET /lotes/analisis) — así la tabla y los indicadores
+     siempre hablan del mismo conjunto de datos. */
+
+  async refreshLotes() {
+    const analisis = await LotesApi.analisis(this._lotesFiltros);
+
+    if (analisis === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!analisis) {
+      const periodoEl = document.querySelector(CONFIG.SELECTORS.lotesPeriodo);
+      if (periodoEl) {
+        periodoEl.textContent = 'No se pudo cargar el análisis de lotes. Intenta de nuevo.';
+      }
+      return;
+    }
+
+    this._lotesAnalisisCache = analisis;
+    Render.updateLotesCount(analisis.resumen.totalLotes);
+    Render.renderLotes(analisis, this._lotesVariable);
+  },
+
+  /** Cambiar la variable del histograma no vuelve a pedir nada: el
+   *  análisis ya trae el histograma de todas las variables. */
+  cambiarVariableLotes(campo) {
+    this._lotesVariable = campo;
+    if (this._lotesAnalisisCache) {
+      Render._renderLotesHistograma(this._lotesAnalisisCache.descriptivas, campo);
+    }
+  },
+
+  async verTrazabilidadLote(id) {
+    const lote = await LotesApi.detalle(id);
+    if (lote === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!lote) {
+      window.alert('No se pudo cargar la trazabilidad del lote. Intenta de nuevo.');
+      return;
+    }
+    Render.renderTrazabilidadLote(lote);
+    this._abrirModal(CONFIG.SELECTORS.loteTrazaModal);
   },
 
   async refreshHorneadas() {
@@ -5094,6 +5699,38 @@ const App = {
       btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.ocTrazabilidadModal));
     });
 
+    // Lotes: filtros, variable del histograma y trazabilidad de un lote.
+    document.querySelector(CONFIG.SELECTORS.btnLotesFiltrar)?.addEventListener('click', () => {
+      this._lotesFiltros = {
+        desde: document.querySelector(CONFIG.SELECTORS.lotesFiltroDesde).value,
+        hasta: document.querySelector(CONFIG.SELECTORS.lotesFiltroHasta).value,
+        productoId: document.querySelector(CONFIG.SELECTORS.lotesFiltroProducto).value,
+      };
+      this.refreshLotes();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.btnLotesLimpiar)?.addEventListener('click', () => {
+      document.querySelector(CONFIG.SELECTORS.lotesFiltroDesde).value = '';
+      document.querySelector(CONFIG.SELECTORS.lotesFiltroHasta).value = '';
+      document.querySelector(CONFIG.SELECTORS.lotesFiltroProducto).value = '';
+      this._lotesFiltros = {};
+      this.refreshLotes();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.lotesVariable)?.addEventListener('change', (e) => {
+      this.cambiarVariableLotes(e.target.value);
+    });
+
+    document.querySelector(CONFIG.SELECTORS.lotesTabla)?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-lote-accion="trazabilidad"]');
+      if (!btn) return;
+      this.verTrazabilidadLote(btn.dataset.id);
+    });
+
+    document.querySelectorAll('[data-lote-traza-cerrar]').forEach((btn) => {
+      btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.loteTrazaModal));
+    });
+
     // Formulario de horneadas: alta y edición
     document.querySelector(CONFIG.SELECTORS.horneadaForm)?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -5283,6 +5920,7 @@ const App = {
       CONFIG.SELECTORS.inventarioView,
       CONFIG.SELECTORS.recetasView,
       CONFIG.SELECTORS.produccionView,
+      CONFIG.SELECTORS.lotesView,
       CONFIG.SELECTORS.auditoriaView,
     ];
     views.forEach((sel) => {
@@ -5323,6 +5961,7 @@ const App = {
         CONFIG.SELECTORS.inventarioView,
         CONFIG.SELECTORS.recetasView,
         CONFIG.SELECTORS.produccionView,
+        CONFIG.SELECTORS.lotesView,
       ].some((sel) => targetId === sel.slice(1))
     ) {
       this.cargarProductosParaSelects();
@@ -5351,6 +5990,9 @@ const App = {
       if (fechaEl && !fechaEl.value) fechaEl.value = hoyHouston();
       this.refreshProducciones();
     }
+    if (targetId === CONFIG.SELECTORS.lotesView.slice(1)) {
+      this.refreshLotes();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -5372,6 +6014,7 @@ const App = {
     const inventarioView = document.querySelector(CONFIG.SELECTORS.inventarioView);
     const recetasView = document.querySelector(CONFIG.SELECTORS.recetasView);
     const produccionView = document.querySelector(CONFIG.SELECTORS.produccionView);
+    const lotesView = document.querySelector(CONFIG.SELECTORS.lotesView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
@@ -5386,6 +6029,7 @@ const App = {
       if (inventarioView) inventarioView.hidden = true;
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
+      if (lotesView) lotesView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -5407,6 +6051,7 @@ const App = {
       if (inventarioView) inventarioView.hidden = true;
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
+      if (lotesView) lotesView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';
     }
