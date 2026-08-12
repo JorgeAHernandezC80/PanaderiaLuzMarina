@@ -3291,6 +3291,46 @@ button {
   color: var(--color-danger);
 }
 
+/* Tablas del módulo Lotes: `table-layout: fixed` con anchos declarados en
+   el <colgroup>. Sin esto la tabla crece con su contenido (el wrapper
+   .tabla-shell usa width: max-content) y arrastra scroll horizontal a
+   toda la página. Los datos secundarios van apilados dentro de su celda
+   en vez de en columnas propias. */
+#lotes-view .tabla-shell {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  /* Red de seguridad: si aun con los anchos declarados el contenido no
+     cabe (pantallas muy angostas, zoom alto), el desplazamiento se queda
+     dentro del recuadro de la tabla en vez de mover toda la página. */
+  overflow-x: auto;
+}
+.lotes-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.lotes-table th,
+.lotes-table td {
+  vertical-align: top;
+}
+/* Solo el código se corta por donde sea; en encabezados y botones partir
+   palabras dejaba textos como "TRAZABIL / IDAD" o "Ve / r". */
+.lotes-table__codigo {
+  display: block;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.lotes-table td .btn {
+  white-space: nowrap;
+}
+.lotes-table__producto,
+.lotes-table__hora,
+.lotes-table__vendidas {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 .lotes-correlaciones {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

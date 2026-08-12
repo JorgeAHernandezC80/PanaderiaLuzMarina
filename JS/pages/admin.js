@@ -2490,9 +2490,13 @@ const Render = {
     sin_datos: { texto: 'Sin datos suficientes', icono: 'fa-circle-question' },
   },
 
-  /** Un número que puede ser null: "—" en vez de "null" o un 0 falso. */
+  /** Un número que puede ser null: "—" en vez de "null" o un 0 falso. Los
+   *  valores capturados a mano pueden traer cola binaria (13.200000000003):
+   *  se recortan a dos decimales para mostrarlos, sin tocar el dato. */
   _lotesNum(valor, sufijo = '') {
-    return valor === null || valor === undefined ? '—' : `${valor}${sufijo}`;
+    if (valor === null || valor === undefined) return '—';
+    const texto = typeof valor === 'number' ? String(Math.round(valor * 100) / 100) : valor;
+    return `${texto}${sufijo}`;
   },
 
   /** Pinta la vista Lotes completa a partir de GET /lotes/analisis. */
@@ -2619,7 +2623,7 @@ const Render = {
           ${
             unidades.datosInsuficientes
               ? `<span>Hacen falta al menos 7 días con datos (hay ${unidades.dias}).</span>`
-              : `<span>${unidades.pendientePorDia > 0 ? '+' : ''}${unidades.pendientePorDia} u/día · la recta explica el ${Math.round(unidades.r2 * 100)}% de la variación.</span>`
+              : `<span>${unidades.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(unidades.pendientePorDia, ' u/día')} · la recta explica el ${Math.round(unidades.r2 * 100)}% de la variación.</span>`
           }
         </li>
         <li>
@@ -2628,7 +2632,7 @@ const Render = {
           ${
             merma.datosInsuficientes
               ? `<span>Hacen falta al menos 7 días con merma registrada (hay ${merma.dias}).</span>`
-              : `<span>${merma.pendientePorDia > 0 ? '+' : ''}${merma.pendientePorDia} pp/día.</span>`
+              : `<span>${merma.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(merma.pendientePorDia, ' pp/día')}.</span>`
           }
         </li>
         <li>
@@ -2794,11 +2798,11 @@ const Render = {
           .map(
             (a) => `
         <tr>
-          <td><code>${escapeHTML(a.codigo)}</code></td>
-          <td>${escapeHTML(a.productoNombre)}</td>
-          <td>${escapeHTML(a.fecha)}</td>
-          <td>${escapeHTML(a.etiqueta)}</td>
-          <td>
+          <td data-label="Lote"><code class="lotes-table__codigo">${escapeHTML(a.codigo)}</code></td>
+          <td data-label="Producto">${escapeHTML(a.productoNombre)}</td>
+          <td data-label="Fecha">${escapeHTML(a.fecha)}</td>
+          <td data-label="Variable">${escapeHTML(a.etiqueta)}</td>
+          <td data-label="Valor">
             ${a.valor} ${escapeHTML(a.unidad)}
             <span class="insumo-badge ${a.lado === 'alto' ? 'insumo-badge--bajo-stock' : 'insumo-badge--por-vencer'}">
               ${a.lado === 'alto' ? 'Muy alto' : 'Muy bajo'}
@@ -2859,7 +2863,7 @@ const Render = {
 
     if (!lotes.length) {
       tbody.innerHTML =
-        '<tr><td colspan="9">No hay lotes en el período. Registra horneadas para verlos acá.</td></tr>';
+        '<tr><td colspan="7">No hay lotes en el período. Registra horneadas para verlos acá.</td></tr>';
       return;
     }
 
@@ -2877,15 +2881,23 @@ const Render = {
 
         return `
       <tr>
-        <td><code>${escapeHTML(lote.codigo)}</code></td>
-        <td>${escapeHTML(lote.productoNombre)}</td>
-        <td>${escapeHTML(lote.fecha)} ${escapeHTML(lote.hora)}</td>
-        <td>${lote.cantidad}</td>
-        <td>${this._lotesNum(lote.unidadesVendidas)}</td>
-        <td>${this._lotesNum(lote.mermaRealPct, '%')}</td>
-        <td><span class="insumo-badge ${estado.badgeClase}">${estado.texto}</span></td>
-        <td>${validacion}</td>
-        <td>
+        <td data-label="Lote">
+          <code class="lotes-table__codigo">${escapeHTML(lote.codigo)}</code>
+          <span class="lotes-table__producto">${escapeHTML(lote.productoNombre)}</span>
+        </td>
+        <td data-label="Fecha y hora">
+          ${escapeHTML(lote.fecha)}<span class="lotes-table__hora">${escapeHTML(lote.hora)}</span>
+        </td>
+        <td data-label="Unidades">
+          ${lote.cantidad}
+          <span class="lotes-table__vendidas">${this._lotesNum(lote.unidadesVendidas)} vendida(s)</span>
+        </td>
+        <td data-label="Merma real">${this._lotesNum(lote.mermaRealPct, '%')}</td>
+        <td data-label="Estado">
+          <span class="insumo-badge ${estado.badgeClase}">${estado.texto}</span>
+        </td>
+        <td data-label="Validación">${validacion}</td>
+        <td data-label="Trazabilidad">
           <button
             type="button"
             class="btn btn--ghost btn--small"
@@ -2913,12 +2925,12 @@ const Render = {
           .map(
             (t) => `
         <tr>
-          <td>${escapeHTML(t.insumoNombre)}</td>
-          <td>${t.gramos} g</td>
-          <td>${t.loteProveedor ? `<code>${escapeHTML(t.loteProveedor)}</code>` : '<span class="insumo-badge insumo-badge--por-vencer">Sin lote</span>'}</td>
-          <td>${escapeHTML(t.proveedor ?? '—')}</td>
-          <td>${escapeHTML(t.ordenNumero ?? '—')}</td>
-          <td>${escapeHTML(t.fechaVencimiento ?? '—')}</td>
+          <td data-label="Insumo">${escapeHTML(t.insumoNombre)}</td>
+          <td data-label="Usado">${t.gramos} g</td>
+          <td data-label="Lote del proveedor">${t.loteProveedor ? `<code class="lotes-table__codigo">${escapeHTML(t.loteProveedor)}</code>` : '<span class="insumo-badge insumo-badge--por-vencer">Sin lote</span>'}</td>
+          <td data-label="Proveedor">${escapeHTML(t.proveedor ?? '—')}</td>
+          <td data-label="Orden de compra">${escapeHTML(t.ordenNumero ?? '—')}</td>
+          <td data-label="Vence (insumo)">${escapeHTML(t.fechaVencimiento ?? '—')}</td>
         </tr>`,
           )
           .join('')
@@ -2942,8 +2954,11 @@ const Render = {
         </article>
         <article class="stat-card">
           <span class="stat-card__label">Vence</span>
-          <data class="stat-card__value" value="0">${escapeHTML(lote.vencimientoIso?.replace('T', ' ') ?? '—')}</data>
-          <span class="stat-card__hint">Vida útil: ${this._lotesNum(lote.vidaUtilHoras, ' h')}</span>
+          <data class="stat-card__value" value="0">${escapeHTML(lote.vencimientoIso?.slice(0, 10) ?? '—')}</data>
+          <span class="stat-card__hint">
+            ${lote.vencimientoIso ? `A las ${escapeHTML(lote.vencimientoIso.slice(11, 16))} · ` : ''}vida
+            útil: ${this._lotesNum(lote.vidaUtilHoras, ' h')}
+          </span>
         </article>
       </div>
       <h3 class="section-subtitle">Tanda de masa de origen</h3>
@@ -2956,7 +2971,7 @@ const Render = {
           : '<p class="insumo-form__hint">Este lote no tiene tanda de masa vinculada: la trazabilidad hacia los insumos se corta acá.</p>'
       }
       <div class="tabla-shell">
-        <table class="insumo-table">
+        <table class="insumo-table lotes-table">
           <thead>
             <tr>
               <th scope="col">Insumo</th>

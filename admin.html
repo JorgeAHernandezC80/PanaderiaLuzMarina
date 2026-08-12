@@ -2796,7 +2796,18 @@
 
         <h2 class="section-subtitle">Lotes atípicos</h2>
         <div class="tabla-shell">
-          <table id="lotes-tabla-atipicos" class="insumo-table" data-component="lotes-atipicos">
+          <table
+            id="lotes-tabla-atipicos"
+            class="insumo-table lotes-table"
+            data-component="lotes-atipicos"
+          >
+            <colgroup>
+              <col style="width: 22%" />
+              <col style="width: 24%" />
+              <col style="width: 16%" />
+              <col style="width: 24%" />
+              <col style="width: 14%" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Lote</th>
@@ -2833,19 +2844,30 @@
         </div>
 
         <h2 class="section-subtitle">Lotes del período</h2>
+        <!-- Anchos declarados y `table-layout: fixed` (ver .lotes-table): la
+             tabla se reparte el ancho disponible en vez de crecer con su
+             contenido, que era lo que empujaba la página y obligaba a
+             desplazarse en horizontal. -->
         <div class="tabla-shell">
-          <table id="lotes-tabla" class="insumo-table" data-component="lotes-tabla">
+          <table id="lotes-tabla" class="insumo-table lotes-table" data-component="lotes-tabla">
+            <colgroup>
+              <col style="width: 22%" />
+              <col style="width: 13%" />
+              <col style="width: 12%" />
+              <col style="width: 11%" />
+              <col style="width: 13%" />
+              <col style="width: 16%" />
+              <col style="width: 13%" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Lote</th>
-                <th scope="col">Producto</th>
                 <th scope="col">Fecha y hora</th>
                 <th scope="col">Unidades</th>
-                <th scope="col">Vendidas</th>
                 <th scope="col">Merma real</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Validación</th>
-                <th scope="col">Trazabilidad</th>
+                <th scope="col">Traza</th>
               </tr>
             </thead>
             <tbody>
