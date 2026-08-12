@@ -379,7 +379,7 @@ const CONFIG = Object.freeze({
     lotesTendencia: '#lotes-tendencia',
     lotesVariable: '#lotes-variable',
     lotesHistograma: '#lotes-histograma',
-    lotesTablaDescriptivas: '#lotes-tabla-descriptivas tbody',
+    lotesDescriptivas: '#lotes-descriptivas',
     lotesGraficoProducto: '#lotes-grafico-producto',
     lotesGraficoHora: '#lotes-grafico-hora',
     lotesCorrelaciones: '#lotes-correlaciones',
@@ -2490,9 +2490,13 @@ const Render = {
     sin_datos: { texto: 'Sin datos suficientes', icono: 'fa-circle-question' },
   },
 
-  /** Un número que puede ser null: "—" en vez de "null" o un 0 falso. */
+  /** Un número que puede ser null: "—" en vez de "null" o un 0 falso. Los
+   *  valores capturados a mano pueden traer cola binaria (13.200000000003):
+   *  se recortan a dos decimales para mostrarlos, sin tocar el dato. */
   _lotesNum(valor, sufijo = '') {
-    return valor === null || valor === undefined ? '—' : `${valor}${sufijo}`;
+    if (valor === null || valor === undefined) return '—';
+    const texto = typeof valor === 'number' ? String(Math.round(valor * 100) / 100) : valor;
+    return `${texto}${sufijo}`;
   },
 
   /** Pinta la vista Lotes completa a partir de GET /lotes/analisis. */
@@ -2619,7 +2623,7 @@ const Render = {
           ${
             unidades.datosInsuficientes
               ? `<span>Hacen falta al menos 7 días con datos (hay ${unidades.dias}).</span>`
-              : `<span>${unidades.pendientePorDia > 0 ? '+' : ''}${unidades.pendientePorDia} u/día · la recta explica el ${Math.round(unidades.r2 * 100)}% de la variación.</span>`
+              : `<span>${unidades.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(unidades.pendientePorDia, ' u/día')} · la recta explica el ${Math.round(unidades.r2 * 100)}% de la variación.</span>`
           }
         </li>
         <li>
@@ -2628,7 +2632,7 @@ const Render = {
           ${
             merma.datosInsuficientes
               ? `<span>Hacen falta al menos 7 días con merma registrada (hay ${merma.dias}).</span>`
-              : `<span>${merma.pendientePorDia > 0 ? '+' : ''}${merma.pendientePorDia} pp/día.</span>`
+              : `<span>${merma.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(merma.pendientePorDia, ' pp/día')}.</span>`
           }
         </li>
         <li>
@@ -2665,27 +2669,90 @@ const Render = {
     );
   },
 
-  _renderLotesDescriptivas(descriptivas) {
-    const tbody = document.querySelector(CONFIG.SELECTORS.lotesTablaDescriptivas);
-    if (!tbody) return;
+  /** Qué tan disperso está el dato, en palabras: el coeficiente de
+   *  variación es la desviación como porcentaje de la media, así que se
+   *  puede leer igual para gramos, horas o porcentajes. */
+  _lotesDispersion(cv) {
+    if (cv === null || cv === undefined) return null;
+    if (cv < 15) return { texto: 'Muy consistente', clase: 'lotes-cv--baja' };
+    if (cv < 35) return { texto: 'Variación normal', clase: 'lotes-cv--media' };
+    return { texto: 'Muy dispersa', clase: 'lotes-cv--alta' };
+  },
 
-    tbody.innerHTML = descriptivas
-      .map(
-        (d) => `
-      <tr>
-        <td>${escapeHTML(d.etiqueta)} <span class="lotes-unidad">(${escapeHTML(d.unidad)})</span></td>
-        <td>${d.n}</td>
-        <td>${this._lotesNum(d.media)}</td>
-        <td>${this._lotesNum(d.mediana)}</td>
-        <td>${this._lotesNum(d.desviacion)}</td>
-        <td>${this._lotesNum(d.coeficienteVariacion, '%')}</td>
-        <td>${this._lotesNum(d.minimo)}</td>
-        <td>${this._lotesNum(d.p25)}</td>
-        <td>${this._lotesNum(d.p75)}</td>
-        <td>${this._lotesNum(d.maximo)}</td>
-      </tr>`,
-      )
-      .join('');
+  /** Una ficha por variable, con un resumen de cinco números dibujado como
+   *  caja (mín — P25 — mediana — P75 — máx). Reemplaza a la tabla de diez
+   *  columnas: se lee sin desplazarse en horizontal y la caja muestra de
+   *  una la asimetría, que en la tabla había que deducir comparando
+   *  números. */
+  _renderLotesDescriptivas(descriptivas) {
+    const container = document.querySelector(CONFIG.SELECTORS.lotesDescriptivas);
+    if (!container) return;
+
+    container.innerHTML = `<div class="lotes-descriptivas">${descriptivas
+      .map((d) => this._renderLotesFichaDescriptiva(d))
+      .join('')}</div>`;
+  },
+
+  _renderLotesFichaDescriptiva(d) {
+    const cabecera = `
+      <header class="lotes-ficha__header">
+        <h4 class="lotes-ficha__titulo">${escapeHTML(d.etiqueta)}</h4>
+        <span class="lotes-ficha__n">n = ${d.n}</span>
+      </header>`;
+
+    if (d.n === 0) {
+      return `
+      <article class="lotes-ficha lotes-ficha--sin-datos">
+        ${cabecera}
+        <p class="lotes-ficha__vacio">Ningún lote del período tiene este dato registrado.</p>
+      </article>`;
+    }
+
+    const dispersion = this._lotesDispersion(d.coeficienteVariacion);
+    const rango = d.maximo - d.minimo;
+    // Con todos los valores iguales la caja no tiene ancho: se dibuja
+    // centrada en vez de dividir por cero.
+    const pos = (valor) => (rango === 0 ? 50 : ((valor - d.minimo) / rango) * 100);
+    const izquierda = pos(d.p25);
+    const ancho = Math.max(pos(d.p75) - izquierda, 1);
+
+    return `
+      <article class="lotes-ficha">
+        ${cabecera}
+        <p class="lotes-ficha__valor">
+          <data value="${d.media}">${d.media}</data>
+          <span class="lotes-ficha__unidad">${escapeHTML(d.unidad)}</span>
+          <span class="lotes-ficha__valor-etiqueta">promedio</span>
+        </p>
+        <p class="lotes-ficha__mediana">Mediana ${d.mediana} ${escapeHTML(d.unidad)}</p>
+
+        <div
+          class="lotes-caja"
+          role="img"
+          aria-label="Mínimo ${d.minimo}, primer cuartil ${d.p25}, mediana ${d.mediana}, tercer cuartil ${d.p75}, máximo ${d.maximo} ${escapeHTML(d.unidad)}"
+        >
+          <span class="lotes-caja__rango"></span>
+          <span class="lotes-caja__iqr" style="left: ${izquierda}%; width: ${ancho}%"></span>
+          <span class="lotes-caja__mediana" style="left: ${pos(d.mediana)}%"></span>
+        </div>
+        <div class="lotes-caja__escala">
+          <span>${d.minimo}</span>
+          <span>${d.p25} – ${d.p75} <small>(50% central)</small></span>
+          <span>${d.maximo}</span>
+        </div>
+
+        <dl class="lotes-ficha__metricas">
+          <div>
+            <dt>Desviación</dt>
+            <dd>${this._lotesNum(d.desviacion)}</dd>
+          </div>
+          <div>
+            <dt>Coef. variación</dt>
+            <dd>${this._lotesNum(d.coeficienteVariacion, '%')}</dd>
+          </div>
+        </dl>
+        ${dispersion ? `<p class="lotes-cv ${dispersion.clase}">${dispersion.texto}</p>` : ''}
+      </article>`;
   },
 
   /** Fuerza de la asociación en palabras. El texto dice "se mueven juntas",
@@ -2731,11 +2798,11 @@ const Render = {
           .map(
             (a) => `
         <tr>
-          <td><code>${escapeHTML(a.codigo)}</code></td>
-          <td>${escapeHTML(a.productoNombre)}</td>
-          <td>${escapeHTML(a.fecha)}</td>
-          <td>${escapeHTML(a.etiqueta)}</td>
-          <td>
+          <td data-label="Lote"><code class="lotes-table__codigo">${escapeHTML(a.codigo)}</code></td>
+          <td data-label="Producto">${escapeHTML(a.productoNombre)}</td>
+          <td data-label="Fecha">${escapeHTML(a.fecha)}</td>
+          <td data-label="Variable">${escapeHTML(a.etiqueta)}</td>
+          <td data-label="Valor">
             ${a.valor} ${escapeHTML(a.unidad)}
             <span class="insumo-badge ${a.lado === 'alto' ? 'insumo-badge--bajo-stock' : 'insumo-badge--por-vencer'}">
               ${a.lado === 'alto' ? 'Muy alto' : 'Muy bajo'}
@@ -2796,7 +2863,7 @@ const Render = {
 
     if (!lotes.length) {
       tbody.innerHTML =
-        '<tr><td colspan="9">No hay lotes en el período. Registra horneadas para verlos acá.</td></tr>';
+        '<tr><td colspan="7">No hay lotes en el período. Registra horneadas para verlos acá.</td></tr>';
       return;
     }
 
@@ -2814,15 +2881,23 @@ const Render = {
 
         return `
       <tr>
-        <td><code>${escapeHTML(lote.codigo)}</code></td>
-        <td>${escapeHTML(lote.productoNombre)}</td>
-        <td>${escapeHTML(lote.fecha)} ${escapeHTML(lote.hora)}</td>
-        <td>${lote.cantidad}</td>
-        <td>${this._lotesNum(lote.unidadesVendidas)}</td>
-        <td>${this._lotesNum(lote.mermaRealPct, '%')}</td>
-        <td><span class="insumo-badge ${estado.badgeClase}">${estado.texto}</span></td>
-        <td>${validacion}</td>
-        <td>
+        <td data-label="Lote">
+          <code class="lotes-table__codigo">${escapeHTML(lote.codigo)}</code>
+          <span class="lotes-table__producto">${escapeHTML(lote.productoNombre)}</span>
+        </td>
+        <td data-label="Fecha y hora">
+          ${escapeHTML(lote.fecha)}<span class="lotes-table__hora">${escapeHTML(lote.hora)}</span>
+        </td>
+        <td data-label="Unidades">
+          ${lote.cantidad}
+          <span class="lotes-table__vendidas">${this._lotesNum(lote.unidadesVendidas)} vendida(s)</span>
+        </td>
+        <td data-label="Merma real">${this._lotesNum(lote.mermaRealPct, '%')}</td>
+        <td data-label="Estado">
+          <span class="insumo-badge ${estado.badgeClase}">${estado.texto}</span>
+        </td>
+        <td data-label="Validación">${validacion}</td>
+        <td data-label="Trazabilidad">
           <button
             type="button"
             class="btn btn--ghost btn--small"
@@ -2850,12 +2925,12 @@ const Render = {
           .map(
             (t) => `
         <tr>
-          <td>${escapeHTML(t.insumoNombre)}</td>
-          <td>${t.gramos} g</td>
-          <td>${t.loteProveedor ? `<code>${escapeHTML(t.loteProveedor)}</code>` : '<span class="insumo-badge insumo-badge--por-vencer">Sin lote</span>'}</td>
-          <td>${escapeHTML(t.proveedor ?? '—')}</td>
-          <td>${escapeHTML(t.ordenNumero ?? '—')}</td>
-          <td>${escapeHTML(t.fechaVencimiento ?? '—')}</td>
+          <td data-label="Insumo">${escapeHTML(t.insumoNombre)}</td>
+          <td data-label="Usado">${t.gramos} g</td>
+          <td data-label="Lote del proveedor">${t.loteProveedor ? `<code class="lotes-table__codigo">${escapeHTML(t.loteProveedor)}</code>` : '<span class="insumo-badge insumo-badge--por-vencer">Sin lote</span>'}</td>
+          <td data-label="Proveedor">${escapeHTML(t.proveedor ?? '—')}</td>
+          <td data-label="Orden de compra">${escapeHTML(t.ordenNumero ?? '—')}</td>
+          <td data-label="Vence (insumo)">${escapeHTML(t.fechaVencimiento ?? '—')}</td>
         </tr>`,
           )
           .join('')
@@ -2879,8 +2954,11 @@ const Render = {
         </article>
         <article class="stat-card">
           <span class="stat-card__label">Vence</span>
-          <data class="stat-card__value" value="0">${escapeHTML(lote.vencimientoIso?.replace('T', ' ') ?? '—')}</data>
-          <span class="stat-card__hint">Vida útil: ${this._lotesNum(lote.vidaUtilHoras, ' h')}</span>
+          <data class="stat-card__value" value="0">${escapeHTML(lote.vencimientoIso?.slice(0, 10) ?? '—')}</data>
+          <span class="stat-card__hint">
+            ${lote.vencimientoIso ? `A las ${escapeHTML(lote.vencimientoIso.slice(11, 16))} · ` : ''}vida
+            útil: ${this._lotesNum(lote.vidaUtilHoras, ' h')}
+          </span>
         </article>
       </div>
       <h3 class="section-subtitle">Tanda de masa de origen</h3>
@@ -2893,7 +2971,7 @@ const Render = {
           : '<p class="insumo-form__hint">Este lote no tiene tanda de masa vinculada: la trazabilidad hacia los insumos se corta acá.</p>'
       }
       <div class="tabla-shell">
-        <table class="insumo-table">
+        <table class="insumo-table lotes-table">
           <thead>
             <tr>
               <th scope="col">Insumo</th>

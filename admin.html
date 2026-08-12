@@ -2742,54 +2742,35 @@
         </div>
 
         <h2 class="section-subtitle">Análisis exploratorio</h2>
-        <div class="lotes-graficos">
-          <div class="lotes-grafico">
-            <div class="lotes-grafico__header">
-              <h3 class="lotes-grafico__titulo">Distribución</h3>
-              <div class="form-field form-field--inline">
-                <label for="lotes-variable" class="form-field__label sr-only">Variable</label>
-                <select id="lotes-variable" class="form-field__input">
-                  <option value="mermaRealPct" selected>Merma real (%)</option>
-                  <option value="cantidad">Unidades por lote</option>
-                  <option value="desvioMermaPp">Desvío de merma vs. receta (pp)</option>
-                  <option value="segundaCalidadPct">Segunda calidad (%)</option>
-                  <option value="horasHastaAgotarse">Horas hasta agotarse</option>
-                  <option value="pesoPorUnidadG">Peso por unidad (g)</option>
-                </select>
-              </div>
-            </div>
-            <div id="lotes-histograma" data-component="lotes-histograma">
-              <!-- Se inyecta dinámicamente por admin.js -->
+        <div class="lotes-grafico">
+          <div class="lotes-grafico__header">
+            <h3 class="lotes-grafico__titulo">Distribución</h3>
+            <div class="form-field form-field--inline">
+              <label for="lotes-variable" class="form-field__label sr-only">Variable</label>
+              <select id="lotes-variable" class="form-field__input">
+                <option value="mermaRealPct" selected>Merma real (%)</option>
+                <option value="cantidad">Unidades por lote</option>
+                <option value="desvioMermaPp">Desvío de merma vs. receta (pp)</option>
+                <option value="segundaCalidadPct">Segunda calidad (%)</option>
+                <option value="horasHastaAgotarse">Horas hasta agotarse</option>
+                <option value="pesoPorUnidadG">Peso por unidad (g)</option>
+              </select>
             </div>
           </div>
+          <div id="lotes-histograma" data-component="lotes-histograma">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
 
-          <div class="lotes-grafico">
-            <h3 class="lotes-grafico__titulo">Estadística descriptiva</h3>
-            <div class="tabla-shell">
-              <table
-                id="lotes-tabla-descriptivas"
-                class="insumo-table"
-                data-component="lotes-descriptivas"
-              >
-                <thead>
-                  <tr>
-                    <th scope="col">Variable</th>
-                    <th scope="col">n</th>
-                    <th scope="col">Media</th>
-                    <th scope="col">Mediana</th>
-                    <th scope="col">Desv.</th>
-                    <th scope="col">CV</th>
-                    <th scope="col">Mín</th>
-                    <th scope="col">P25</th>
-                    <th scope="col">P75</th>
-                    <th scope="col">Máx</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <!-- Se inyecta dinámicamente por admin.js -->
-                </tbody>
-              </table>
-            </div>
+        <!-- Estadística descriptiva: una ficha por variable en vez de una tabla
+             de diez columnas. La tabla obligaba a desplazarse en horizontal
+             para leer los cuartiles, justo lo que hay que comparar de un
+             vistazo. Va a todo el ancho para que las seis fichas quepan en una
+             rejilla pareja. -->
+        <div class="lotes-grafico">
+          <h3 class="lotes-grafico__titulo">Estadística descriptiva</h3>
+          <div id="lotes-descriptivas" data-component="lotes-descriptivas">
+            <!-- Se inyecta dinámicamente por admin.js -->
           </div>
         </div>
 
@@ -2815,7 +2796,18 @@
 
         <h2 class="section-subtitle">Lotes atípicos</h2>
         <div class="tabla-shell">
-          <table id="lotes-tabla-atipicos" class="insumo-table" data-component="lotes-atipicos">
+          <table
+            id="lotes-tabla-atipicos"
+            class="insumo-table lotes-table"
+            data-component="lotes-atipicos"
+          >
+            <colgroup>
+              <col style="width: 22%" />
+              <col style="width: 24%" />
+              <col style="width: 16%" />
+              <col style="width: 24%" />
+              <col style="width: 14%" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Lote</th>
@@ -2852,19 +2844,30 @@
         </div>
 
         <h2 class="section-subtitle">Lotes del período</h2>
+        <!-- Anchos declarados y `table-layout: fixed` (ver .lotes-table): la
+             tabla se reparte el ancho disponible en vez de crecer con su
+             contenido, que era lo que empujaba la página y obligaba a
+             desplazarse en horizontal. -->
         <div class="tabla-shell">
-          <table id="lotes-tabla" class="insumo-table" data-component="lotes-tabla">
+          <table id="lotes-tabla" class="insumo-table lotes-table" data-component="lotes-tabla">
+            <colgroup>
+              <col style="width: 22%" />
+              <col style="width: 13%" />
+              <col style="width: 12%" />
+              <col style="width: 11%" />
+              <col style="width: 13%" />
+              <col style="width: 16%" />
+              <col style="width: 13%" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Lote</th>
-                <th scope="col">Producto</th>
                 <th scope="col">Fecha y hora</th>
                 <th scope="col">Unidades</th>
-                <th scope="col">Vendidas</th>
                 <th scope="col">Merma real</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Validación</th>
-                <th scope="col">Trazabilidad</th>
+                <th scope="col">Traza</th>
               </tr>
             </thead>
             <tbody>
