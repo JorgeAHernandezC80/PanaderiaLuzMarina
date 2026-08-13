@@ -111,9 +111,12 @@ function calcularTasaMerma(totalHorneado, totalMerma) {
  * agotarse, o si no llegó a agotarse ese día (minutoAgotado queda null:
  * lo que sobró se da de baja como merma al cierre, sin importar si
  * técnicamente todavía estaba fresco).
- * @param {{minutoHorneado: number, cantidad: number}[]} lotes ordenados por minutoHorneado ascendente
+ * Cada lote puede traer un `id`: se devuelve tal cual para poder cruzar el
+ * resultado con el registro de origen (lo usa el módulo de Lotes; a las
+ * estadísticas por producto les basta la hora).
+ * @param {{id?: string, minutoHorneado: number, cantidad: number}[]} lotes ordenados por minutoHorneado ascendente
  * @param {{minutoVenta: number, cantidad: number}[]} consumos ordenados por minutoVenta ascendente
- * @returns {{minutoHorneado: number, cantidad: number, minutoAgotado: number|null}[]}
+ * @returns {{id?: string, minutoHorneado: number, cantidad: number, unidadesVendidas: number, minutoAgotado: number|null}[]}
  */
 function asignarConsumoFIFO(lotes, consumos) {
   const restantes = lotes.map((lote) => ({
@@ -145,9 +148,11 @@ function asignarConsumoFIFO(lotes, consumos) {
     // El sobrante se descarta: no hay lote real al que asignárselo.
   }
 
-  return restantes.map(({ minutoHorneado, cantidad, minutoAgotado }) => ({
+  return restantes.map(({ id, minutoHorneado, cantidad, unidadesRestantes, minutoAgotado }) => ({
+    id,
     minutoHorneado,
     cantidad,
+    unidadesVendidas: cantidad - unidadesRestantes,
     minutoAgotado,
   }));
 }

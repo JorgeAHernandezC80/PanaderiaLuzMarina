@@ -2995,6 +2995,501 @@ button {
 }
 
 /* ═══════════════════════════════════════════
+   14c. LOTES — análisis exploratorio y tendencias
+   ═══════════════════════════════════════════
+   Reutiliza .auditoria-barra para los histogramas y los cortes por
+   producto/hora (mismo componente de barras CSS, sin librería de
+   gráficos). Lo propio de acá es el panel, la rejilla de dos columnas y
+   la línea de tendencia en SVG. */
+.lotes-periodo {
+  margin: 0 0 var(--space-4);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.lotes-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.lotes-graficos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+  align-items: start;
+}
+
+.lotes-grafico {
+  min-width: 0; /* sin esto un contenido ancho estira su columna del grid */
+  /* El margen es para las tarjetas que van solas a todo el ancho; dentro de
+     .lotes-graficos el espaciado ya lo da el `gap` de la rejilla. */
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.lotes-graficos > .lotes-grafico {
+  margin-bottom: 0;
+}
+.lotes-grafico__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.lotes-grafico__titulo {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
+.lotes-grafico__header .lotes-grafico__titulo {
+  margin-bottom: 0;
+}
+/* El select de variable vive dentro del encabezado del gráfico: no debe
+   ocupar el ancho completo como los campos de los formularios. */
+.lotes-grafico__header .form-field--inline {
+  margin: 0;
+  min-width: 12rem;
+}
+
+/* La serie diaria se dibuja en un viewBox fijo y se estira al ancho
+   disponible (preserveAspectRatio="none"), así que el grosor de la línea
+   se compensa con vector-effect para que no se deforme. */
+.lotes-serie {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+.lotes-serie__linea,
+.lotes-serie__media {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.lotes-serie__linea {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.lotes-serie__media {
+  stroke: var(--color-text-muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.lotes-serie__pie {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.lotes-veredictos {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-3);
+}
+.lotes-veredictos li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-bg);
+  font-size: 0.85rem;
+}
+.lotes-veredictos i {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--color-accent);
+}
+.lotes-veredictos span {
+  color: var(--color-text-muted);
+}
+
+/* Estadística descriptiva: fichas en rejilla fluida. Antes era una tabla de
+   diez columnas dentro de media pantalla, así que los cuartiles quedaban
+   fuera de vista y había que desplazarse en horizontal para leerlos. El
+   auto-fit hace que la rejilla se reacomode sola: no hay ancho mínimo que
+   fuerce scroll. */
+.lotes-descriptivas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.lotes-ficha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition: border-color 0.2s ease;
+}
+.lotes-ficha:hover {
+  border-color: var(--color-accent);
+}
+.lotes-ficha--sin-datos {
+  border-style: dashed;
+}
+
+.lotes-ficha__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.lotes-ficha__titulo {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  /* El título puede ser largo ("Desvío de merma vs. receta"): se parte en
+     varias líneas antes que estirar la columna del grid. */
+  overflow-wrap: anywhere;
+}
+.lotes-ficha__n {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.lotes-ficha__valor {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.lotes-ficha__unidad {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.lotes-ficha__valor-etiqueta {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.lotes-ficha__mediana,
+.lotes-ficha__vacio {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* Resumen de cinco números dibujado como caja: la línea es el rango
+   completo (mín–máx), el bloque es el 50% central (P25–P75) y la marca
+   vertical es la mediana. Se ve de una si la variable es asimétrica. */
+.lotes-caja {
+  position: relative;
+  height: 1.1rem;
+  margin-top: var(--space-1);
+}
+.lotes-caja__rango,
+.lotes-caja__iqr,
+.lotes-caja__mediana {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.lotes-caja__rango {
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-accent-bg);
+}
+.lotes-caja__iqr {
+  height: 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  opacity: 0.35;
+}
+.lotes-caja__mediana {
+  width: 3px;
+  height: 1.1rem;
+  margin-left: -1.5px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+.lotes-caja__escala {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.lotes-caja__escala > span:nth-child(2) {
+  text-align: center;
+}
+.lotes-caja__escala small {
+  font-size: 0.65rem;
+}
+
+.lotes-ficha__metricas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-soft);
+}
+.lotes-ficha__metricas dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.lotes-ficha__metricas dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.lotes-cv {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.lotes-cv--baja {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.lotes-cv--media {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.lotes-cv--alta {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+/* Tablas del módulo Lotes: `table-layout: fixed` con anchos declarados en
+   el <colgroup>. Sin esto la tabla crece con su contenido (el wrapper
+   .tabla-shell usa width: max-content) y arrastra scroll horizontal a
+   toda la página. Los datos secundarios van apilados dentro de su celda
+   en vez de en columnas propias. Ya NO se deja overflow-x:auto como red
+   de seguridad: con 7 columnas fijas, cualquier contenido que no cupiera
+   se resolvía "corriendo" la tabla en vez de la celda — se ve poco
+   profesional. En su lugar, por debajo de 960px la tabla completa pasa
+   a vista de tarjetas (ver media query más abajo), así nunca hace falta
+   scroll horizontal en ningún ancho. */
+#lotes-view .tabla-shell {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+}
+.lotes-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.lotes-table th,
+.lotes-table td {
+  vertical-align: top;
+}
+/* Solo el código se corta por donde sea; en encabezados y botones partir
+   palabras dejaba textos como "TRAZABIL / IDAD" o "Ve / r". */
+.lotes-table__codigo {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.lotes-table td .btn {
+  white-space: nowrap;
+}
+.lotes-table__producto,
+.lotes-table__hora,
+.lotes-table__vendidas {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+/* Los badges (Estado/Validación) son inline-block por defecto: pueden
+   envolver texto en dos líneas en vez de forzar el ancho de su columna. */
+.lotes-table .insumo-badge {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Cebra + hover: ya los trae .insumo-table (line ~1466), que lotes-table
+   comparte como segunda clase — no hace falta repetirlos acá. */
+
+/* ═══════════════════════════════════════════════════════════
+   LOTES: tabla → tarjetas antes que el resto del panel (960px,
+   no 640px). Esta tabla y el modal de trazabilidad tienen más
+   columnas que las demás tablas del admin (hasta 7); en fixed
+   layout esas columnas se angostan antes de llegar al breakpoint
+   general y el badge/botón terminaba desbordando la celda,
+   arrastrando scroll horizontal a todo el wrapper. Se pasa a
+   tarjetas antes de que eso llegue a pasar. Reutiliza el mismo
+   patrón "etiqueta: valor" que ya usan las otras 6 tablas.
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  #lotes-view table.lotes-table {
+    display: block;
+    width: 100%;
+  }
+
+  #lotes-view table.lotes-table thead {
+    display: none;
+  }
+
+  #lotes-view table.lotes-table tbody {
+    display: block;
+  }
+
+  #lotes-view table.lotes-table tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  #lotes-view table.lotes-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  #lotes-view table.lotes-table td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  #lotes-view table.lotes-table td:not(:last-child) {
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  #lotes-view table.lotes-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  #lotes-view table.lotes-table td:empty::before {
+    content: none;
+  }
+
+  /* La primera columna (Lote) queda como encabezado de la tarjeta,
+     alineada a la izquierda, en vez de empujada al extremo derecho
+     como el resto de los valores. */
+  #lotes-view table.lotes-table td:first-child {
+    justify-content: flex-start;
+    text-align: left;
+    padding-top: 0;
+  }
+
+  #lotes-view table.lotes-table td:first-child::before {
+    display: none;
+  }
+
+  #lotes-view .lotes-table__codigo {
+    font-size: 0.95rem;
+  }
+}
+
+.lotes-correlaciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+.lotes-correlacion {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.lotes-correlacion h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9rem;
+}
+.lotes-correlacion p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.lotes-correlacion__valor {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+.lotes-correlacion--sin-datos .lotes-correlacion__valor {
+  color: var(--color-text-muted);
+}
+
+.lotes-hallazgos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.lotes-hallazgos li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+}
+.lotes-hallazgos span:last-child {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .lotes-graficos {
+    grid-template-columns: 1fr;
+  }
+  .lotes-hallazgos li {
+    grid-template-columns: auto 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════
    15. MODO OSCURO (opcional)
    ═══════════════════════════════════════════
    Dato importante: `theme-init.js` YA corre en admin.html y puede

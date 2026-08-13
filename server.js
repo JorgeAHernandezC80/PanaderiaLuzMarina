@@ -15,6 +15,7 @@ const AnalyticsEngine = require('./analyticsEngine');
 const Auditoria = require('./auditoria');
 const CalidadDatos = require('./calidadDatos');
 const AutoML = require('./autoML');
+const Lotes = require('./lotes');
 
 /* Zona horaria de referencia del negocio (Houston). El backend calcula
    "hoy" con esto cuando no viene fecha explícita en la petición (ej.
@@ -1863,6 +1864,73 @@ app.get('/calidad-datos', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[GET /calidad-datos]', err.message);
     res.status(500).json({ error: 'Error al evaluar la calidad de los datos.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   LOTES — cada horneada vista como un lote rastreable, con su análisis
+   exploratorio, sus tendencias y su validación. Todo el trabajo de datos
+   vive en lotes.js (extracción/armado) y lotesAnalitica.js (aritmética);
+   acá solo se validan los parámetros y se responde. Es de solo lectura: un
+   lote se crea registrando una horneada, no por este módulo — si se
+   pudiera crear por los dos lados, habría dos versiones de la verdad.
+   ═══════════════════════════════════════════ */
+
+/** Rango y producto son los tres únicos parámetros de todos los endpoints
+ *  de Lotes. Devuelve null cuando algo no cuadra (el caller responde 400):
+ *  una fecha mal formada se ignora silenciosamente en el resto del panel,
+ *  pero acá cambiaría el período analizado sin que se note. */
+function leerFiltrosLotes(query) {
+  const { desde, hasta, productoId } = query;
+  for (const fecha of [desde, hasta]) {
+    if (fecha !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
+  }
+  if (productoId !== undefined && !/^\d+$/.test(String(productoId))) return null;
+  return { desde, hasta, productoId };
+}
+
+app.get('/lotes', requireAuth, (req, res) => {
+  const filtros = leerFiltrosLotes(req.query);
+  if (!filtros) {
+    return res.status(400).json({ error: 'Filtros inválidos: revisa las fechas y el producto.' });
+  }
+  try {
+    res.json(Lotes.obtenerLotes(filtros));
+  } catch (err) {
+    console.error('[GET /lotes]', err.message);
+    res.status(500).json({ error: 'Error al consultar los lotes.' });
+  }
+});
+
+/* Va ANTES de /lotes/:id: si estuviera después, Express tomaría
+   "analisis" como un id de lote y siempre respondería 404. */
+app.get('/lotes/analisis', requireAuth, (req, res) => {
+  const filtros = leerFiltrosLotes(req.query);
+  if (!filtros) {
+    return res.status(400).json({ error: 'Filtros inválidos: revisa las fechas y el producto.' });
+  }
+  try {
+    res.json(Lotes.analizarLotes(filtros));
+  } catch (err) {
+    console.error('[GET /lotes/analisis]', err.message);
+    res.status(500).json({ error: 'Error al analizar los lotes.' });
+  }
+});
+
+/** Un lote con su trazabilidad completa: la tanda de masa que lo originó,
+ *  los insumos que se usaron y el lote del proveedor de cada uno. */
+app.get('/lotes/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  if (!HORNEADA_ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Identificador de lote inválido.' });
+  }
+  try {
+    const lote = Lotes.obtenerLote(id);
+    if (!lote) return res.status(404).json({ error: 'Lote no encontrado.' });
+    res.json(lote);
+  } catch (err) {
+    console.error('[GET /lotes/:id]', err.message);
+    res.status(500).json({ error: 'Error al consultar el lote.' });
   }
 });
 
