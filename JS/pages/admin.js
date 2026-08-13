@@ -390,6 +390,25 @@ const CONFIG = Object.freeze({
     lotesTabla: '#lotes-tabla tbody',
     loteTrazaModal: '#lote-traza-modal',
     loteTrazaBody: '#lote-traza-body',
+
+    // Mermas
+    mermasView: '#mermas-view',
+    mermasCount: '#mermas-count',
+    mermasFiltroDesde: '#mermas-filtro-desde',
+    mermasFiltroHasta: '#mermas-filtro-hasta',
+    mermasFiltroProducto: '#mermas-filtro-producto',
+    btnMermasFiltrar: '#btn-mermas-filtrar',
+    btnMermasLimpiar: '#btn-mermas-limpiar',
+    mermasPeriodo: '#mermas-periodo',
+    mermasResumen: '#mermas-resumen',
+    mermasLimpieza: '#mermas-limpieza',
+    mermasDescriptivas: '#mermas-descriptivas',
+    mermasCausas: '#mermas-causas',
+    mermasCorrelaciones: '#mermas-correlaciones',
+    mermasMultivariado: '#mermas-multivariado',
+    mermasHipotesisProducto: '#mermas-hipotesis-producto',
+    mermasHipotesisCausa: '#mermas-hipotesis-causa',
+    mermasModelo: '#mermas-modelo',
   },
   /* Cada campo del proveedor se mapea a su input por id, de modo que cargar y
      leer el formulario sea una sola iteración en lugar de 24 querySelector. */
@@ -926,6 +945,41 @@ const LotesApi = {
       return await res.json();
     } catch (err) {
       console.error('[Lotes] Error obteniendo el lote:', err.message);
+      return null;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   MÓDULO: MERMAS (backend real)
+   ═══════════════════════════════════════════
+   Mismo criterio que Lotes: solo lectura, una sola llamada trae todo el
+   pipeline ya resuelto (recopilación → almacenamiento → procesamiento →
+   limpieza → análisis) — ver mermas.js / mermasAnalitica.js /
+   mermasModelos.js. El panel solo pide y pinta. */
+const MermasApi = {
+  /** GET /mermas/analisis — dataset limpio + EDA + hipótesis + modelo
+   *  predictivo del período. */
+  async analisis({ desde, hasta, productoId } = {}) {
+    const params = new URLSearchParams();
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+    if (productoId) params.set('productoId', productoId);
+    const query = params.toString();
+
+    try {
+      const res = await apiFetch(`/mermas/analisis${query ? `?${query}` : ''}`, {
+        timeout: 15_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Mermas] Error obteniendo el análisis:', err.message);
       return null;
     }
   },
@@ -1862,6 +1916,7 @@ const Render = {
     ];
 
     this.fillLotesProductoSelect(lista);
+    this.fillMermasProductoSelect(lista);
 
     for (const selector of selectores) {
       const select = document.querySelector(selector);
@@ -1891,6 +1946,24 @@ const Render = {
    *  justamente los que se quiere poder revisar. */
   fillLotesProductoSelect(lista) {
     const select = document.querySelector(CONFIG.SELECTORS.lotesFiltroProducto);
+    if (!select) return;
+
+    const valorActual = select.value;
+    select.innerHTML = '<option value="">Todos</option>';
+    for (const p of lista) {
+      const opt = document.createElement('option');
+      opt.value = String(p.id);
+      opt.textContent = p.nombre;
+      select.appendChild(opt);
+    }
+    if (valorActual) select.value = valorActual;
+  },
+
+  /** Mismo criterio que fillLotesProductoSelect: el filtro de Mermas
+   *  también necesita ver productos descontinuados, porque sus eventos de
+   *  merma históricos siguen ahí. */
+  fillMermasProductoSelect(lista) {
+    const select = document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto);
     if (!select) return;
 
     const valorActual = select.value;
@@ -2526,7 +2599,7 @@ const Render = {
       })),
     );
 
-    this._renderLotesCorrelaciones(analisis.correlaciones);
+    this._renderCorrelaciones(CONFIG.SELECTORS.lotesCorrelaciones, analisis.correlaciones);
     this._renderLotesAtipicos(analisis.atipicos);
     this._renderLotesCalidad(analisis.calidad);
     this._renderLotesTabla(analisis.lotes);
@@ -2765,8 +2838,10 @@ const Render = {
     return 'casi nula';
   },
 
-  _renderLotesCorrelaciones(correlaciones) {
-    const container = document.querySelector(CONFIG.SELECTORS.lotesCorrelaciones);
+  /** Reutilizada por Lotes y Mermas — mismo componente visual, cada quien
+   *  con su propio contenedor (por eso recibe el selector, no lo asume). */
+  _renderCorrelaciones(selector, correlaciones) {
+    const container = document.querySelector(selector);
     if (!container) return;
 
     container.innerHTML = `<div class="lotes-correlaciones">${correlaciones
@@ -2991,6 +3066,287 @@ const Render = {
   updateLotesCount(total) {
     const el = document.querySelector(CONFIG.SELECTORS.lotesCount);
     if (el) el.textContent = String(total);
+  },
+
+  /* ───────────────────────── MERMAS ─────────────────────────
+     Todo lo que se pinta acá viene ya calculado del backend (mermas.js /
+     mermasAnalitica.js / mermasModelos.js): el panel no recalcula nada,
+     solo formatea. Reutiliza los mismos componentes visuales que Lotes
+     (fichas descriptivas, barras, correlaciones) porque son el mismo
+     tipo de contenido — no hace falta inventar un lenguaje visual nuevo
+     para un módulo de análisis más. */
+
+  updateMermasCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.mermasCount);
+    if (el) el.textContent = String(total);
+  },
+
+  MERMAS_TIPO_LABELS: {
+    coccion: { texto: 'Merma de cocción', unidad: '%' },
+    ajuste_manual: { texto: 'Ajuste manual', unidad: 'unidades' },
+    segunda_calidad: { texto: 'Segunda calidad', unidad: 'unidades' },
+  },
+
+  /** Pinta la vista Mermas completa a partir de GET /mermas/analisis. */
+  renderMermas(datos) {
+    if (!datos) return;
+
+    const periodoEl = document.querySelector(CONFIG.SELECTORS.mermasPeriodo);
+    if (periodoEl) {
+      const { desde, hasta } = datos.rango;
+      periodoEl.textContent = `Período analizado: ${desde} a ${hasta} · ${datos.eventos.length} evento(s) de merma.`;
+    }
+
+    this._renderMermasResumen(datos);
+    this._renderMermasLimpieza(datos.limpieza);
+    this._renderMermasDescriptivas(datos.analisis.univariado.porTipo);
+    this._renderMermasCausas(datos.analisis.univariado.frecuenciaCausas);
+    this._renderMermasCorrelaciones(datos.analisis.bivariado);
+    this._renderMermasMultivariado(datos.analisis.multivariado);
+    this._renderMermasHipotesisProducto(datos.analisis.hipotesis.productoConMasMermaVsSegundo);
+    this._renderMermasHipotesisCausa(datos.analisis.hipotesis.causaEsIndependienteDelProducto);
+    this._renderMermasModelo(datos.analisis.modeloPredictivo);
+  },
+
+  _renderMermasResumen(datos) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasResumen);
+    if (!container) return;
+
+    const porTipo = new Map();
+    for (const ev of datos.eventos) porTipo.set(ev.tipo, (porTipo.get(ev.tipo) ?? 0) + 1);
+    const altoRiesgo = datos.eventos.filter(
+      (ev) => ev.esAtipico && ev.ladoAtipico === 'alto',
+    ).length;
+
+    container.innerHTML = `
+      <article class="stat-card">
+        <span class="stat-card__label">Eventos de merma</span>
+        <data class="stat-card__value" value="${datos.eventos.length}">${datos.eventos.length}</data>
+        <span class="stat-card__hint">
+          Cocción ${porTipo.get('coccion') ?? 0} · Ajustes ${porTipo.get('ajuste_manual') ?? 0} ·
+          Segunda calidad ${porTipo.get('segunda_calidad') ?? 0}
+        </span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Datos imputados</span>
+        <data class="stat-card__value" value="${datos.limpieza.nulosImputados}">${datos.limpieza.nulosImputados}</data>
+        <span class="stat-card__hint">de ${datos.limpieza.nulosDetectados} valor(es) ausente(s) detectado(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Eventos atípicos</span>
+        <data class="stat-card__value" value="${datos.limpieza.atipicosDetectados}">${datos.limpieza.atipicosDetectados}</data>
+        <span class="stat-card__hint">por la regla de Tukey (IQR), calculada por tipo</span>
+      </article>
+      <article class="stat-card${altoRiesgo > 0 ? ' stat-card--accent' : ''}">
+        <span class="stat-card__label">Lotes de alto riesgo</span>
+        <data class="stat-card__value" value="${altoRiesgo}">${altoRiesgo}</data>
+        <span class="stat-card__hint">merma de cocción marcada atípica hacia arriba</span>
+      </article>
+    `;
+  },
+
+  _renderMermasLimpieza(reporte) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasLimpieza);
+    if (!container) return;
+
+    if (reporte.nulosDetectados === 0) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Ningún valor ausente en el período: no hizo falta imputar nada.</p>';
+      return;
+    }
+
+    const porFuente = new Map();
+    for (const imp of reporte.imputaciones) {
+      porFuente.set(imp.fuente, (porFuente.get(imp.fuente) ?? 0) + 1);
+    }
+    const FUENTE_LABELS = {
+      mediana_producto: 'con la mediana del mismo producto',
+      mediana_global_tipo: 'con la mediana global de su tipo (poco historial propio)',
+    };
+
+    container.innerHTML = `
+      <p>
+        ${reporte.nulosImputados} de ${reporte.nulosDetectados} valor(es) ausente(s) se
+        imputaron${reporte.imputacionesSinResolver ? `, ${reporte.imputacionesSinResolver} quedaron sin resolver por falta total de datos del tipo` : ''}:
+      </p>
+      <ul class="lotes-hallazgos">
+        ${[...porFuente.entries()]
+          .map(
+            ([fuente, n]) =>
+              `<li><span>${n}</span><span>${escapeHTML(FUENTE_LABELS[fuente] ?? fuente)}</span></li>`,
+          )
+          .join('')}
+      </ul>
+    `;
+  },
+
+  _renderMermasDescriptivas(porTipo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasDescriptivas);
+    if (!container) return;
+
+    const fichas = Object.entries(porTipo)
+      .map(([tipo, datos]) => {
+        const label = this.MERMAS_TIPO_LABELS[tipo];
+        return this._renderLotesFichaDescriptiva({
+          ...datos.descriptivas,
+          etiqueta: label.texto,
+          unidad: label.unidad,
+        });
+      })
+      .join('');
+    container.innerHTML = `<div class="lotes-descriptivas">${fichas}</div>`;
+  },
+
+  _renderMermasCausas(frecuencias) {
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.mermasCausas,
+      frecuencias.map((f) => ({ etiqueta: f.valor, total: f.conteo })),
+    );
+  },
+
+  _renderMermasCorrelaciones(bivariado) {
+    const ETIQUETAS = {
+      mermaVsTemperatura: 'Merma vs. temperatura de horneado',
+      mermaVsTiempoHorneado: 'Merma vs. tiempo de horneado',
+      mermaVsVidaUtil: 'Merma vs. vida útil del producto',
+    };
+    const correlaciones = Object.entries(bivariado).map(([clave, valor]) => ({
+      etiqueta: ETIQUETAS[clave] ?? clave,
+      ...valor,
+    }));
+    this._renderCorrelaciones(CONFIG.SELECTORS.mermasCorrelaciones, correlaciones);
+  },
+
+  _renderMermasMultivariado(modelo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasMultivariado);
+    if (!container) return;
+
+    if (!modelo) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay suficientes lotes con temperatura, tiempo y vida útil registrados a la vez para ajustar el modelo.</p>';
+      return;
+    }
+
+    const NOMBRES = {
+      temperaturaC: 'Temperatura',
+      tiempoMin: 'Tiempo de horno',
+      vidaUtilHoras: 'Vida útil',
+    };
+    container.innerHTML = `
+      <p>
+        Merma de cocción (%) ≈ ${modelo.intercepto}
+        ${modelo.coeficientes.map((c, i) => ` ${c >= 0 ? '+' : '−'} ${Math.abs(c)} × ${escapeHTML(NOMBRES[modelo.variables[i]])}`).join('')}
+      </p>
+      <p class="insumo-form__hint">
+        R² = ${modelo.r2} (proporción de la variación de la merma que explican estas tres
+        variables juntas) sobre ${modelo.n} lote(s).
+      </p>
+    `;
+  },
+
+  _renderMermasHipotesis(container, resultado, nombreA, nombreB) {
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    const prueba = resultado.prueba;
+    if (!prueba.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(prueba.motivo)}</p>`;
+      return;
+    }
+    const badgeClase = prueba.hipotesisNulaRechazada
+      ? 'insumo-badge--bajo-stock'
+      : 'insumo-badge--neutral';
+    container.innerHTML = `
+      <p>
+        <strong>${escapeHTML(nombreA)}</strong> (n=${prueba.nA ?? resultado.productoA?.n}) vs.
+        <strong>${escapeHTML(nombreB)}</strong> (n=${prueba.nB ?? resultado.productoB?.n})
+      </p>
+      <p>
+        t = ${prueba.estadisticoT ?? prueba.estadistico}, gl = ${prueba.gradosLibertad},
+        p ${prueba.pValor !== undefined ? `= ${prueba.pValor}` : `${prueba.hipotesisNulaRechazada ? '<' : '≥'} ${prueba.alpha ?? 0.05} (vs. crítico ${prueba.valorCritico})`}
+        <span class="insumo-badge ${badgeClase}">${prueba.hipotesisNulaRechazada ? 'Significativo' : 'No significativo'}</span>
+      </p>
+      <p class="insumo-form__hint">${escapeHTML(prueba.interpretacion)}${prueba.advertenciaMuestraPequena ? ` ${escapeHTML(prueba.advertenciaMuestraPequena)}` : ''}</p>
+    `;
+  },
+
+  _renderMermasHipotesisProducto(resultado) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasHipotesisProducto);
+    if (!container) return;
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    this._renderMermasHipotesis(
+      container,
+      resultado,
+      resultado.productoA.nombre,
+      resultado.productoB.nombre,
+    );
+  },
+
+  _renderMermasHipotesisCausa(resultado) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasHipotesisCausa);
+    if (!container) return;
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    const prueba = resultado.prueba;
+    if (!prueba.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(prueba.motivo)}</p>`;
+      return;
+    }
+    const badgeClase = prueba.hipotesisNulaRechazada
+      ? 'insumo-badge--bajo-stock'
+      : 'insumo-badge--neutral';
+    container.innerHTML = `
+      <p>Causas: ${resultado.causas.map(escapeHTML).join(', ')} · Productos: ${resultado.productos.length} más frecuentes</p>
+      <p>
+        χ² = ${prueba.estadistico}, gl = ${prueba.gradosLibertad}
+        ${prueba.valorCritico !== null ? ` (crítico α=${prueba.alpha}: ${prueba.valorCritico})` : ''}
+        <span class="insumo-badge ${badgeClase}">${prueba.hipotesisNulaRechazada ? 'Dependientes' : 'Independientes'}</span>
+      </p>
+      <p class="insumo-form__hint">${escapeHTML(prueba.interpretacion)}${prueba.advertenciaMuestraPequena ? ` ${escapeHTML(prueba.advertenciaMuestraPequena)}` : ''}</p>
+    `;
+  },
+
+  _renderMermasModelo(modelo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasModelo);
+    if (!container) return;
+
+    if (!modelo) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay suficientes lotes de alto riesgo (o suficiente historial en general) para entrenar el clasificador con confianza.</p>';
+      return;
+    }
+
+    const e = modelo.evaluacion;
+    container.innerHTML = `
+      <p>
+        Entrenado con ${modelo.n} lote(s) (${modelo.casosAltoRiesgo} de alto riesgo) usando
+        temperatura, tiempo de horno y vida útil.
+      </p>
+      <div class="stats">
+        <article class="stat-card">
+          <span class="stat-card__label">Exactitud</span>
+          <data class="stat-card__value" value="${e.exactitud}">${Math.round(e.exactitud * 100)}%</data>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Precisión</span>
+          <data class="stat-card__value" value="${e.precision ?? 0}">${e.precision === null ? '—' : `${Math.round(e.precision * 100)}%`}</data>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Exhaustividad</span>
+          <data class="stat-card__value" value="${e.exhaustividad ?? 0}">${e.exhaustividad === null ? '—' : `${Math.round(e.exhaustividad * 100)}%`}</data>
+        </article>
+      </div>
+      <p class="insumo-form__hint">
+        Evaluado sobre los mismos datos de entrenamiento (in-sample): mide qué tan bien el
+        modelo describe lo ya ocurrido, no cómo va a predecir un lote nunca visto.
+      </p>
+    `;
   },
 
   /** Tarjetas de resumen: total de panes horneados en la fecha consultada y
@@ -3824,6 +4180,8 @@ const App = {
   _lotesFiltros: {},
   _lotesVariable: 'mermaRealPct',
   _lotesAnalisisCache: null,
+  // Mermas: mismo criterio de rango por defecto que Lotes (últimos 30 días).
+  _mermasFiltros: {},
 
   init() {
     this._bindEvents();
@@ -3980,6 +4338,29 @@ const App = {
     if (this._lotesAnalisisCache) {
       Render._renderLotesHistograma(this._lotesAnalisisCache.descriptivas, campo);
     }
+  },
+
+  /* ───────────────────────── MERMAS ─────────────────────────
+     Una sola llamada trae todo el pipeline resuelto (dataset limpio +
+     EDA + hipótesis + modelo predictivo) — ver GET /mermas/analisis. */
+  async refreshMermas() {
+    const datos = await MermasApi.analisis(this._mermasFiltros);
+
+    if (datos === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!datos) {
+      const periodoEl = document.querySelector(CONFIG.SELECTORS.mermasPeriodo);
+      if (periodoEl) {
+        periodoEl.textContent = 'No se pudo cargar el análisis de mermas. Intenta de nuevo.';
+      }
+      return;
+    }
+
+    Render.updateMermasCount(datos.eventos.length);
+    Render.renderMermas(datos);
   },
 
   async verTrazabilidadLote(id) {
@@ -5809,6 +6190,24 @@ const App = {
       btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.loteTrazaModal));
     });
 
+    // Mermas: filtros (mismo patrón que Lotes).
+    document.querySelector(CONFIG.SELECTORS.btnMermasFiltrar)?.addEventListener('click', () => {
+      this._mermasFiltros = {
+        desde: document.querySelector(CONFIG.SELECTORS.mermasFiltroDesde).value,
+        hasta: document.querySelector(CONFIG.SELECTORS.mermasFiltroHasta).value,
+        productoId: document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto).value,
+      };
+      this.refreshMermas();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.btnMermasLimpiar)?.addEventListener('click', () => {
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroDesde).value = '';
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroHasta).value = '';
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto).value = '';
+      this._mermasFiltros = {};
+      this.refreshMermas();
+    });
+
     // Formulario de horneadas: alta y edición
     document.querySelector(CONFIG.SELECTORS.horneadaForm)?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -6000,6 +6399,7 @@ const App = {
       CONFIG.SELECTORS.produccionView,
       CONFIG.SELECTORS.lotesView,
       CONFIG.SELECTORS.auditoriaView,
+      CONFIG.SELECTORS.mermasView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -6040,6 +6440,7 @@ const App = {
         CONFIG.SELECTORS.recetasView,
         CONFIG.SELECTORS.produccionView,
         CONFIG.SELECTORS.lotesView,
+        CONFIG.SELECTORS.mermasView,
       ].some((sel) => targetId === sel.slice(1))
     ) {
       this.cargarProductosParaSelects();
@@ -6071,6 +6472,9 @@ const App = {
     if (targetId === CONFIG.SELECTORS.lotesView.slice(1)) {
       this.refreshLotes();
     }
+    if (targetId === CONFIG.SELECTORS.mermasView.slice(1)) {
+      this.refreshMermas();
+    }
   },
 
   _showLoginError(mensaje) {
@@ -6093,6 +6497,7 @@ const App = {
     const recetasView = document.querySelector(CONFIG.SELECTORS.recetasView);
     const produccionView = document.querySelector(CONFIG.SELECTORS.produccionView);
     const lotesView = document.querySelector(CONFIG.SELECTORS.lotesView);
+    const mermasView = document.querySelector(CONFIG.SELECTORS.mermasView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
     if (Auth.isAuthenticated()) {
@@ -6108,6 +6513,7 @@ const App = {
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
       if (lotesView) lotesView.hidden = true;
+      if (mermasView) mermasView.hidden = true;
 
       // Actualizar fecha
       const dateEl = document.querySelector(CONFIG.SELECTORS.date);
@@ -6130,6 +6536,7 @@ const App = {
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
       if (lotesView) lotesView.hidden = true;
+      if (mermasView) mermasView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';
     }

@@ -298,14 +298,15 @@
               </button>
               <button
                 type="button"
-                class="admin-nav__btn admin-nav__btn--soon"
-                data-tooltip="Mermas (pronto)"
-                disabled
-                aria-disabled="true"
+                class="admin-nav__btn"
+                data-view-target="mermas-view"
+                data-tooltip="Mermas"
+                role="tab"
+                aria-selected="false"
               >
                 <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
                 <span class="admin-nav__btn-label">Mermas</span>
-                <span class="admin-nav__soon">Pronto</span>
+                <span class="admin-nav__count" id="mermas-count">0</span>
               </button>
             </div>
           </div>
@@ -2895,6 +2896,133 @@
               <!-- Se inyecta dinámicamente por admin.js -->
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- MERMAS — pipeline de datos sobre las tres señales de merma ya
+           existentes (cocción, ajuste manual, segunda calidad). Solo
+           lectura: nace de lo ya registrado en Horneadas/Inventario, no
+           se captura nada acá. Ver mermas.js / mermasAnalitica.js /
+           mermasModelos.js. -->
+      <section
+        id="mermas-view"
+        class="view view--mermas"
+        hidden
+        aria-labelledby="mermas-title"
+        data-component="mermas"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="mermas-title">Mermas</h1>
+            <p class="dashboard-header__subtitle">
+              Las tres señales de pérdida que ya se registran (merma de cocción, ajustes manuales y
+              segunda calidad) unificadas, limpiadas y analizadas: distribución, relaciones entre
+              variables, pruebas de hipótesis y un modelo que estima qué lotes tienen mayor riesgo
+              de merma alta.
+            </p>
+          </div>
+        </header>
+
+        <section
+          class="horneadas-toolbar"
+          aria-label="Filtrar mermas"
+          data-component="mermas-toolbar"
+        >
+          <div class="form-field">
+            <label for="mermas-filtro-desde" class="form-field__label">Desde</label>
+            <input type="date" id="mermas-filtro-desde" class="form-field__input" />
+          </div>
+          <div class="form-field">
+            <label for="mermas-filtro-hasta" class="form-field__label">Hasta</label>
+            <input type="date" id="mermas-filtro-hasta" class="form-field__input" />
+          </div>
+          <div class="form-field">
+            <label for="mermas-filtro-producto" class="form-field__label">Producto</label>
+            <select id="mermas-filtro-producto" class="form-field__input">
+              <option value="">Todos</option>
+              <!-- Las opciones las llena admin.js desde GET /productos -->
+            </select>
+          </div>
+          <button type="button" id="btn-mermas-filtrar" class="btn btn--ghost">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Analizar
+          </button>
+          <button type="button" id="btn-mermas-limpiar" class="btn btn--ghost">
+            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+            Últimos 30 días
+          </button>
+        </section>
+
+        <p id="mermas-periodo" class="lotes-periodo" role="status" aria-live="polite"></p>
+
+        <section id="mermas-resumen" class="stats" aria-label="Resumen del período">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+
+        <h2 class="section-subtitle">Limpieza de datos</h2>
+        <p class="dashboard-header__subtitle">
+          Qué se tocó del dataset antes de analizarlo — nunca en silencio.
+        </p>
+        <div id="mermas-limpieza" class="lotes-panel" data-component="mermas-limpieza">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Análisis univariado</h2>
+        <div class="lotes-graficos">
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Estadística descriptiva por tipo de evento</h3>
+            <div id="mermas-descriptivas" data-component="mermas-descriptivas">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Causas más frecuentes</h3>
+            <div id="mermas-causas" data-component="mermas-causas">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-subtitle">Análisis bivariado</h2>
+        <p class="dashboard-header__subtitle">
+          Correlación entre la merma de cocción y cada variable de contexto del horneado.
+        </p>
+        <div id="mermas-correlaciones" data-component="mermas-correlaciones">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Análisis multivariado</h2>
+        <p class="dashboard-header__subtitle">
+          Temperatura, tiempo de horneado y vida útil evaluadas juntas sobre la merma de cocción —
+          regresión lineal múltiple.
+        </p>
+        <div id="mermas-multivariado" class="lotes-panel" data-component="mermas-multivariado">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Pruebas de hipótesis</h2>
+        <div class="lotes-graficos">
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">¿Dos productos tienen merma distinta?</h3>
+            <div id="mermas-hipotesis-producto" data-component="mermas-hipotesis-producto">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">¿La causa depende del producto?</h3>
+            <div id="mermas-hipotesis-causa" data-component="mermas-hipotesis-causa">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-subtitle">Modelo predictivo: lotes de alto riesgo</h2>
+        <p class="dashboard-header__subtitle">
+          Clasificador entrenado con temperatura, tiempo de horneado y vida útil — datos que se
+          conocen antes de que el lote termine de hornearse.
+        </p>
+        <div id="mermas-modelo" class="lotes-panel" data-component="mermas-modelo">
+          <!-- Se inyecta dinámicamente por admin.js -->
         </div>
       </section>
 

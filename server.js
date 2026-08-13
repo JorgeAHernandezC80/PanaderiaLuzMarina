@@ -16,6 +16,7 @@ const Auditoria = require('./auditoria');
 const CalidadDatos = require('./calidadDatos');
 const AutoML = require('./autoML');
 const Lotes = require('./lotes');
+const Mermas = require('./mermas');
 
 /* Zona horaria de referencia del negocio (Houston). El backend calcula
    "hoy" con esto cuando no viene fecha explícita en la petición (ej.
@@ -1931,6 +1932,46 @@ app.get('/lotes/:id', requireAuth, (req, res) => {
   } catch (err) {
     console.error('[GET /lotes/:id]', err.message);
     res.status(500).json({ error: 'Error al consultar el lote.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   MERMAS — pipeline de datos (recopilación → almacenamiento →
+   procesamiento → limpieza) sobre las tres señales de merma que ya
+   existen (cocción, ajuste manual, segunda calidad). Todo el trabajo
+   vive en mermas.js / mermasAnalitica.js; acá solo se validan los
+   parámetros y se responde. Reutiliza el mismo validador de filtros
+   que Lotes (mismo rango/producto, misma forma de fallar). El análisis
+   (fase 5 del pipeline: EDA, inferencial, clasificación) todavía no
+   tiene endpoint — este es el dataset limpio que esa fase va a consumir.
+   ═══════════════════════════════════════════ */
+app.get('/mermas', requireAuth, (req, res) => {
+  const filtros = leerFiltrosLotes(req.query);
+  if (!filtros) {
+    return res.status(400).json({ error: 'Filtros inválidos: revisa las fechas y el producto.' });
+  }
+  try {
+    res.json(Mermas.ejecutarPipelineMermas(filtros));
+  } catch (err) {
+    console.error('[GET /mermas]', err.message);
+    res.status(500).json({ error: 'Error al procesar los datos de mermas.' });
+  }
+});
+
+/* Fase 5 del pipeline (EDA, hipótesis, modelos) sobre el mismo dataset
+   limpio de arriba — endpoint aparte porque analizarMermas() hace bastante
+   más trabajo (regresiones, entrenar el clasificador) y una vista que solo
+   necesita el dataset crudo no debería pagar ese costo en cada carga. */
+app.get('/mermas/analisis', requireAuth, (req, res) => {
+  const filtros = leerFiltrosLotes(req.query);
+  if (!filtros) {
+    return res.status(400).json({ error: 'Filtros inválidos: revisa las fechas y el producto.' });
+  }
+  try {
+    res.json(Mermas.analizarMermas(filtros));
+  } catch (err) {
+    console.error('[GET /mermas/analisis]', err.message);
+    res.status(500).json({ error: 'Error al analizar los datos de mermas.' });
   }
 });
 
