@@ -18,6 +18,7 @@
 
 const crypto = require('crypto');
 const db = require('./db');
+const Analitica = require('./auditoriaAnalitica');
 
 const HASH_GENESIS = 'GENESIS';
 
@@ -150,7 +151,16 @@ function historialDe(entidad, entidadId) {
  *  visualmente (Patrón "Análisis de Blockchain" — GET /auditoria/analisis):
  *  cuántos bloques hay por entidad y por tipo de acción, cómo se
  *  distribuye la actividad en el tiempo, y qué registros puntuales
- *  concentran más cambios (candidatos a revisar si algo se ve raro). */
+ *  concentran más cambios (candidatos a revisar si algo se ve raro).
+ *
+ *  Además de esos agregados (que ya existían), agrega el pipeline de
+ *  AED/procesamiento/visualización de auditoriaAnalitica.js: perfilado de
+ *  la tabla, descriptivas+histograma de dos variables derivadas
+ *  (intervalo entre bloques, tamaño del payload), bloques atípicos por
+ *  esas variables, la tabla de contingencia entidad×acción con su prueba
+ *  de independencia, y los datos de dispersión listos para graficar (ver
+ *  la nota "cuarteto de Anscombe" en ese archivo sobre por qué un agregado
+ *  no basta). */
 function analizarCadena() {
   const porEntidad = db
     .prepare(
@@ -186,12 +196,20 @@ function analizarCadena() {
     )
     .all();
 
+  const bloques = db.prepare('SELECT * FROM auditoria_cadena ORDER BY id ASC').all();
+  const variablesNumericas = Analitica.construirVariablesNumericas(bloques);
+
   return {
     integridad: verificarCadena(),
     porEntidad,
     porAccion,
     actividadPorDia,
     entidadesMasModificadas,
+    perfilado: Analitica.perfilarCadena(bloques),
+    eda: Analitica.analizarNumericas(variablesNumericas),
+    atipicos: Analitica.detectarBloquesAtipicos(variablesNumericas),
+    matrizEntidadAccion: Analitica.matrizEntidadAccion(bloques),
+    dispersion: Analitica.prepararDispersion(variablesNumericas),
   };
 }
 

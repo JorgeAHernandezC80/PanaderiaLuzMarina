@@ -344,6 +344,12 @@ const CONFIG = Object.freeze({
     auditoriaLineaTiempo: '#auditoria-linea-tiempo',
     auditoriaTablaRegistros: '#auditoria-tabla-registros tbody',
     auditoriaTablaBloques: '#auditoria-tabla-bloques tbody',
+    auditoriaPerfilado: '#auditoria-perfilado',
+    auditoriaEdaIntervalo: '#auditoria-eda-intervalo',
+    auditoriaEdaTamano: '#auditoria-eda-tamano',
+    auditoriaMatriz: '#auditoria-matriz',
+    auditoriaAtipicos: '#auditoria-atipicos',
+    auditoriaDispersion: '#auditoria-dispersion',
     produccionCount: '#produccion-count',
     produccionesContainer: '#producciones-container',
     tplProduccionCard: '#tpl-produccion-card',
@@ -2435,6 +2441,9 @@ const Render = {
     const resumenEl = document.querySelector(CONFIG.SELECTORS.auditoriaResumen);
     if (resumenEl) {
       const totalCambios = analisis.porEntidad.reduce((suma, e) => suma + e.total, 0);
+      const totalAtipicos =
+        (analisis.atipicos?.atipicosIntervalo?.length ?? 0) +
+        (analisis.atipicos?.atipicosTamano?.length ?? 0);
       resumenEl.innerHTML = `
         <article class="stat-card stat-card--accent">
           <span class="stat-card__label">Total de cambios registrados</span>
@@ -2444,8 +2453,28 @@ const Render = {
           <span class="stat-card__label">Módulos con auditoría activa</span>
           <data class="stat-card__value" value="${analisis.porEntidad.length}">${analisis.porEntidad.length}</data>
         </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Bloques atípicos</span>
+          <data class="stat-card__value" value="${totalAtipicos}">${totalAtipicos}</data>
+          <span class="stat-card__hint">${totalAtipicos ? 'Por ritmo de escritura o tamaño del cambio — ver abajo' : 'Ninguno fuera de lo esperado'}</span>
+        </article>
       `;
     }
+
+    this._renderAuditoriaPerfilado(analisis.perfilado);
+    this._renderAuditoriaEDAVariable(
+      CONFIG.SELECTORS.auditoriaEdaIntervalo,
+      analisis.eda?.intervaloEntreBloquesSeg,
+      { sufijo: 'seg' },
+    );
+    this._renderAuditoriaEDAVariable(
+      CONFIG.SELECTORS.auditoriaEdaTamano,
+      analisis.eda?.tamanoPayloadBytes,
+      { sufijo: 'bytes' },
+    );
+    this._renderAuditoriaMatriz(analisis.matrizEntidadAccion);
+    this._renderAuditoriaAtipicos(analisis.atipicos);
+    this._renderAuditoriaDispersion(analisis.dispersion);
 
     this._renderAuditoriaBarras(
       CONFIG.SELECTORS.auditoriaGraficoEntidad,
@@ -2537,6 +2566,280 @@ const Render = {
       </div>`,
       )
       .join('');
+  },
+
+  /** Completitud por campo de la cadena (ver auditoriaAnalitica.js →
+   *  perfilarCadena). Reutiliza .auditoria-barra: acá el ancho de la
+   *  barra ya es un porcentaje directo (no hace falta dividir por un
+   *  máximo del propio conjunto, como en los otros "gráficos"). */
+  _renderAuditoriaPerfilado(perfilado) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaPerfilado);
+    if (!container) return;
+
+    if (!perfilado || !perfilado.totalBloques) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin bloques todavía.</p>';
+      return;
+    }
+
+    const rango = perfilado.rangoFechas
+      ? `Del ${new Date(perfilado.rangoFechas.desde).toLocaleDateString('es-US', {
+          timeZone: HOUSTON_TZ,
+        })} al ${new Date(perfilado.rangoFechas.hasta).toLocaleDateString('es-US', {
+          timeZone: HOUSTON_TZ,
+        })}.`
+      : '';
+
+    container.innerHTML = `
+      <p class="lotes-periodo">${perfilado.totalBloques} bloque(s) en la cadena. ${escapeHTML(rango)}</p>
+      ${perfilado.campos
+        .map(
+          (c) => `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${escapeHTML(c.etiqueta)}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${c.porcentajeCompletitud}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${c.porcentajeCompletitud}%</span>
+        </div>`,
+        )
+        .join('')}
+    `;
+  },
+
+  /** Una variable derivada (intervalo entre bloques o tamaño del
+   *  payload): ficha con resumen de cinco números (mismo componente
+   *  .lotes-ficha/.lotes-caja que ya usa Lotes) + histograma debajo. */
+  _renderAuditoriaEDAVariable(selector, variable, { sufijo }) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+
+    if (!variable || variable.descriptivas.n === 0) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin datos suficientes todavía.</p>';
+      return;
+    }
+
+    const d = variable.descriptivas;
+    const rango = d.maximo - d.minimo;
+    // Con todos los valores iguales la caja no tiene ancho: se dibuja
+    // centrada en vez de dividir por cero (mismo criterio que Lotes).
+    const pos = (valor) => (rango === 0 ? 50 : ((valor - d.minimo) / rango) * 100);
+    const izquierda = pos(d.p25);
+    const ancho = Math.max(pos(d.p75) - izquierda, 1);
+    const maximoHist = Math.max(...variable.histograma.map((t) => t.total), 1);
+
+    container.innerHTML = `
+      <article class="lotes-ficha">
+        <header class="lotes-ficha__header">
+          <h4 class="lotes-ficha__titulo">Promedio</h4>
+          <span class="lotes-ficha__n">n = ${d.n}</span>
+        </header>
+        <p class="lotes-ficha__valor">
+          <data value="${d.media}">${d.media}</data>
+          <span class="lotes-ficha__unidad">${sufijo}</span>
+        </p>
+        <p class="lotes-ficha__mediana">Mediana ${d.mediana} ${sufijo}</p>
+
+        <div
+          class="lotes-caja"
+          role="img"
+          aria-label="Mínimo ${d.minimo}, primer cuartil ${d.p25}, mediana ${d.mediana}, tercer cuartil ${d.p75}, máximo ${d.maximo} ${sufijo}"
+        >
+          <span class="lotes-caja__rango"></span>
+          <span class="lotes-caja__iqr" style="left: ${izquierda}%; width: ${ancho}%"></span>
+          <span class="lotes-caja__mediana" style="left: ${pos(d.mediana)}%"></span>
+        </div>
+        <div class="lotes-caja__escala">
+          <span>${d.minimo}</span>
+          <span>${d.p25} – ${d.p75} <small>(50% central)</small></span>
+          <span>${d.maximo}</span>
+        </div>
+
+        <dl class="lotes-ficha__metricas">
+          <div>
+            <dt>Desviación</dt>
+            <dd>${d.desviacion}</dd>
+          </div>
+          <div>
+            <dt>Coef. variación</dt>
+            <dd>${d.coeficienteVariacion === null ? '—' : `${d.coeficienteVariacion}%`}</dd>
+          </div>
+        </dl>
+      </article>
+
+      ${variable.histograma
+        .map(
+          (t) => `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${t.desde}–${t.hasta}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${(t.total / maximoHist) * 100}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${t.total}</span>
+        </div>`,
+        )
+        .join('')}
+    `;
+  },
+
+  /** Tabla de contingencia entidad×acción como mapa de calor (celdas más
+   *  oscuras = más bloques), más el veredicto de la prueba χ² de
+   *  independencia. Ver auditoriaAnalitica.js → matrizEntidadAccion. */
+  _renderAuditoriaMatriz(matriz) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaMatriz);
+    if (!container) return;
+
+    if (!matriz || !matriz.entidades.length || !matriz.acciones.length) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin datos suficientes todavía.</p>';
+      return;
+    }
+
+    const maximo = Math.max(...matriz.tabla.flat(), 1);
+
+    const encabezado =
+      `<div class="auditoria-matriz__celda auditoria-matriz__celda--header"></div>` +
+      matriz.acciones
+        .map(
+          (a) =>
+            `<div class="auditoria-matriz__celda auditoria-matriz__celda--header">${escapeHTML(
+              this.AUDITORIA_ACCION_LABELS[a] || a,
+            )}</div>`,
+        )
+        .join('');
+
+    const filas = matriz.entidades
+      .map((entidad, i) => {
+        const etiqueta = `<div class="auditoria-matriz__celda auditoria-matriz__celda--header">${escapeHTML(
+          this.AUDITORIA_ENTIDAD_LABELS[entidad] || entidad,
+        )}</div>`;
+        const celdas = matriz.tabla[i]
+          .map((valor) => {
+            const intensidad = Math.round((valor / maximo) * 85);
+            return `<div class="auditoria-matriz__celda" style="background-color: color-mix(in srgb, var(--color-accent) ${intensidad}%, var(--color-surface))">
+              <span class="auditoria-matriz__valor">${valor}</span>
+            </div>`;
+          })
+          .join('');
+        return etiqueta + celdas;
+      })
+      .join('');
+
+    const indep = matriz.independencia;
+    const veredicto =
+      indep && indep.valido
+        ? `<p class="lotes-cv ${indep.hipotesisNulaRechazada ? 'lotes-cv--info' : 'lotes-cv--baja'}">
+             ${indep.hipotesisNulaRechazada ? 'El tipo de acción varía según el módulo' : 'El tipo de acción no depende del módulo'}
+           </p>
+           <p class="insumo-form__hint">${escapeHTML(indep.interpretacion)}</p>`
+        : indep
+          ? `<p class="insumo-form__hint">${escapeHTML(indep.motivo)}</p>`
+          : '';
+
+    container.innerHTML = `
+      <div
+        class="auditoria-matriz"
+        style="grid-template-columns: minmax(9rem, auto) repeat(${matriz.acciones.length}, minmax(4rem, 1fr));"
+      >
+        ${encabezado}${filas}
+      </div>
+      ${veredicto}
+    `;
+  },
+
+  /** Bloques que se salen de lo típico por intervalo o por tamaño (regla
+   *  de Tukey). No es una lista de errores — un bloque atípico puede ser
+   *  una operación masiva legítima — por eso el texto invita a revisar,
+   *  no acusa. */
+  _renderAuditoriaAtipicos(atipicos) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaAtipicos);
+    if (!container) return;
+
+    const items = [
+      ...(atipicos?.atipicosIntervalo ?? []).map((a) => ({
+        icono: a.lado === 'alto' ? 'fa-hourglass-half' : 'fa-bolt',
+        texto:
+          a.lado === 'alto'
+            ? 'Hueco inusualmente largo antes de este bloque'
+            : 'Ráfaga: bloque casi inmediato al anterior',
+        detalle: `Bloque #${a.id} · ${a.intervaloSeg}s desde el bloque anterior`,
+      })),
+      ...(atipicos?.atipicosTamano ?? []).map((a) => ({
+        icono: 'fa-weight-hanging',
+        texto: a.lado === 'alto' ? 'Payload inusualmente grande' : 'Payload inusualmente pequeño',
+        detalle: `Bloque #${a.id} · ${a.tamanoBytes} bytes`,
+      })),
+    ];
+
+    if (!items.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Sin bloques atípicos — el ritmo de escritura y el tamaño de los cambios se mantienen dentro de lo esperado.</p>';
+      return;
+    }
+
+    container.innerHTML = `<ul class="lotes-veredictos">
+      ${items
+        .map(
+          (it) => `
+        <li>
+          <i class="fa-solid ${it.icono}" aria-hidden="true"></i>
+          <strong>${escapeHTML(it.texto)}</strong>
+          <span>${escapeHTML(it.detalle)}</span>
+        </li>`,
+        )
+        .join('')}
+    </ul>`;
+  },
+
+  /** Dispersión real intervalo×tamaño por bloque, con los puntos de mayor
+   *  puntaje de anomalía combinado resaltados en rojo. Existe porque
+   *  porEntidad/porAccion (agregados) pueden verse idénticos en dos
+   *  períodos con un ritmo de escritura muy distinto — ver la nota
+   *  "cuarteto de Anscombe" en auditoriaAnalitica.js. */
+  _renderAuditoriaDispersion(puntos) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaDispersion);
+    if (!container) return;
+
+    const validos = (puntos ?? []).filter((p) => p.intervaloSeg !== null);
+    if (validos.length < 2) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Hacen falta más bloques para dibujar el mapa.</p>';
+      return;
+    }
+
+    const ANCHO = 640;
+    const ALTO = 220;
+    const PAD = 28;
+    const maxX = Math.max(...validos.map((p) => p.intervaloSeg), 1);
+    const maxY = Math.max(...validos.map((p) => p.tamanoBytes), 1);
+    const x = (v) => PAD + (v / maxX) * (ANCHO - PAD * 2);
+    const y = (v) => ALTO - PAD - (v / maxY) * (ALTO - PAD * 2);
+
+    const circulos = validos
+      .map((p) => {
+        const atipico = (p.puntajeAnomalia ?? 0) >= 2;
+        return `<circle
+          class="auditoria-dispersion__punto${atipico ? ' auditoria-dispersion__punto--atipico' : ''}"
+          cx="${x(p.intervaloSeg).toFixed(1)}" cy="${y(p.tamanoBytes).toFixed(1)}" r="${atipico ? 5 : 3.5}"
+        ><title>Bloque #${p.id} · ${p.intervaloSeg}s · ${p.tamanoBytes} bytes</title></circle>`;
+      })
+      .join('');
+
+    container.innerHTML = `
+      <svg
+        class="auditoria-dispersion"
+        viewBox="0 0 ${ANCHO} ${ALTO}"
+        role="img"
+        aria-label="Intervalo entre bloques contra tamaño del payload; en rojo, los bloques con un puntaje de anomalía combinado alto"
+      >
+        <line x1="${PAD}" y1="${ALTO - PAD}" x2="${ANCHO - PAD}" y2="${ALTO - PAD}" class="auditoria-dispersion__eje" />
+        <line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${ALTO - PAD}" class="auditoria-dispersion__eje" />
+        ${circulos}
+      </svg>
+      <div class="lotes-serie__pie">
+        <span>Intervalo entre bloques (seg) →</span>
+        <span>↑ Tamaño del payload (bytes)</span>
+      </div>
+      <p class="insumo-form__hint">Cada punto es un bloque. Los puntos en rojo combinan un intervalo y un tamaño fuera de lo típico a la vez — vale la pena revisarlos aunque los conteos por módulo o acción se vean normales.</p>
+    `;
   },
 
   /* ───────────────────────── LOTES ─────────────────────────

@@ -3058,6 +3058,60 @@
           <!-- Se inyecta dinámicamente por admin.js -->
         </div>
 
+        <!-- Perfilado: qué tan completo está cada campo de la cadena
+             (ver auditoriaAnalitica.js → perfilarCadena). -->
+        <h2 class="section-subtitle">Calidad de datos de la cadena</h2>
+        <div class="lotes-panel">
+          <div id="auditoria-perfilado" data-component="auditoria-perfilado">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
+
+        <!-- EDA: descriptivas + histograma de las dos variables derivadas
+             (intervalo entre bloques, tamaño del payload). -->
+        <h2 class="section-subtitle">Distribución de la actividad</h2>
+        <div class="lotes-graficos">
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Intervalo entre bloques</h3>
+            <div id="auditoria-eda-intervalo" data-component="auditoria-eda-intervalo">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Tamaño del cambio (payload)</h3>
+            <div id="auditoria-eda-tamano" data-component="auditoria-eda-tamano">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Codificación + prueba χ² de independencia (ver
+             auditoriaAnalitica.js → matrizEntidadAccion). -->
+        <h2 class="section-subtitle">Relación entre módulo y tipo de acción</h2>
+        <div class="lotes-panel">
+          <div id="auditoria-matriz" data-component="auditoria-matriz">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
+
+        <!-- Limpieza: bloques atípicos por intervalo o tamaño (regla de
+             Tukey, ver detectarBloquesAtipicos). -->
+        <h2 class="section-subtitle">Bloques atípicos</h2>
+        <div id="auditoria-atipicos" data-component="auditoria-atipicos">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <!-- Visualización: dispersión real intervalo×tamaño, en vez de
+             otro agregado (ver la nota "cuarteto de Anscombe" en
+             auditoriaAnalitica.js). -->
+        <h2 class="section-subtitle">Mapa de anomalías</h2>
+        <div class="lotes-panel">
+          <div id="auditoria-dispersion" data-component="auditoria-dispersion">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
+
         <div class="auditoria-graficos">
           <div class="auditoria-grafico">
             <h2 class="section-subtitle">Cambios por módulo</h2>
