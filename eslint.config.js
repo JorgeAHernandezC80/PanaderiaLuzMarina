@@ -24,6 +24,7 @@ module.exports = [
       'estadisticas.js',
       'analyticsEngine.js',
       'auditoria.js',
+      'auditoriaAnalitica.js',
       'calidadDatos.js',
       'autoML.js',
       'lotes.js',
