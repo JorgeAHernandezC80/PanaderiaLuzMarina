@@ -28,6 +28,8 @@ module.exports = [
       'autoML.js',
       'lotes.js',
       'lotesAnalitica.js',
+      'pedidos.js',
+      'pedidosAnalitica.js',
       'babel.config.js',
       'jest.config.js',
       'eslint.config.js',

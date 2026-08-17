@@ -16,6 +16,8 @@ const Auditoria = require('./auditoria');
 const CalidadDatos = require('./calidadDatos');
 const AutoML = require('./autoML');
 const Lotes = require('./lotes');
+const Pedidos = require('./pedidos');
+const PedidosAnalitica = require('./pedidosAnalitica');
 
 /* Zona horaria de referencia del negocio (Houston). El backend calcula
    "hoy" con esto cuando no viene fecha explícita en la petición (ej.
@@ -70,6 +72,8 @@ const {
   ORDEN_COMPRA_ID_RE,
   OC_ESTADOS,
   OC_ESTADOS_RECEPCION,
+  validarMetadatosCheckout,
+  validarOperario,
 } = require('./validation');
 
 const PORT = process.env.PORT || 3001;
@@ -297,6 +301,8 @@ app.get('/', (req, res) => {
       crearOrden: 'POST /ordenes',
       listarOrdenes: 'GET /ordenes (Authorization: Bearer token)',
       actualizarOrden: 'PATCH /ordenes/:numero (Authorization: Bearer token)',
+      analisisPedidos: 'GET /ordenes/analisis?desde=&hasta=&estado= (Authorization: Bearer token)',
+      historialOrden: 'GET /ordenes/:numero/historial (Authorization: Bearer token)',
       listarInsumos: 'GET /insumos (Authorization: Bearer token)',
       crearInsumo: 'POST /insumos (Authorization: Bearer token)',
       actualizarInsumo: 'PUT /insumos/:id (Authorization: Bearer token)',
@@ -374,21 +380,45 @@ app.post('/ordenes', rateLimit, (req, res) => {
     throw err;
   }
 
+  /* El pedido se cierra por WhatsApp, así que este POST es el único momento
+     en que el navegador del cliente habla con el backend: si no se capturan
+     acá, los metadatos del checkout no existen en ningún otro lado. Nunca
+     hacen fallar el pedido — si vienen mal se guardan como null. */
+  const metadatos = validarMetadatosCheckout(req.body?.metadata, req.headers['user-agent']);
+  const dispositivo = PedidosAnalitica.clasificarDispositivo(metadatos.userAgent);
+
   try {
     const stmt = db.prepare(`
-      INSERT INTO ordenes (numero, fecha_iso, fecha_texto, cliente, telefono, retiro, items_json, total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO ordenes (numero, fecha_iso, fecha_texto, cliente, telefono, retiro, items_json, total,
+                           user_agent, dispositivo, zona_horaria, idioma)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(
-      orden.numero,
-      orden.fechaISO,
-      orden.fechaTexto,
-      orden.cliente,
-      orden.telefono,
-      orden.retiro,
-      JSON.stringify(orden.items),
-      orden.total,
-    );
+    /* Insertar el pedido y registrar su primera transición van juntos: un
+       pedido sin fila inicial en el historial no tiene desde cuándo medir
+       el lead time, y ese dato no se puede reconstruir después. */
+    const guardar = db.transaction(() => {
+      stmt.run(
+        orden.numero,
+        orden.fechaISO,
+        orden.fechaTexto,
+        orden.cliente,
+        orden.telefono,
+        orden.retiro,
+        JSON.stringify(orden.items),
+        orden.total,
+        metadatos.userAgent,
+        dispositivo,
+        metadatos.zonaHoraria,
+        metadatos.idioma,
+      );
+      Pedidos.registrarTransicion(orden.numero, {
+        estadoOrigen: null,
+        estadoDestino: 'pendiente',
+        usuarioAdmin: null,
+        sesionAdmin: 'checkout',
+      });
+    });
+    guardar();
     const ordenGuardada = { ...orden, estado: 'pendiente' };
     broadcast({ tipo: 'orden:nueva', orden: ordenGuardada });
     res.status(201).json(ordenGuardada);
@@ -440,9 +470,23 @@ app.get('/ordenes', requireAuth, (req, res) => {
   }
 });
 
+/* Huella de la sesión que hizo el cambio. El panel se protege con una sola
+   contraseña compartida, así que no hay usuarios individuales que registrar:
+   lo que sí se puede distinguir es DESDE QUÉ sesión se movió el pedido (dos
+   equipos trabajando a la vez dan huellas distintas). Es un hash truncado
+   del token, nunca el token: si el historial se exporta, no lleva adentro
+   una credencial válida. */
+function huellaSesion(req) {
+  const auth = req.headers['authorization'] ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token) return null;
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 12);
+}
+
 app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   const { numero } = req.params;
   const { estado } = req.body ?? {};
+  const usuarioAdmin = validarOperario(req.body?.usuario);
 
   if (!NUMERO_ORDEN_RE.test(numero)) {
     return res.status(400).json({ error: 'Número de orden inválido.' });
@@ -452,17 +496,86 @@ app.patch('/ordenes/:numero', requireAuth, (req, res) => {
   }
 
   try {
-    const info = db
-      .prepare("UPDATE ordenes SET estado = ?, actualizado_en = datetime('now') WHERE numero = ?")
-      .run(estado, numero);
-    if (info.changes === 0) {
+    const actual = db.prepare('SELECT estado FROM ordenes WHERE numero = ?').get(numero);
+    if (!actual) {
       return res.status(404).json({ error: 'Orden no encontrada.' });
     }
+
+    /* Leer el estado anterior, escribir el nuevo y registrar la transición
+       tienen que ser un solo paso: si el historial se escribiera aparte,
+       dos operarios moviendo el mismo pedido a la vez podrían dejar
+       registrado un estado_origen que ya no era el vigente. */
+    const avanzar = db.transaction(() => {
+      db.prepare(
+        "UPDATE ordenes SET estado = ?, actualizado_en = datetime('now') WHERE numero = ?",
+      ).run(estado, numero);
+      // Reafirmar el mismo estado (doble clic, dos pestañas) no es una
+      // transición: registrarla metería una etapa de 0 minutos que después
+      // ensuciaría la mediana de la etapa.
+      if (actual.estado !== estado) {
+        Pedidos.registrarTransicion(numero, {
+          estadoOrigen: actual.estado,
+          estadoDestino: estado,
+          usuarioAdmin,
+          sesionAdmin: huellaSesion(req),
+        });
+      }
+    });
+    avanzar();
+
     broadcast({ tipo: 'orden:actualizada', numero, estado });
-    res.json({ numero, estado });
+    res.json({ numero, estado, estadoAnterior: actual.estado, usuario: usuarioAdmin });
   } catch (err) {
     console.error('[PATCH /ordenes/:numero]', err.message);
     res.status(500).json({ error: 'Error al actualizar la orden.' });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   PEDIDOS — analítica del ciclo de vida
+   ═══════════════════════════════════════════
+   La fila de `ordenes` solo guarda el estado actual; el tiempo de cada
+   etapa vive en orden_status_log y hay que reconstruirlo. Todo el trabajo
+   está en pedidos.js/pedidosAnalitica.js: acá solo se validan filtros. */
+
+function leerFiltrosPedidos(query) {
+  const { desde, hasta, estado } = query;
+  for (const fecha of [desde, hasta]) {
+    if (fecha !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
+  }
+  if (estado !== undefined && !ORDER_STATES.includes(estado)) return null;
+  return { desde, hasta, estado };
+}
+
+app.get('/ordenes/analisis', requireAuth, (req, res) => {
+  const filtros = leerFiltrosPedidos(req.query);
+  if (!filtros) {
+    return res
+      .status(400)
+      .json({ error: 'Filtros inválidos (fechas AAAA-MM-DD, estado del flujo).' });
+  }
+  try {
+    res.json(Pedidos.analizarPedidos(filtros));
+  } catch (err) {
+    console.error('[GET /ordenes/analisis]', err.message);
+    res.status(500).json({ error: 'Error al analizar los pedidos.' });
+  }
+});
+
+app.get('/ordenes/:numero/historial', requireAuth, (req, res) => {
+  const { numero } = req.params;
+  if (!NUMERO_ORDEN_RE.test(numero)) {
+    return res.status(400).json({ error: 'Número de orden inválido.' });
+  }
+  try {
+    const pedido = Pedidos.obtenerPedido(numero);
+    if (!pedido) {
+      return res.status(404).json({ error: 'Orden no encontrada.' });
+    }
+    res.json(pedido);
+  } catch (err) {
+    console.error('[GET /ordenes/:numero/historial]', err.message);
+    res.status(500).json({ error: 'Error al consultar el historial de la orden.' });
   }
 });
 

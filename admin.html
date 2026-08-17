@@ -298,6 +298,18 @@
               </button>
               <button
                 type="button"
+                class="admin-nav__btn"
+                data-view-target="pedidos-view"
+                data-tooltip="Analítica de pedidos"
+                role="tab"
+                aria-selected="false"
+              >
+                <i class="fa-solid fa-stopwatch" aria-hidden="true"></i>
+                <span class="admin-nav__btn-label">Ciclo de pedidos</span>
+                <span class="admin-nav__count" id="pedidos-count">0</span>
+              </button>
+              <button
+                type="button"
                 class="admin-nav__btn admin-nav__btn--soon"
                 data-tooltip="Mermas (pronto)"
                 disabled
@@ -396,6 +408,24 @@
               Pedidos del día agrupados por horario de retiro ·
               <time id="dashboard-date" datetime="" aria-label="Fecha actual"></time>
             </p>
+          </div>
+
+          <!-- Quién mueve el pedido. El panel entra con una sola contraseña
+               compartida, así que el backend no puede deducir la persona:
+               se declara acá una vez y viaja con cada cambio de estado al
+               historial. Opcional a propósito — si queda vacío el pedido
+               igual avanza (la cocina no se bloquea por un dato de
+               analítica). Se recuerda en este navegador. -->
+          <div class="form-field form-field--inline">
+            <label for="operario-actual" class="form-field__label">Operario en turno</label>
+            <input
+              type="text"
+              id="operario-actual"
+              class="form-field__input"
+              maxlength="60"
+              placeholder="Tu nombre (opcional)"
+              autocomplete="off"
+            />
           </div>
         </header>
 
@@ -2892,6 +2922,221 @@
               </button>
             </header>
             <div class="modal__body" id="lote-traza-body" aria-live="polite">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CICLO DE PEDIDOS — analítica del ciclo de vida de la orden.
+           `ordenes.estado` se sobreescribe en cada paso, así que el tiempo
+           de cada etapa se reconstruye desde orden_status_log: de ahí salen
+           el lead time, el cuello de botella de la cocina, el embudo por
+           estado y el reparto por dispositivo del checkout. Solo lectura:
+           los datos nacen al crear el pedido y al avanzarlo en la vista de
+           Pedidos. Ver pedidos.js y pedidosAnalitica.js. -->
+      <section
+        id="pedidos-view"
+        class="view view--lotes"
+        hidden
+        aria-labelledby="pedidos-title"
+        data-component="pedidos"
+      >
+        <header class="dashboard-header">
+          <div class="dashboard-header__title">
+            <h1 id="pedidos-title">Ciclo de pedidos</h1>
+            <p class="dashboard-header__subtitle">
+              Cuánto tarda cada etapa del pedido, desde que entra hasta que el cliente lo retira, y
+              desde qué dispositivo se hizo el checkout. Todo se deriva del historial de estados: no
+              hay nada que capturar acá.
+            </p>
+          </div>
+        </header>
+
+        <section
+          class="horneadas-toolbar"
+          aria-label="Filtrar pedidos"
+          data-component="pedidos-toolbar"
+        >
+          <div class="form-field">
+            <label for="pedidos-filtro-desde" class="form-field__label">Desde</label>
+            <input type="date" id="pedidos-filtro-desde" class="form-field__input" />
+          </div>
+          <div class="form-field">
+            <label for="pedidos-filtro-hasta" class="form-field__label">Hasta</label>
+            <input type="date" id="pedidos-filtro-hasta" class="form-field__input" />
+          </div>
+          <div class="form-field">
+            <label for="pedidos-filtro-estado" class="form-field__label">Estado</label>
+            <select id="pedidos-filtro-estado" class="form-field__input">
+              <option value="">Todos</option>
+              <option value="pendiente">Recibida</option>
+              <option value="en_preparacion">En preparación</option>
+              <option value="preparada">Preparada</option>
+              <option value="entregada">Entregada</option>
+            </select>
+          </div>
+          <button type="button" id="btn-pedidos-filtrar" class="btn btn--ghost">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Analizar
+          </button>
+          <button type="button" id="btn-pedidos-limpiar" class="btn btn--ghost">
+            <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+            Últimos 30 días
+          </button>
+        </section>
+
+        <p id="pedidos-periodo" class="lotes-periodo" role="status" aria-live="polite"></p>
+
+        <section id="pedidos-resumen" class="stats" aria-label="Resumen del período">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </section>
+
+        <h2 class="section-subtitle">Tiempo por etapa y cuello de botella</h2>
+        <div id="pedidos-leadtime" class="lotes-panel" data-component="pedidos-leadtime">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Tendencia del período</h2>
+        <div id="pedidos-tendencia" class="lotes-panel" data-component="pedidos-tendencia">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Análisis exploratorio</h2>
+        <div class="lotes-grafico">
+          <h3 class="lotes-grafico__titulo">Distribución del lead time (min)</h3>
+          <div id="pedidos-histograma" data-component="pedidos-histograma">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
+
+        <div class="lotes-grafico">
+          <h3 class="lotes-grafico__titulo">Estadística descriptiva</h3>
+          <div id="pedidos-descriptivas" data-component="pedidos-descriptivas">
+            <!-- Se inyecta dinámicamente por admin.js -->
+          </div>
+        </div>
+
+        <h2 class="section-subtitle">Embudo de estados</h2>
+        <div id="pedidos-embudo" class="lotes-panel" data-component="pedidos-embudo">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <h2 class="section-subtitle">Dispositivo del checkout</h2>
+        <div id="pedidos-dispositivos" class="lotes-panel" data-component="pedidos-dispositivos">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <div class="lotes-graficos">
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Pedidos por hora de ingreso</h3>
+            <div id="pedidos-grafico-hora-ingreso" data-component="pedidos-hora-ingreso">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Pedidos por hora de retiro</h3>
+            <div id="pedidos-grafico-hora-retiro" data-component="pedidos-hora-retiro">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-subtitle">Pedidos atípicos por lead time</h2>
+        <div class="tabla-shell">
+          <table
+            id="pedidos-tabla-atipicos"
+            class="insumo-table lotes-table"
+            data-component="pedidos-atipicos"
+          >
+            <colgroup>
+              <col style="width: 26%" />
+              <col style="width: 26%" />
+              <col style="width: 18%" />
+              <col style="width: 30%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Pedido</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Lead time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <h2 class="section-subtitle">Validación de datos</h2>
+        <div id="pedidos-calidad" class="lotes-panel" data-component="pedidos-calidad">
+          <!-- Se inyecta dinámicamente por admin.js -->
+        </div>
+
+        <div class="lotes-graficos">
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Completitud por campo</h3>
+            <div id="pedidos-completitud" data-component="pedidos-completitud">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+          <div class="lotes-grafico">
+            <h3 class="lotes-grafico__titulo">Hallazgos por regla</h3>
+            <div id="pedidos-hallazgos" data-component="pedidos-hallazgos">
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <h2 class="section-subtitle">Pedidos del período</h2>
+        <div class="tabla-shell">
+          <table id="pedidos-tabla" class="insumo-table lotes-table" data-component="pedidos-tabla">
+            <colgroup>
+              <col style="width: 22%" />
+              <col style="width: 18%" />
+              <col style="width: 15%" />
+              <col style="width: 16%" />
+              <col style="width: 15%" />
+              <col style="width: 14%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Pedido</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Etapas (min)</th>
+                <th scope="col">Lead time</th>
+                <th scope="col">Historial</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Se inyecta dinámicamente por admin.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Modal: línea de tiempo de un pedido (cada transición con su hora
+             y el operario que la hizo) -->
+        <div class="modal-overlay" id="pedido-historial-modal" hidden>
+          <div
+            class="modal modal--lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pedido-historial-title"
+          >
+            <header class="modal__header">
+              <h2 class="modal__title" id="pedido-historial-title">Historial del pedido</h2>
+              <button
+                type="button"
+                class="modal__close"
+                data-pedido-historial-cerrar
+                aria-label="Cerrar"
+              >
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </header>
+            <div class="modal__body" id="pedido-historial-body" aria-live="polite">
               <!-- Se inyecta dinámicamente por admin.js -->
             </div>
           </div>

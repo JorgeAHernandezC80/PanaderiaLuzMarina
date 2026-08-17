@@ -55,6 +55,90 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_fecha ON ordenes(fecha_iso)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON ordenes(estado)');
 
+  /* Metadatos del checkout. El pedido se cierra por WhatsApp, sin pasarela:
+     el único momento en que el navegador del cliente habla con nosotros es
+     el POST /ordenes, así que es ahí o nunca. Sin esto no hay forma de
+     responder "¿cuánta venta real entra por teléfono?" y priorizar la UX
+     móvil con datos en vez de intuición.
+     Sobre "localización aproximada": no se guarda IP ni coordenadas (dato
+     personal que el negocio no necesita). La zona horaria IANA y el idioma
+     que declara el navegador ubican al cliente con la granularidad que
+     sirve para operar — región y lengua —, y no identifican a nadie. */
+  for (const [columna, tipo] of [
+    ['user_agent', 'TEXT'],
+    ['dispositivo', 'TEXT'],
+    ['zona_horaria', 'TEXT'],
+    ['idioma', 'TEXT'],
+  ]) {
+    const columnasOrdenes = db
+      .prepare('PRAGMA table_info(ordenes)')
+      .all()
+      .map((c) => c.name);
+    if (!columnasOrdenes.includes(columna)) {
+      console.log(`[db] Agregando columna ordenes.${columna} (migración)...`);
+      db.exec(`ALTER TABLE ordenes ADD COLUMN ${columna} ${tipo}`);
+    }
+  }
+
+  /* Historial de estados de las órdenes. `ordenes.estado` se sobreescribe
+     en cada paso, así que por sí solo no dice cuánto tardó el pedido en
+     cada etapa: al pasar de 'pendiente' a 'entregada' el tiempo que estuvo
+     'en_preparacion' desaparece. Cada transición se guarda acá como una
+     fila nueva (append-only), y de ahí salen el lead time por etapa y el
+     cuello de botella de la cocina.
+     estado_origen es NULL en la fila de creación del pedido: nada precede
+     al primer estado, y usar 'pendiente' ahí falsearía una transición que
+     nunca ocurrió. El id autoincremental desempata dos transiciones del
+     mismo segundo, igual que en orden_compra_eventos. */
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS orden_status_log (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      orden_numero   TEXT NOT NULL REFERENCES ordenes(numero) ON DELETE CASCADE,
+      estado_origen  TEXT,
+      estado_destino TEXT NOT NULL,
+      usuario_admin  TEXT,
+      sesion_admin   TEXT,
+      fecha_hora     TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_status_log_orden ON orden_status_log(orden_numero, id)',
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_orden_status_log_fecha ON orden_status_log(fecha_hora, estado_destino)',
+  );
+
+  /* Relleno inicial para los pedidos que ya estaban en la base antes de que
+     existiera el historial. Solo se escribe lo que la propia fila prueba:
+     el pedido nació (creado_en) y, si su estado ya no es 'pendiente', llegó
+     a su estado actual (actualizado_en). Los pasos intermedios NO se
+     inventan — no quedó registro de ellos, y rellenarlos con horas
+     estimadas contaminaría justo la métrica que este historial existe para
+     medir. Esas transiciones quedan marcadas con sesion_admin =
+     'migracion' para poder excluirlas de cualquier análisis. */
+  const logVacio =
+    db.prepare('SELECT COUNT(*) AS n FROM orden_status_log').get().n === 0 &&
+    db.prepare('SELECT COUNT(*) AS n FROM ordenes').get().n > 0;
+  if (logVacio) {
+    console.log('[db] Rellenando orden_status_log con el historial conocido de ordenes...');
+    const insertar = db.prepare(`
+      INSERT INTO orden_status_log
+        (orden_numero, estado_origen, estado_destino, usuario_admin, sesion_admin, fecha_hora)
+      VALUES (?, NULL, ?, NULL, 'migracion', ?)
+    `);
+    const rellenar = db.transaction(() => {
+      for (const fila of db
+        .prepare('SELECT numero, estado, creado_en, actualizado_en FROM ordenes')
+        .all()) {
+        insertar.run(fila.numero, 'pendiente', fila.creado_en);
+        if (fila.estado !== 'pendiente')
+          insertar.run(fila.numero, fila.estado, fila.actualizado_en);
+      }
+    });
+    rellenar();
+  }
+
   /* Migración: si la tabla insumos ya existía de una versión anterior (por
      ejemplo, tu base de datos local mientras probabas el panel), le pueden
      faltar columnas agregadas después. A diferencia de proveedores (una
