@@ -93,8 +93,13 @@ function clasificarDispositivo(userAgent) {
  * salvo que el pedido esté entregado: contar "hasta ahora" como duración
  * final haría que un pedido en curso pareciera un récord de lentitud.
  *
- * @param {{estadoOrigen: string|null, estadoDestino: string, fechaHora: string, usuarioAdmin: string|null}[]} transiciones
- * @returns {{etapas: object[], transiciones: object[], leadTimeTotalMin: number|null, entregada: boolean}}
+ * Un historial reconstruido por la migración (`sesionAdmin: 'migracion'`)
+ * no son observaciones: son las dos fechas que tenía la fila del pedido. Si
+ * de ahí sale una duración de menos de un minuto no se mide como "cocina
+ * instantánea", se deja en null para que no arrastre las medianas.
+ *
+ * @param {{estadoOrigen: string|null, estadoDestino: string, fechaHora: string, usuarioAdmin: string|null, sesionAdmin: string|null}[]} transiciones
+ * @returns {{etapas: object[], transiciones: object[], leadTimeTotalMin: number|null, reconstruida: boolean, entregada: boolean}}
  */
 function construirLineaTiempo(transiciones) {
   const ordenadas = [...(transiciones ?? [])]
@@ -103,6 +108,11 @@ function construirLineaTiempo(transiciones) {
       (a, b) => String(a.fechaHora).localeCompare(String(b.fechaHora)) || (a.id ?? 0) - (b.id ?? 0),
     );
 
+  const reconstruida =
+    ordenadas.length > 0 && ordenadas.every((t) => t.sesionAdmin === 'migracion');
+  const medible = (minutos) =>
+    minutos !== null && reconstruida && minutos < MIN_MINUTOS_ETAPA_CREIBLE ? null : minutos;
+
   const etapas = ordenadas.map((transicion, i) => {
     const siguiente = ordenadas[i + 1];
     return {
@@ -110,7 +120,7 @@ function construirLineaTiempo(transiciones) {
       etiqueta: ETIQUETAS_ESTADO[transicion.estadoDestino] ?? transicion.estadoDestino,
       desde: transicion.fechaHora,
       hasta: siguiente ? siguiente.fechaHora : null,
-      minutos: siguiente ? minutosEntre(transicion.fechaHora, siguiente.fechaHora) : null,
+      minutos: siguiente ? medible(minutosEntre(transicion.fechaHora, siguiente.fechaHora)) : null,
       abierta: !siguiente,
       usuarioAdmin: transicion.usuarioAdmin ?? null,
     };
@@ -119,12 +129,13 @@ function construirLineaTiempo(transiciones) {
   const entregada = ordenadas.some((t) => t.estadoDestino === 'entregada');
   const leadTimeTotalMin =
     ordenadas.length > 1
-      ? minutosEntre(ordenadas[0].fechaHora, ordenadas[ordenadas.length - 1].fechaHora)
+      ? medible(minutosEntre(ordenadas[0].fechaHora, ordenadas[ordenadas.length - 1].fechaHora))
       : null;
 
   return {
     etapas,
     transiciones: ordenadas,
+    reconstruida,
     leadTimeTotalMin: entregada ? leadTimeTotalMin : null,
     // El tiempo transcurrido sirve para los pedidos en curso, pero se
     // devuelve aparte para que nadie lo promedie junto al lead time real.
@@ -338,6 +349,13 @@ const REGLAS_PEDIDO = Object.freeze([
           i > 0 && FLUJO_ESTADOS.indexOf(estado) < FLUJO_ESTADOS.indexOf(destinos[i - 1]),
       );
     },
+  },
+  {
+    codigo: 'historial_reconstruido',
+    severidad: 'media',
+    mensaje:
+      'El historial se reconstruyó al migrar la base: solo consta cuándo entró y cuándo terminó, así que sus etapas no tienen tiempo medible.',
+    evaluar: (p) => p.lineaTiempo?.reconstruida === true,
   },
   {
     codigo: 'etapa_instantanea',

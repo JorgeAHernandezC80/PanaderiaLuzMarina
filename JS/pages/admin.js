@@ -3518,6 +3518,14 @@ const Render = {
       .join('');
   },
 
+  /** Cómo se lee una etapa de la línea de tiempo. La última etapa nunca
+   *  tiene duración (no hay transición siguiente que la cierre): en un
+   *  pedido entregado eso es el final del ciclo, no una espera abierta. */
+  _pedidosEstadoEtapa(etapa) {
+    if (!etapa.abierta) return `Duró ${this._pedidosDuracion(etapa.minutos)}`;
+    return etapa.estado === 'entregada' ? 'Fin del ciclo' : 'Etapa en curso';
+  },
+
   /** Línea de tiempo de un pedido: cada transición con su hora, cuánto duró
    *  la etapa y quién la movió. */
   renderHistorialPedido(pedido) {
@@ -3533,7 +3541,7 @@ const Render = {
           <i class="fa-solid fa-clock" aria-hidden="true"></i>
           <strong>${escapeHTML(etapa.etiqueta)} · ${new Date(etapa.desde).toLocaleString('es-CO')}</strong>
           <span>
-            ${etapa.abierta ? 'Etapa en curso' : `Duró ${this._pedidosDuracion(etapa.minutos)}`} ·
+            ${this._pedidosEstadoEtapa(etapa)} ·
             ${etapa.usuarioAdmin ? `movido por ${escapeHTML(etapa.usuarioAdmin)}` : 'sin operario declarado'}
           </span>
         </li>`,

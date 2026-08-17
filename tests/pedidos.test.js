@@ -85,6 +85,51 @@ describe('construirLineaTiempo (función pura)', () => {
     expect(linea.transcurridoMin).toBe(10);
   });
 
+  test('un historial reconstruido por la migración no aporta duraciones falsas', () => {
+    // La migración solo tiene las dos fechas de la fila del pedido; cuando
+    // coinciden, eso no es una cocina instantánea sino falta de dato.
+    const linea = Analitica.construirLineaTiempo([
+      {
+        id: 1,
+        estadoDestino: 'pendiente',
+        fechaHora: '2026-01-05T08:00:00.000Z',
+        sesionAdmin: 'migracion',
+      },
+      {
+        id: 2,
+        estadoDestino: 'entregada',
+        fechaHora: '2026-01-05T08:00:00.000Z',
+        sesionAdmin: 'migracion',
+      },
+    ]);
+
+    expect(linea.reconstruida).toBe(true);
+    expect(linea.leadTimeTotalMin).toBeNull();
+    expect(Analitica.minutosPorEstado(linea).pendiente).toBeNull();
+    expect(
+      Analitica.validarPedido({ estado: 'entregada', lineaTiempo: linea }).map((h) => h.codigo),
+    ).toContain('historial_reconstruido');
+  });
+
+  test('un historial real de duración cero sí se mide: 0 min es una medición', () => {
+    const linea = Analitica.construirLineaTiempo([
+      {
+        id: 1,
+        estadoDestino: 'pendiente',
+        fechaHora: '2026-01-05T08:00:00.000Z',
+        sesionAdmin: 'checkout',
+      },
+      {
+        id: 2,
+        estadoDestino: 'entregada',
+        fechaHora: '2026-01-05T08:00:00.000Z',
+        sesionAdmin: 'abc123',
+      },
+    ]);
+    expect(linea.reconstruida).toBe(false);
+    expect(linea.leadTimeTotalMin).toBe(0);
+  });
+
   test('sin transiciones no se inventa nada', () => {
     const linea = Analitica.construirLineaTiempo([]);
     expect(linea.etapas).toEqual([]);
