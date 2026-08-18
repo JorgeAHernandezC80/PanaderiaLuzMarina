@@ -86,8 +86,9 @@ describe('construirLineaTiempo (función pura)', () => {
   });
 
   test('un historial reconstruido por la migración no aporta duraciones falsas', () => {
-    // La migración solo tiene las dos fechas de la fila del pedido; cuando
-    // coinciden, eso no es una cocina instantánea sino falta de dato.
+    // La migración solo tiene las dos fechas de la fila del pedido: ese lapso
+    // no es el tiempo que el pedido pasó en la primera etapa, así que ninguna
+    // etapa se mide y el lapso queda solo como dato informativo.
     const linea = Analitica.construirLineaTiempo([
       {
         id: 1,
@@ -98,17 +99,47 @@ describe('construirLineaTiempo (función pura)', () => {
       {
         id: 2,
         estadoDestino: 'entregada',
-        fechaHora: '2026-01-05T08:00:00.000Z',
+        fechaHora: '2026-01-05T18:00:00.000Z',
         sesionAdmin: 'migracion',
       },
     ]);
 
     expect(linea.reconstruida).toBe(true);
     expect(linea.leadTimeTotalMin).toBeNull();
+    expect(linea.transcurridoMin).toBe(600);
     expect(Analitica.minutosPorEstado(linea).pendiente).toBeNull();
     expect(
       Analitica.validarPedido({ estado: 'entregada', lineaTiempo: linea }).map((h) => h.codigo),
     ).toContain('historial_reconstruido');
+  });
+
+  test('los pedidos migrados no mueven el cuello de botella ni las medianas', () => {
+    const reconstruido = Analitica.construirLineaTiempo([
+      {
+        id: 1,
+        estadoDestino: 'pendiente',
+        fechaHora: '2026-01-05T08:00:00.000Z',
+        sesionAdmin: 'migracion',
+      },
+      {
+        id: 2,
+        estadoDestino: 'entregada',
+        fechaHora: '2026-01-05T18:00:00.000Z',
+        sesionAdmin: 'migracion',
+      },
+    ]);
+    const real = Analitica.construirLineaTiempo(transiciones);
+
+    const leadTime = Analitica.leadTimePorEtapa([
+      { lineaTiempo: reconstruido },
+      { lineaTiempo: real },
+    ]);
+
+    // Las 10 h del pedido migrado se habrían anotado en "Recibida".
+    expect(leadTime.cuelloDeBotella.estado).toBe('en_preparacion');
+    expect(leadTime.etapas.find((e) => e.estado === 'pendiente').pedidosMedidos).toBe(1);
+    expect(leadTime.total.pedidosMedidos).toBe(1);
+    expect(leadTime.total.mediana).toBe(60);
   });
 
   test('un historial real de duración cero sí se mide: 0 min es una medición', () => {
@@ -536,6 +567,17 @@ describe('GET /ordenes/analisis', () => {
     const pedido = res.body.pedidos.find((p) => p.numero === numero);
     expect(pedido.entregada).toBe(true);
     expect(pedido.operarios).toContain('Ana');
+  });
+
+  test('cada pedido atípico dice de qué pedido habla', async () => {
+    const res = await request(app).get('/ordenes/analisis').set('Authorization', auth());
+    expect(res.status).toBe(200);
+    for (const atipico of res.body.atipicos) {
+      expect(typeof atipico.numero).toBe('string');
+      expect(atipico.numero).not.toBe('');
+      expect(atipico.fecha).toBeTruthy();
+      expect(Number.isFinite(atipico.valor)).toBe(true);
+    }
   });
 
   test('el filtro por estado deja solo los pedidos en ese estado', async () => {

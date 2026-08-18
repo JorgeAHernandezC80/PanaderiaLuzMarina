@@ -350,10 +350,18 @@ function analizarPedidos(filtros = {}) {
       },
     ],
     histogramaLeadTime: Analitica.histograma(leadTimes),
+    // outliersIQR devuelve el pedido anidado en `item`; la tabla necesita
+    // los campos planos para poder decir de qué pedido habla.
     atipicos: Analitica.outliersIQR(
       pedidos.filter((p) => Number.isFinite(p.leadTimeTotalMin)),
       (p) => p.leadTimeTotalMin,
-    ),
+    ).map(({ item, valor, lado }) => ({
+      numero: item.numero,
+      cliente: item.cliente,
+      fecha: item.fecha,
+      valor,
+      lado,
+    })),
 
     // Procesamiento del ciclo de vida
     leadTime: Analitica.leadTimePorEtapa(pedidos),

@@ -94,9 +94,10 @@ function clasificarDispositivo(userAgent) {
  * final haría que un pedido en curso pareciera un récord de lentitud.
  *
  * Un historial reconstruido por la migración (`sesionAdmin: 'migracion'`)
- * no son observaciones: son las dos fechas que tenía la fila del pedido. Si
- * de ahí sale una duración de menos de un minuto no se mide como "cocina
- * instantánea", se deja en null para que no arrastre las medianas.
+ * no son observaciones: son las dos fechas que tenía la fila del pedido. Ese
+ * tramo no es el tiempo que el pedido pasó en la primera etapa, así que
+ * ninguna de sus etapas se mide (todas quedan en null) y el lapso total solo
+ * queda como dato informativo en `transcurridoMin`.
  *
  * @param {{estadoOrigen: string|null, estadoDestino: string, fechaHora: string, usuarioAdmin: string|null, sesionAdmin: string|null}[]} transiciones
  * @returns {{etapas: object[], transiciones: object[], leadTimeTotalMin: number|null, reconstruida: boolean, entregada: boolean}}
@@ -110,8 +111,6 @@ function construirLineaTiempo(transiciones) {
 
   const reconstruida =
     ordenadas.length > 0 && ordenadas.every((t) => t.sesionAdmin === 'migracion');
-  const medible = (minutos) =>
-    minutos !== null && reconstruida && minutos < MIN_MINUTOS_ETAPA_CREIBLE ? null : minutos;
 
   const etapas = ordenadas.map((transicion, i) => {
     const siguiente = ordenadas[i + 1];
@@ -120,26 +119,27 @@ function construirLineaTiempo(transiciones) {
       etiqueta: ETIQUETAS_ESTADO[transicion.estadoDestino] ?? transicion.estadoDestino,
       desde: transicion.fechaHora,
       hasta: siguiente ? siguiente.fechaHora : null,
-      minutos: siguiente ? medible(minutosEntre(transicion.fechaHora, siguiente.fechaHora)) : null,
+      minutos:
+        siguiente && !reconstruida ? minutosEntre(transicion.fechaHora, siguiente.fechaHora) : null,
       abierta: !siguiente,
       usuarioAdmin: transicion.usuarioAdmin ?? null,
     };
   });
 
   const entregada = ordenadas.some((t) => t.estadoDestino === 'entregada');
-  const leadTimeTotalMin =
+  const lapsoTotalMin =
     ordenadas.length > 1
-      ? medible(minutosEntre(ordenadas[0].fechaHora, ordenadas[ordenadas.length - 1].fechaHora))
+      ? minutosEntre(ordenadas[0].fechaHora, ordenadas[ordenadas.length - 1].fechaHora)
       : null;
 
   return {
     etapas,
     transiciones: ordenadas,
     reconstruida,
-    leadTimeTotalMin: entregada ? leadTimeTotalMin : null,
+    leadTimeTotalMin: entregada && !reconstruida ? lapsoTotalMin : null,
     // El tiempo transcurrido sirve para los pedidos en curso, pero se
     // devuelve aparte para que nadie lo promedie junto al lead time real.
-    transcurridoMin: leadTimeTotalMin,
+    transcurridoMin: lapsoTotalMin,
     entregada,
   };
 }
@@ -354,7 +354,7 @@ const REGLAS_PEDIDO = Object.freeze([
     codigo: 'historial_reconstruido',
     severidad: 'media',
     mensaje:
-      'El historial se reconstruyó al migrar la base: solo consta cuándo entró y cuándo terminó, así que sus etapas no tienen tiempo medible.',
+      'El historial se reconstruyó al migrar la base: solo consta cuándo entró y cuándo terminó, así que sus etapas no tienen tiempo medible y el pedido no entra en los promedios del ciclo.',
     evaluar: (p) => p.lineaTiempo?.reconstruida === true,
   },
   {
