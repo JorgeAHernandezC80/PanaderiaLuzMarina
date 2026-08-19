@@ -32,6 +32,8 @@ module.exports = [
       'mermas.js',
       'mermasAnalitica.js',
       'mermasModelos.js',
+      'pedidos.js',
+      'pedidosAnalitica.js',
       'babel.config.js',
       'jest.config.js',
       'eslint.config.js',
