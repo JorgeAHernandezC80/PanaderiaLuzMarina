@@ -4242,6 +4242,486 @@ const Render = {
     `;
   },
 
+  updateLotesCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.lotesCount);
+    if (el) el.textContent = String(total);
+  },
+
+  /* ───────────────────── CICLO DE PEDIDOS ─────────────────────
+     Todo llega calculado del backend (pedidos.js): acá solo se pinta.
+     Regla que se repite en cada bloque: un null es "no se midió" y se
+     muestra como "—", nunca como 0 — un lead time de 0 min se leería como
+     "instantáneo" cuando en realidad significa "sin historial". */
+
+  updatePedidosCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.pedidosCount);
+    if (el) el.textContent = String(total);
+  },
+
+  /** Minutos en la unidad que se lee mejor: 45 min, 2.5 h, 1.2 d. */
+  _pedidosDuracion(minutos) {
+    if (minutos === null || minutos === undefined) return '—';
+    if (minutos < 60) return `${this._lotesNum(minutos)} min`;
+    if (minutos < 60 * 24) return `${this._lotesNum(minutos / 60)} h`;
+    return `${this._lotesNum(minutos / 1440)} d`;
+  },
+
+  PEDIDOS_DISPOSITIVO_ICONOS: {
+    movil: 'fa-mobile-screen',
+    tablet: 'fa-tablet-screen-button',
+    escritorio: 'fa-desktop',
+    bot: 'fa-robot',
+    desconocido: 'fa-circle-question',
+  },
+
+  /** Pinta la vista Ciclo de pedidos a partir de GET /ordenes/analisis. */
+  renderPedidos(analisis) {
+    if (!analisis) return;
+
+    const periodoEl = document.querySelector(CONFIG.SELECTORS.pedidosPeriodo);
+    if (periodoEl) {
+      const { desde, hasta } = analisis.periodo;
+      periodoEl.textContent = `Período analizado: ${desde} a ${hasta} · ${analisis.resumen.pedidos} pedido(s).`;
+    }
+
+    this._renderPedidosResumen(analisis.resumen);
+    this._renderPedidosLeadTime(analisis.leadTime);
+    this._renderPedidosTendencia(analisis.tendencias);
+    this._renderPedidosHistograma(analisis.histogramaLeadTime);
+    this._renderPedidosDescriptivas(analisis.descriptivas);
+    this._renderPedidosEmbudo(analisis.embudo);
+    this._renderPedidosDispositivos(analisis.porDispositivo, analisis.resumen);
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosGraficoHoraIngreso,
+      analisis.porHoraIngreso.map((h) => ({ etiqueta: `${h.clave}:00`, total: h.pedidos })),
+    );
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosGraficoHoraRetiro,
+      analisis.porHoraRetiro.map((h) => ({ etiqueta: `${h.clave}:00`, total: h.pedidos })),
+    );
+
+    this._renderPedidosAtipicos(analisis.atipicos);
+    this._renderPedidosCalidad(analisis.calidad, analisis.completitud);
+    this._renderPedidosTabla(analisis.pedidos);
+  },
+
+  _renderPedidosResumen(resumen) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosResumen);
+    if (!container) return;
+
+    container.innerHTML = `
+      <article class="stat-card stat-card--accent">
+        <span class="stat-card__label">Pedidos del período</span>
+        <data class="stat-card__value" value="${resumen.pedidos}">${resumen.pedidos}</data>
+        <span class="stat-card__hint">${resumen.unidades} unidad(es) vendida(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Entregados</span>
+        <data class="stat-card__value" value="${resumen.porcentajeEntregado ?? 0}">${this._lotesNum(resumen.porcentajeEntregado, '%')}</data>
+        <span class="stat-card__hint">${resumen.entregados} de ${resumen.pedidos} pedido(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Ingresos</span>
+        <data class="stat-card__value" value="${resumen.ingresos}">${Format.currency(resumen.ingresos)}</data>
+        <span class="stat-card__hint">Ticket promedio: ${resumen.ticketPromedio === null ? '—' : Format.currency(resumen.ticketPromedio)}</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Checkout desde el teléfono</span>
+        <data class="stat-card__value" value="${resumen.porcentajeMovil ?? 0}">${this._lotesNum(resumen.porcentajeMovil, '%')}</data>
+        <span class="stat-card__hint">Sobre ${resumen.pedidosConMetadatos} pedido(s) con dato de dispositivo</span>
+      </article>
+    `;
+  },
+
+  /** Tiempo por etapa: la etapa más lenta por MEDIANA es el cuello de
+   *  botella (un solo pedido olvidado toda la noche movería el promedio lo
+   *  suficiente para señalar la etapa equivocada). */
+  _renderPedidosLeadTime(leadTime) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosLeadTime);
+    if (!container) return;
+
+    if (leadTime.datosInsuficientes) {
+      container.innerHTML = `
+        <p class="insumo-form__hint">
+          Todavía no hay transiciones de estado registradas en el período, así que no se puede medir
+          cuánto tarda cada etapa. Los tiempos aparecen a medida que los pedidos se avanzan desde el
+          panel (Recibida → En preparación → Preparada → Entregada).
+        </p>`;
+      return;
+    }
+
+    const maximo = Math.max(...leadTime.etapas.map((e) => e.mediana ?? 0), 1);
+    const barras = leadTime.etapas
+      .map((etapa) => {
+        const esCuello = leadTime.cuelloDeBotella?.estado === etapa.estado;
+        return `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${escapeHTML(etapa.etiqueta)}${esCuello ? ' ⏱' : ''}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${((etapa.mediana ?? 0) / maximo) * 100}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${this._pedidosDuracion(etapa.mediana)}</span>
+        </div>`;
+      })
+      .join('');
+
+    const cuello = leadTime.cuelloDeBotella;
+    container.innerHTML = `
+      <div class="stats">
+        <article class="stat-card stat-card--accent">
+          <span class="stat-card__label">Lead time total (mediana)</span>
+          <data class="stat-card__value" value="${leadTime.total.mediana ?? 0}">${this._pedidosDuracion(leadTime.total.mediana)}</data>
+          <span class="stat-card__hint">Promedio ${this._pedidosDuracion(leadTime.total.media)} sobre ${leadTime.total.pedidosMedidos} pedido(s) entregado(s)</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Cuello de botella</span>
+          <data class="stat-card__value" value="${cuello ? cuello.medianaMin : 0}">${cuello ? escapeHTML(cuello.etiqueta) : '—'}</data>
+          <span class="stat-card__hint">${cuello ? `${this._pedidosDuracion(cuello.medianaMin)} de mediana en ${cuello.pedidosMedidos} pedido(s)` : 'Sin etapas medibles'}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Pedido más lento</span>
+          <data class="stat-card__value" value="${leadTime.total.maximo ?? 0}">${this._pedidosDuracion(leadTime.total.maximo)}</data>
+          <span class="stat-card__hint">El más rápido: ${this._pedidosDuracion(leadTime.total.minimo)}</span>
+        </article>
+      </div>
+      <p class="insumo-form__hint">
+        Mediana de minutos que el pedido pasa en cada etapa. Se usa la mediana y no el promedio: un
+        solo pedido olvidado de un día para otro bastaría para señalar la etapa equivocada.
+      </p>
+      ${barras}
+    `;
+  },
+
+  _renderPedidosTendencia(tendencias) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosTendencia);
+    if (!container) return;
+
+    const { pedidos, leadTime, comparacionPedidos } = tendencias;
+    const direccion = (t) => this.LOTES_TENDENCIA_LABELS[t.direccion] ?? { texto: '—', icono: '' };
+    const dirPedidos = direccion(pedidos);
+    const dirLeadTime = direccion(leadTime);
+
+    container.innerHTML = `
+      <ul class="lotes-veredictos">
+        <li>
+          <i class="fa-solid ${dirPedidos.icono}" aria-hidden="true"></i>
+          <strong>Pedidos por día: ${escapeHTML(dirPedidos.texto)}</strong>
+          ${
+            pedidos.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con datos (hay ${pedidos.dias}).</span>`
+              : `<span>${pedidos.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(pedidos.pendientePorDia, ' pedidos/día')} · la recta explica el ${Math.round(pedidos.r2 * 100)}% de la variación.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid ${dirLeadTime.icono}" aria-hidden="true"></i>
+          <strong>Lead time medio diario: ${escapeHTML(dirLeadTime.texto)}</strong>
+          ${
+            leadTime.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con pedidos entregados (hay ${leadTime.dias}).</span>`
+              : `<span>${leadTime.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(leadTime.pendientePorDia, ' min/día')}. Si sube, la cocina se está atrasando.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+          <strong>Últimos 7 días vs. los 7 anteriores</strong>
+          ${
+            comparacionPedidos.datosInsuficientes
+              ? '<span>El período es más corto que dos semanas.</span>'
+              : `<span>${comparacionPedidos.actual} pedidos/día vs. ${comparacionPedidos.previa} pedidos/día (${this._lotesNum(comparacionPedidos.variacionPct, '%')}).</span>`
+          }
+        </li>
+      </ul>
+    `;
+  },
+
+  _renderPedidosHistograma(histograma) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosHistograma);
+    if (!container) return;
+
+    if (!histograma.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Ningún pedido del período tiene lead time medible: hace falta que el pedido llegue a "Entregada" con su historial registrado.</p>';
+      return;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosHistograma,
+      histograma.map((tramo) => ({
+        etiqueta: `${tramo.desde}–${tramo.hasta} min`,
+        total: tramo.total,
+      })),
+    );
+  },
+
+  /** Mismas fichas que en Lotes (mín — P25 — mediana — P75 — máx): la
+   *  descriptiva se lee sin desplazarse en horizontal. */
+  _renderPedidosDescriptivas(descriptivas) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosDescriptivas);
+    if (!container) return;
+
+    container.innerHTML = `<div class="lotes-descriptivas">${descriptivas
+      .map((d) =>
+        this._renderLotesFichaDescriptiva({
+          ...d,
+          etiqueta: d.variable,
+          campo: d.variable,
+        }),
+      )
+      .join('')}</div>`;
+  },
+
+  /** Embudo: cuántos pedidos alcanzaron cada etapa. Donde cae el porcentaje
+   *  es donde se pierden los pedidos (o donde se dejó de registrar). */
+  _renderPedidosEmbudo(embudo) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosEmbudo);
+    if (!container) return;
+
+    const maximo = Math.max(...embudo.map((e) => e.pedidos), 1);
+    container.innerHTML = `
+      <div>
+        ${embudo
+          .map(
+            (paso) => `
+          <div class="auditoria-barra">
+            <span class="auditoria-barra__etiqueta">${escapeHTML(paso.etiqueta)}</span>
+            <div class="auditoria-barra__pista">
+              <div class="auditoria-barra__relleno" style="width: ${(paso.pedidos / maximo) * 100}%"></div>
+            </div>
+            <span class="auditoria-barra__valor">
+              ${paso.pedidos}
+              ${paso.conversionDesdeAnterior === null ? '' : `<small>(${this._lotesNum(paso.conversionDesdeAnterior, '%')})</small>`}
+            </span>
+          </div>`,
+          )
+          .join('')}
+      </div>
+      <p class="insumo-form__hint">
+        El porcentaje es la conversión desde la etapa anterior. Un pedido cuenta como que alcanzó la
+        etapa si su historial la registra o si su estado actual ya está más adelante.
+      </p>
+    `;
+  },
+
+  _renderPedidosDispositivos(porDispositivo, resumen) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosDispositivos);
+    if (!container) return;
+
+    if (!porDispositivo.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay pedidos en el período.</p>';
+      return;
+    }
+
+    const fichas = porDispositivo
+      .map(
+        (d) => `
+      <article class="stat-card">
+        <span class="stat-card__label">
+          <i class="fa-solid ${this.PEDIDOS_DISPOSITIVO_ICONOS[d.clave] ?? 'fa-circle-question'}" aria-hidden="true"></i>
+          ${escapeHTML(d.etiqueta)}
+        </span>
+        <data class="stat-card__value" value="${d.pedidos}">${this._lotesNum(d.porcentajePedidos, '%')}</data>
+        <span class="stat-card__hint">
+          ${d.pedidos} pedido(s) · ${Format.currency(d.ingresos)} (${this._lotesNum(d.porcentajeIngresos, '%')} de los ingresos) ·
+          ticket ${Format.currency(d.ticketPromedio)}
+        </span>
+      </article>`,
+      )
+      .join('');
+
+    container.innerHTML = `
+      <div class="stats">${fichas}</div>
+      <p class="insumo-form__hint">
+        El dispositivo se deduce del User-Agent que envía el navegador al crear el pedido. Los
+        pedidos anteriores a esta captura aparecen como "Sin dato" y no cuentan para el
+        ${this._lotesNum(resumen.porcentajeMovil, '%')} de checkout móvil.
+      </p>
+    `;
+  },
+
+  _renderPedidosAtipicos(atipicos) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.pedidosTablaAtipicos);
+    if (!tbody) return;
+
+    tbody.innerHTML = atipicos.length
+      ? atipicos
+          .map(
+            (a) => `
+        <tr>
+          <td data-label="Pedido"><code class="lotes-table__codigo">${escapeHTML(a.numero)}</code></td>
+          <td data-label="Cliente">${escapeHTML(a.cliente)}</td>
+          <td data-label="Fecha">${escapeHTML(a.fecha)}</td>
+          <td data-label="Lead time">
+            ${this._pedidosDuracion(a.valor)}
+            <span class="insumo-badge ${a.lado === 'alto' ? 'insumo-badge--bajo-stock' : 'insumo-badge--por-vencer'}">
+              ${a.lado === 'alto' ? 'Muy lento' : 'Muy rápido'}
+            </span>
+          </td>
+        </tr>`,
+          )
+          .join('')
+      : '<tr><td colspan="4">Ningún pedido se sale del rango habitual del período.</td></tr>';
+  },
+
+  _renderPedidosCalidad(calidad, completitud) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosCalidad);
+    if (container) {
+      container.innerHTML = `
+        <div class="stats">
+          <article class="stat-card stat-card--accent">
+            <span class="stat-card__label">Pedidos sin observaciones</span>
+            <data class="stat-card__value" value="${calidad.porcentajeSano}">${calidad.porcentajeSano}%</data>
+            <span class="stat-card__hint">${calidad.pedidosConHallazgos} de ${calidad.totalPedidos} pedido(s) con algo que revisar</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Hallazgos de severidad alta</span>
+            <data class="stat-card__value" value="${calidad.porSeveridad.alta}">${calidad.porSeveridad.alta}</data>
+            <span class="stat-card__hint">${calidad.porSeveridad.media} media(s), ${calidad.porSeveridad.baja} baja(s)</span>
+          </article>
+        </div>
+      `;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosCompletitud,
+      Array.isArray(completitud)
+        ? completitud.map((c) => ({ etiqueta: c.etiqueta, total: c.porcentaje }))
+        : [],
+    );
+
+    const hallazgosEl = document.querySelector(CONFIG.SELECTORS.pedidosHallazgos);
+    if (!hallazgosEl) return;
+    hallazgosEl.innerHTML = calidad.porRegla.length
+      ? `<ul class="lotes-hallazgos">${calidad.porRegla
+          .map((r) => {
+            const sev = this.LOTES_SEVERIDAD_LABELS[r.severidad];
+            return `
+          <li>
+            <span class="insumo-badge ${sev.badgeClase}">${sev.texto}</span>
+            <strong>${r.total} pedido(s)</strong>
+            <span>${escapeHTML(r.mensaje)}</span>
+          </li>`;
+          })
+          .join('')}</ul>`
+      : '<p class="insumo-form__hint">Ninguna regla de validación se disparó en el período.</p>';
+  },
+
+  _renderPedidosTabla(pedidos) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.pedidosTabla);
+    if (!tbody) return;
+
+    if (!pedidos.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No hay pedidos en el período seleccionado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = pedidos
+      .map(
+        (pedido) => `
+      <tr>
+        <td data-label="Pedido">
+          <code class="lotes-table__codigo">${escapeHTML(pedido.numero)}</code>
+          <span class="lotes-table__vendidas">${escapeHTML(pedido.fecha)} ${escapeHTML(pedido.hora)}</span>
+        </td>
+        <td data-label="Cliente">
+          ${escapeHTML(pedido.cliente)}
+          <span class="lotes-table__vendidas">${pedido.unidades} u · ${Format.currency(pedido.total)}</span>
+        </td>
+        <td data-label="Estado">
+          ${escapeHTML(pedido.etiquetaEstado)}
+          <span class="lotes-table__vendidas">
+            <i class="fa-solid ${this.PEDIDOS_DISPOSITIVO_ICONOS[pedido.dispositivo] ?? 'fa-circle-question'}" aria-hidden="true"></i>
+            ${escapeHTML(pedido.dispositivo ?? 'sin dato')}
+          </span>
+        </td>
+        <td data-label="Etapas (min)">
+          <span class="lotes-table__vendidas">Prep.: ${this._pedidosDuracion(pedido.minutosEnPreparacion)}</span>
+          <span class="lotes-table__vendidas">Espera: ${this._pedidosDuracion(pedido.minutosEsperandoRetiro)}</span>
+        </td>
+        <td data-label="Lead time">${this._pedidosDuracion(pedido.leadTimeTotalMin)}</td>
+        <td data-label="Historial">
+          <button
+            type="button"
+            class="btn btn--ghost btn--small"
+            data-pedido-accion="historial"
+            aria-label="Ver historial del pedido ${escapeHTML(pedido.numero)}"
+            data-numero="${escapeHTML(pedido.numero)}"
+          >
+            Ver
+          </button>
+        </td>
+      </tr>`,
+      )
+      .join('');
+  },
+
+  /** Cómo se lee una etapa de la línea de tiempo. La última etapa nunca
+   *  tiene duración (no hay transición siguiente que la cierre): en un
+   *  pedido entregado eso es el final del ciclo, no una espera abierta. */
+  _pedidosEstadoEtapa(etapa) {
+    if (!etapa.abierta) return `Duró ${this._pedidosDuracion(etapa.minutos)}`;
+    return etapa.estado === 'entregada' ? 'Fin del ciclo' : 'Etapa en curso';
+  },
+
+  /** Línea de tiempo de un pedido: cada transición con su hora, cuánto duró
+   *  la etapa y quién la movió. */
+  renderHistorialPedido(pedido) {
+    const body = document.querySelector(CONFIG.SELECTORS.pedidoHistorialBody);
+    if (!body) return;
+
+    const etapas = pedido.lineaTiempo.etapas;
+    const timeline = etapas.length
+      ? `<ul class="lotes-veredictos">${etapas
+          .map(
+            (etapa) => `
+        <li>
+          <i class="fa-solid fa-clock" aria-hidden="true"></i>
+          <strong>${escapeHTML(etapa.etiqueta)} · ${new Date(etapa.desde).toLocaleString('es-CO')}</strong>
+          <span>
+            ${this._pedidosEstadoEtapa(etapa)} ·
+            ${etapa.usuarioAdmin ? `movido por ${escapeHTML(etapa.usuarioAdmin)}` : 'sin operario declarado'}
+          </span>
+        </li>`,
+          )
+          .join('')}</ul>`
+      : `<p class="insumo-form__hint">
+           Este pedido no tiene transiciones registradas: se creó antes de que existiera el historial
+           de estados, así que su lead time no se puede reconstruir.
+         </p>`;
+
+    const problemas = pedido.problemas.length
+      ? `<ul class="lotes-hallazgos">${pedido.problemas
+          .map((p) => {
+            const sev = this.LOTES_SEVERIDAD_LABELS[p.severidad];
+            return `<li><span class="insumo-badge ${sev.badgeClase}">${sev.texto}</span><strong></strong><span>${escapeHTML(p.mensaje)}</span></li>`;
+          })
+          .join('')}</ul>`
+      : '';
+
+    body.innerHTML = `
+      <div class="stats">
+        <article class="stat-card stat-card--accent">
+          <span class="stat-card__label">${escapeHTML(pedido.numero)}</span>
+          <data class="stat-card__value" value="${pedido.total}">${Format.currency(pedido.total)}</data>
+          <span class="stat-card__hint">${escapeHTML(pedido.cliente)} · retiro ${escapeHTML(pedido.retiro)} · ${pedido.unidades} u</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Lead time total</span>
+          <data class="stat-card__value" value="${pedido.leadTimeTotalMin ?? 0}">${this._pedidosDuracion(pedido.leadTimeTotalMin)}</data>
+          <span class="stat-card__hint">${pedido.entregada ? 'Pedido entregado' : 'Todavía en curso'}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Checkout</span>
+          <data class="stat-card__value" value="0">${escapeHTML(pedido.dispositivo ?? 'sin dato')}</data>
+          <span class="stat-card__hint">${escapeHTML(pedido.zonaHoraria ?? 'zona horaria sin dato')} · ${escapeHTML(pedido.idioma ?? 'idioma sin dato')}</span>
+        </article>
+      </div>
+      ${timeline}
+      ${problemas}
+    `;
+  },
+
   /** Tarjetas de resumen: total de panes horneados en la fecha consultada y
    *  desglose por producto, para leer de un vistazo la producción del día
    *  sin tener que sumar filas de la tabla a mano. */

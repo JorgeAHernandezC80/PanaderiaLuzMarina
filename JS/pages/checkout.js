@@ -42,6 +42,25 @@ function fechaISOHouston(date) {
   return `${fecha}T${hora}`;
 }
 
+/** Metadatos del checkout para la analítica del panel.
+ *
+ *  El pedido se cierra por WhatsApp, así que este POST es el único momento
+ *  en que el navegador habla con el backend: lo que no se mande acá no se
+ *  puede reconstruir después. El User-Agent lo agrega el propio navegador
+ *  en la cabecera; acá van los dos datos que el backend no puede deducir.
+ *
+ *  No se pide geolocalización: el permiso interrumpe el checkout justo
+ *  antes de cerrar la venta y el negocio no necesita coordenadas. La zona
+ *  horaria IANA da la ubicación aproximada (región) sin preguntar nada.
+ */
+function metadatosCheckout() {
+  const zonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return {
+    zonaHoraria: typeof zonaHoraria === 'string' ? zonaHoraria : null,
+    idioma: navigator.language ?? null,
+  };
+}
+
 /** Genera número de orden único: LM-YYYYMMDD-XXXX */
 function generarNumeroOrden() {
   const ahora = new Date();
@@ -250,7 +269,7 @@ async function enviarOrdenAlBackend(orden) {
     const res = await apiFetch('/ordenes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orden),
+      body: JSON.stringify({ ...orden, metadata: metadatosCheckout() }),
       timeout: 10_000, // 10s máx
     });
     if (!res.ok) {

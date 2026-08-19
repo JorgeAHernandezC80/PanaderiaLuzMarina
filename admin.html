@@ -299,6 +299,21 @@
               <button
                 type="button"
                 class="admin-nav__btn"
+                data-view-target="pedidos-view"
+                data-tooltip="Analítica de pedidos"
+                role="tab"
+                aria-selected="false"
+              >
+                <i class="fa-solid fa-stopwatch" aria-hidden="true"></i>
+                <span class="admin-nav__btn-label">Ciclo de pedidos</span>
+                <span class="admin-nav__count" id="pedidos-count">0</span>
+              </button>
+              <button
+                type="button"
+                class="admin-nav__btn admin-nav__btn--soon"
+                data-tooltip="Mermas (pronto)"
+                disabled
+                aria-disabled="true"
                 data-view-target="mermas-view"
                 data-tooltip="Mermas"
                 role="tab"

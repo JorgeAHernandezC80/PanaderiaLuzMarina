@@ -1396,8 +1396,68 @@ function validarRecepcionOrdenCompra(datos) {
   };
 }
 
+/* ── Metadatos del checkout y del operario ──
+   Estos datos son analítica, no el pedido: si vienen mal, se descartan y el
+   pedido se guarda igual. Rechazar una venta real porque el navegador
+   mandó una zona horaria rara sería el peor intercambio posible. */
+const MAX_USER_AGENT_LEN = 300;
+const MAX_ZONA_HORARIA_LEN = 64;
+const MAX_IDIOMA_LEN = 32;
+const MAX_OPERARIO_LEN = 60;
+
+/** Recorta un texto libre y devuelve null si queda vacío o no es texto. */
+function textoOpcional(valor, maxLen) {
+  if (typeof valor !== 'string') return null;
+  const limpio = valor.trim().slice(0, maxLen);
+  return limpio === '' ? null : limpio;
+}
+
+/**
+ * Sanea los metadatos del checkout: el User-Agent lo pone el propio
+ * navegador en la cabecera (más confiable que el cuerpo), y la zona horaria
+ * y el idioma los declara el cliente.
+ *
+ * No se guarda IP ni coordenadas: la zona horaria IANA y el idioma ubican
+ * al cliente con la granularidad que el negocio necesita (región y lengua)
+ * sin volverse un dato personal.
+ *
+ * @param {*} metadata cuerpo enviado por checkout.js (puede faltar)
+ * @param {string|undefined} userAgentHeader cabecera User-Agent
+ * @returns {{userAgent: string|null, zonaHoraria: string|null, idioma: string|null}}
+ */
+function validarMetadatosCheckout(metadata, userAgentHeader) {
+  const datos = metadata && typeof metadata === 'object' ? metadata : {};
+  const zonaHoraria = textoOpcional(datos.zonaHoraria, MAX_ZONA_HORARIA_LEN);
+  const idioma = textoOpcional(datos.idioma, MAX_IDIOMA_LEN);
+
+  return {
+    userAgent: textoOpcional(userAgentHeader, MAX_USER_AGENT_LEN),
+    // Formato IANA ("America/Chicago"): cualquier otra cosa se descarta en
+    // vez de guardarse como texto libre imposible de agrupar después.
+    zonaHoraria:
+      zonaHoraria && /^[A-Za-z]+(?:[_/+-][A-Za-z0-9_+-]+)*$/.test(zonaHoraria) ? zonaHoraria : null,
+    // Etiqueta BCP 47 ("es", "es-CO").
+    idioma: idioma && /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})*$/.test(idioma) ? idioma : null,
+  };
+}
+
+/**
+ * Nombre del operario que mueve un pedido en el panel. El panel se protege
+ * con una sola contraseña compartida, así que no hay usuarios individuales:
+ * esto es lo que el operario declara, y por eso es opcional — se guarda
+ * como null antes que rechazar el cambio de estado y bloquear la cocina.
+ * @param {*} valor
+ * @returns {string|null}
+ */
+function validarOperario(valor) {
+  return textoOpcional(valor, MAX_OPERARIO_LEN);
+}
+
 module.exports = {
   validarOrden,
+  validarMetadatosCheckout,
+  validarOperario,
+  MAX_OPERARIO_LEN,
   ValidationError,
   NUMERO_ORDEN_RE,
   ORDER_STATES,
