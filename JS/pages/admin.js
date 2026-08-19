@@ -344,6 +344,12 @@ const CONFIG = Object.freeze({
     auditoriaLineaTiempo: '#auditoria-linea-tiempo',
     auditoriaTablaRegistros: '#auditoria-tabla-registros tbody',
     auditoriaTablaBloques: '#auditoria-tabla-bloques tbody',
+    auditoriaPerfilado: '#auditoria-perfilado',
+    auditoriaEdaIntervalo: '#auditoria-eda-intervalo',
+    auditoriaEdaTamano: '#auditoria-eda-tamano',
+    auditoriaMatriz: '#auditoria-matriz',
+    auditoriaAtipicos: '#auditoria-atipicos',
+    auditoriaDispersion: '#auditoria-dispersion',
     produccionCount: '#produccion-count',
     produccionesContainer: '#producciones-container',
     tplProduccionCard: '#tpl-produccion-card',
@@ -391,6 +397,24 @@ const CONFIG = Object.freeze({
     loteTrazaModal: '#lote-traza-modal',
     loteTrazaBody: '#lote-traza-body',
 
+    // Mermas
+    mermasView: '#mermas-view',
+    mermasCount: '#mermas-count',
+    mermasFiltroDesde: '#mermas-filtro-desde',
+    mermasFiltroHasta: '#mermas-filtro-hasta',
+    mermasFiltroProducto: '#mermas-filtro-producto',
+    btnMermasFiltrar: '#btn-mermas-filtrar',
+    btnMermasLimpiar: '#btn-mermas-limpiar',
+    mermasPeriodo: '#mermas-periodo',
+    mermasResumen: '#mermas-resumen',
+    mermasLimpieza: '#mermas-limpieza',
+    mermasDescriptivas: '#mermas-descriptivas',
+    mermasCausas: '#mermas-causas',
+    mermasCorrelaciones: '#mermas-correlaciones',
+    mermasMultivariado: '#mermas-multivariado',
+    mermasHipotesisProducto: '#mermas-hipotesis-producto',
+    mermasHipotesisCausa: '#mermas-hipotesis-causa',
+    mermasModelo: '#mermas-modelo',
     // Ciclo de pedidos (analítica del historial de estados)
     pedidosView: '#pedidos-view',
     pedidosCount: '#pedidos-count',
@@ -956,6 +980,41 @@ const LotesApi = {
       return await res.json();
     } catch (err) {
       console.error('[Lotes] Error obteniendo el lote:', err.message);
+      return null;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════
+   MÓDULO: MERMAS (backend real)
+   ═══════════════════════════════════════════
+   Mismo criterio que Lotes: solo lectura, una sola llamada trae todo el
+   pipeline ya resuelto (recopilación → almacenamiento → procesamiento →
+   limpieza → análisis) — ver mermas.js / mermasAnalitica.js /
+   mermasModelos.js. El panel solo pide y pinta. */
+const MermasApi = {
+  /** GET /mermas/analisis — dataset limpio + EDA + hipótesis + modelo
+   *  predictivo del período. */
+  async analisis({ desde, hasta, productoId } = {}) {
+    const params = new URLSearchParams();
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+    if (productoId) params.set('productoId', productoId);
+    const query = params.toString();
+
+    try {
+      const res = await apiFetch(`/mermas/analisis${query ? `?${query}` : ''}`, {
+        timeout: 15_000,
+        headers: { Authorization: `Bearer ${Auth.getToken()}` },
+      });
+      if (res.status === 401) {
+        Auth.logout();
+        return 'UNAUTHORIZED';
+      }
+      if (!res.ok) throw new Error(`Backend respondió ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[Mermas] Error obteniendo el análisis:', err.message);
       return null;
     }
   },
@@ -1978,6 +2037,7 @@ const Render = {
     ];
 
     this.fillLotesProductoSelect(lista);
+    this.fillMermasProductoSelect(lista);
 
     for (const selector of selectores) {
       const select = document.querySelector(selector);
@@ -2007,6 +2067,24 @@ const Render = {
    *  justamente los que se quiere poder revisar. */
   fillLotesProductoSelect(lista) {
     const select = document.querySelector(CONFIG.SELECTORS.lotesFiltroProducto);
+    if (!select) return;
+
+    const valorActual = select.value;
+    select.innerHTML = '<option value="">Todos</option>';
+    for (const p of lista) {
+      const opt = document.createElement('option');
+      opt.value = String(p.id);
+      opt.textContent = p.nombre;
+      select.appendChild(opt);
+    }
+    if (valorActual) select.value = valorActual;
+  },
+
+  /** Mismo criterio que fillLotesProductoSelect: el filtro de Mermas
+   *  también necesita ver productos descontinuados, porque sus eventos de
+   *  merma históricos siguen ahí. */
+  fillMermasProductoSelect(lista) {
+    const select = document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto);
     if (!select) return;
 
     const valorActual = select.value;
@@ -2478,6 +2556,9 @@ const Render = {
     const resumenEl = document.querySelector(CONFIG.SELECTORS.auditoriaResumen);
     if (resumenEl) {
       const totalCambios = analisis.porEntidad.reduce((suma, e) => suma + e.total, 0);
+      const totalAtipicos =
+        (analisis.atipicos?.atipicosIntervalo?.length ?? 0) +
+        (analisis.atipicos?.atipicosTamano?.length ?? 0);
       resumenEl.innerHTML = `
         <article class="stat-card stat-card--accent">
           <span class="stat-card__label">Total de cambios registrados</span>
@@ -2487,8 +2568,28 @@ const Render = {
           <span class="stat-card__label">Módulos con auditoría activa</span>
           <data class="stat-card__value" value="${analisis.porEntidad.length}">${analisis.porEntidad.length}</data>
         </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Bloques atípicos</span>
+          <data class="stat-card__value" value="${totalAtipicos}">${totalAtipicos}</data>
+          <span class="stat-card__hint">${totalAtipicos ? 'Por ritmo de escritura o tamaño del cambio — ver abajo' : 'Ninguno fuera de lo esperado'}</span>
+        </article>
       `;
     }
+
+    this._renderAuditoriaPerfilado(analisis.perfilado);
+    this._renderAuditoriaEDAVariable(
+      CONFIG.SELECTORS.auditoriaEdaIntervalo,
+      analisis.eda?.intervaloEntreBloquesSeg,
+      { sufijo: 'seg' },
+    );
+    this._renderAuditoriaEDAVariable(
+      CONFIG.SELECTORS.auditoriaEdaTamano,
+      analisis.eda?.tamanoPayloadBytes,
+      { sufijo: 'bytes' },
+    );
+    this._renderAuditoriaMatriz(analisis.matrizEntidadAccion);
+    this._renderAuditoriaAtipicos(analisis.atipicos);
+    this._renderAuditoriaDispersion(analisis.dispersion);
 
     this._renderAuditoriaBarras(
       CONFIG.SELECTORS.auditoriaGraficoEntidad,
@@ -2582,6 +2683,280 @@ const Render = {
       .join('');
   },
 
+  /** Completitud por campo de la cadena (ver auditoriaAnalitica.js →
+   *  perfilarCadena). Reutiliza .auditoria-barra: acá el ancho de la
+   *  barra ya es un porcentaje directo (no hace falta dividir por un
+   *  máximo del propio conjunto, como en los otros "gráficos"). */
+  _renderAuditoriaPerfilado(perfilado) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaPerfilado);
+    if (!container) return;
+
+    if (!perfilado || !perfilado.totalBloques) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin bloques todavía.</p>';
+      return;
+    }
+
+    const rango = perfilado.rangoFechas
+      ? `Del ${new Date(perfilado.rangoFechas.desde).toLocaleDateString('es-US', {
+          timeZone: HOUSTON_TZ,
+        })} al ${new Date(perfilado.rangoFechas.hasta).toLocaleDateString('es-US', {
+          timeZone: HOUSTON_TZ,
+        })}.`
+      : '';
+
+    container.innerHTML = `
+      <p class="lotes-periodo">${perfilado.totalBloques} bloque(s) en la cadena. ${escapeHTML(rango)}</p>
+      ${perfilado.campos
+        .map(
+          (c) => `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${escapeHTML(c.etiqueta)}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${c.porcentajeCompletitud}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${c.porcentajeCompletitud}%</span>
+        </div>`,
+        )
+        .join('')}
+    `;
+  },
+
+  /** Una variable derivada (intervalo entre bloques o tamaño del
+   *  payload): ficha con resumen de cinco números (mismo componente
+   *  .lotes-ficha/.lotes-caja que ya usa Lotes) + histograma debajo. */
+  _renderAuditoriaEDAVariable(selector, variable, { sufijo }) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+
+    if (!variable || variable.descriptivas.n === 0) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin datos suficientes todavía.</p>';
+      return;
+    }
+
+    const d = variable.descriptivas;
+    const rango = d.maximo - d.minimo;
+    // Con todos los valores iguales la caja no tiene ancho: se dibuja
+    // centrada en vez de dividir por cero (mismo criterio que Lotes).
+    const pos = (valor) => (rango === 0 ? 50 : ((valor - d.minimo) / rango) * 100);
+    const izquierda = pos(d.p25);
+    const ancho = Math.max(pos(d.p75) - izquierda, 1);
+    const maximoHist = Math.max(...variable.histograma.map((t) => t.total), 1);
+
+    container.innerHTML = `
+      <article class="lotes-ficha">
+        <header class="lotes-ficha__header">
+          <h4 class="lotes-ficha__titulo">Promedio</h4>
+          <span class="lotes-ficha__n">n = ${d.n}</span>
+        </header>
+        <p class="lotes-ficha__valor">
+          <data value="${d.media}">${d.media}</data>
+          <span class="lotes-ficha__unidad">${sufijo}</span>
+        </p>
+        <p class="lotes-ficha__mediana">Mediana ${d.mediana} ${sufijo}</p>
+
+        <div
+          class="lotes-caja"
+          role="img"
+          aria-label="Mínimo ${d.minimo}, primer cuartil ${d.p25}, mediana ${d.mediana}, tercer cuartil ${d.p75}, máximo ${d.maximo} ${sufijo}"
+        >
+          <span class="lotes-caja__rango"></span>
+          <span class="lotes-caja__iqr" style="left: ${izquierda}%; width: ${ancho}%"></span>
+          <span class="lotes-caja__mediana" style="left: ${pos(d.mediana)}%"></span>
+        </div>
+        <div class="lotes-caja__escala">
+          <span>${d.minimo}</span>
+          <span>${d.p25} – ${d.p75} <small>(50% central)</small></span>
+          <span>${d.maximo}</span>
+        </div>
+
+        <dl class="lotes-ficha__metricas">
+          <div>
+            <dt>Desviación</dt>
+            <dd>${d.desviacion}</dd>
+          </div>
+          <div>
+            <dt>Coef. variación</dt>
+            <dd>${d.coeficienteVariacion === null ? '—' : `${d.coeficienteVariacion}%`}</dd>
+          </div>
+        </dl>
+      </article>
+
+      ${variable.histograma
+        .map(
+          (t) => `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${t.desde}–${t.hasta}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${(t.total / maximoHist) * 100}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${t.total}</span>
+        </div>`,
+        )
+        .join('')}
+    `;
+  },
+
+  /** Tabla de contingencia entidad×acción como mapa de calor (celdas más
+   *  oscuras = más bloques), más el veredicto de la prueba χ² de
+   *  independencia. Ver auditoriaAnalitica.js → matrizEntidadAccion. */
+  _renderAuditoriaMatriz(matriz) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaMatriz);
+    if (!container) return;
+
+    if (!matriz || !matriz.entidades.length || !matriz.acciones.length) {
+      container.innerHTML = '<p class="insumo-form__hint">Sin datos suficientes todavía.</p>';
+      return;
+    }
+
+    const maximo = Math.max(...matriz.tabla.flat(), 1);
+
+    const encabezado =
+      `<div class="auditoria-matriz__celda auditoria-matriz__celda--header"></div>` +
+      matriz.acciones
+        .map(
+          (a) =>
+            `<div class="auditoria-matriz__celda auditoria-matriz__celda--header">${escapeHTML(
+              this.AUDITORIA_ACCION_LABELS[a] || a,
+            )}</div>`,
+        )
+        .join('');
+
+    const filas = matriz.entidades
+      .map((entidad, i) => {
+        const etiqueta = `<div class="auditoria-matriz__celda auditoria-matriz__celda--header">${escapeHTML(
+          this.AUDITORIA_ENTIDAD_LABELS[entidad] || entidad,
+        )}</div>`;
+        const celdas = matriz.tabla[i]
+          .map((valor) => {
+            const intensidad = Math.round((valor / maximo) * 85);
+            return `<div class="auditoria-matriz__celda" style="background-color: color-mix(in srgb, var(--color-accent) ${intensidad}%, var(--color-surface))">
+              <span class="auditoria-matriz__valor">${valor}</span>
+            </div>`;
+          })
+          .join('');
+        return etiqueta + celdas;
+      })
+      .join('');
+
+    const indep = matriz.independencia;
+    const veredicto =
+      indep && indep.valido
+        ? `<p class="lotes-cv ${indep.hipotesisNulaRechazada ? 'lotes-cv--info' : 'lotes-cv--baja'}">
+             ${indep.hipotesisNulaRechazada ? 'El tipo de acción varía según el módulo' : 'El tipo de acción no depende del módulo'}
+           </p>
+           <p class="insumo-form__hint">${escapeHTML(indep.interpretacion)}</p>`
+        : indep
+          ? `<p class="insumo-form__hint">${escapeHTML(indep.motivo)}</p>`
+          : '';
+
+    container.innerHTML = `
+      <div
+        class="auditoria-matriz"
+        style="grid-template-columns: minmax(9rem, auto) repeat(${matriz.acciones.length}, minmax(4rem, 1fr));"
+      >
+        ${encabezado}${filas}
+      </div>
+      ${veredicto}
+    `;
+  },
+
+  /** Bloques que se salen de lo típico por intervalo o por tamaño (regla
+   *  de Tukey). No es una lista de errores — un bloque atípico puede ser
+   *  una operación masiva legítima — por eso el texto invita a revisar,
+   *  no acusa. */
+  _renderAuditoriaAtipicos(atipicos) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaAtipicos);
+    if (!container) return;
+
+    const items = [
+      ...(atipicos?.atipicosIntervalo ?? []).map((a) => ({
+        icono: a.lado === 'alto' ? 'fa-hourglass-half' : 'fa-bolt',
+        texto:
+          a.lado === 'alto'
+            ? 'Hueco inusualmente largo antes de este bloque'
+            : 'Ráfaga: bloque casi inmediato al anterior',
+        detalle: `Bloque #${a.id} · ${a.intervaloSeg}s desde el bloque anterior`,
+      })),
+      ...(atipicos?.atipicosTamano ?? []).map((a) => ({
+        icono: 'fa-weight-hanging',
+        texto: a.lado === 'alto' ? 'Payload inusualmente grande' : 'Payload inusualmente pequeño',
+        detalle: `Bloque #${a.id} · ${a.tamanoBytes} bytes`,
+      })),
+    ];
+
+    if (!items.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Sin bloques atípicos — el ritmo de escritura y el tamaño de los cambios se mantienen dentro de lo esperado.</p>';
+      return;
+    }
+
+    container.innerHTML = `<ul class="lotes-veredictos">
+      ${items
+        .map(
+          (it) => `
+        <li>
+          <i class="fa-solid ${it.icono}" aria-hidden="true"></i>
+          <strong>${escapeHTML(it.texto)}</strong>
+          <span>${escapeHTML(it.detalle)}</span>
+        </li>`,
+        )
+        .join('')}
+    </ul>`;
+  },
+
+  /** Dispersión real intervalo×tamaño por bloque, con los puntos de mayor
+   *  puntaje de anomalía combinado resaltados en rojo. Existe porque
+   *  porEntidad/porAccion (agregados) pueden verse idénticos en dos
+   *  períodos con un ritmo de escritura muy distinto — ver la nota
+   *  "cuarteto de Anscombe" en auditoriaAnalitica.js. */
+  _renderAuditoriaDispersion(puntos) {
+    const container = document.querySelector(CONFIG.SELECTORS.auditoriaDispersion);
+    if (!container) return;
+
+    const validos = (puntos ?? []).filter((p) => p.intervaloSeg !== null);
+    if (validos.length < 2) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Hacen falta más bloques para dibujar el mapa.</p>';
+      return;
+    }
+
+    const ANCHO = 640;
+    const ALTO = 220;
+    const PAD = 28;
+    const maxX = Math.max(...validos.map((p) => p.intervaloSeg), 1);
+    const maxY = Math.max(...validos.map((p) => p.tamanoBytes), 1);
+    const x = (v) => PAD + (v / maxX) * (ANCHO - PAD * 2);
+    const y = (v) => ALTO - PAD - (v / maxY) * (ALTO - PAD * 2);
+
+    const circulos = validos
+      .map((p) => {
+        const atipico = (p.puntajeAnomalia ?? 0) >= 2;
+        return `<circle
+          class="auditoria-dispersion__punto${atipico ? ' auditoria-dispersion__punto--atipico' : ''}"
+          cx="${x(p.intervaloSeg).toFixed(1)}" cy="${y(p.tamanoBytes).toFixed(1)}" r="${atipico ? 5 : 3.5}"
+        ><title>Bloque #${p.id} · ${p.intervaloSeg}s · ${p.tamanoBytes} bytes</title></circle>`;
+      })
+      .join('');
+
+    container.innerHTML = `
+      <svg
+        class="auditoria-dispersion"
+        viewBox="0 0 ${ANCHO} ${ALTO}"
+        role="img"
+        aria-label="Intervalo entre bloques contra tamaño del payload; en rojo, los bloques con un puntaje de anomalía combinado alto"
+      >
+        <line x1="${PAD}" y1="${ALTO - PAD}" x2="${ANCHO - PAD}" y2="${ALTO - PAD}" class="auditoria-dispersion__eje" />
+        <line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${ALTO - PAD}" class="auditoria-dispersion__eje" />
+        ${circulos}
+      </svg>
+      <div class="lotes-serie__pie">
+        <span>Intervalo entre bloques (seg) →</span>
+        <span>↑ Tamaño del payload (bytes)</span>
+      </div>
+      <p class="insumo-form__hint">Cada punto es un bloque. Los puntos en rojo combinan un intervalo y un tamaño fuera de lo típico a la vez — vale la pena revisarlos aunque los conteos por módulo o acción se vean normales.</p>
+    `;
+  },
+
   /* ───────────────────────── LOTES ─────────────────────────
      Todo lo que se pinta acá viene calculado del backend (lotes.js):
      el panel no recalcula ni redondea nada, solo formatea. Los gráficos
@@ -2642,7 +3017,7 @@ const Render = {
       })),
     );
 
-    this._renderLotesCorrelaciones(analisis.correlaciones);
+    this._renderCorrelaciones(CONFIG.SELECTORS.lotesCorrelaciones, analisis.correlaciones);
     this._renderLotesAtipicos(analisis.atipicos);
     this._renderLotesCalidad(analisis.calidad);
     this._renderLotesTabla(analisis.lotes);
@@ -2881,8 +3256,10 @@ const Render = {
     return 'casi nula';
   },
 
-  _renderLotesCorrelaciones(correlaciones) {
-    const container = document.querySelector(CONFIG.SELECTORS.lotesCorrelaciones);
+  /** Reutilizada por Lotes y Mermas — mismo componente visual, cada quien
+   *  con su propio contenedor (por eso recibe el selector, no lo asume). */
+  _renderCorrelaciones(selector, correlaciones) {
+    const container = document.querySelector(selector);
     if (!container) return;
 
     container.innerHTML = `<div class="lotes-correlaciones">${correlaciones
@@ -3101,6 +3478,767 @@ const Render = {
           <tbody>${filas}</tbody>
         </table>
       </div>
+    `;
+  },
+
+  updateLotesCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.lotesCount);
+    if (el) el.textContent = String(total);
+  },
+
+  /* ───────────────────────── MERMAS ─────────────────────────
+     Todo lo que se pinta acá viene ya calculado del backend (mermas.js /
+     mermasAnalitica.js / mermasModelos.js): el panel no recalcula nada,
+     solo formatea. Reutiliza los mismos componentes visuales que Lotes
+     (fichas descriptivas, barras, correlaciones) porque son el mismo
+     tipo de contenido — no hace falta inventar un lenguaje visual nuevo
+     para un módulo de análisis más. */
+
+  updateMermasCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.mermasCount);
+    if (el) el.textContent = String(total);
+  },
+
+  MERMAS_TIPO_LABELS: {
+    coccion: { texto: 'Merma de cocción', unidad: '%' },
+    ajuste_manual: { texto: 'Ajuste manual', unidad: 'unidades' },
+    segunda_calidad: { texto: 'Segunda calidad', unidad: 'unidades' },
+  },
+
+  /** Pinta la vista Mermas completa a partir de GET /mermas/analisis. */
+  renderMermas(datos) {
+    if (!datos) return;
+
+    const periodoEl = document.querySelector(CONFIG.SELECTORS.mermasPeriodo);
+    if (periodoEl) {
+      const { desde, hasta } = datos.rango;
+      periodoEl.textContent = `Período analizado: ${desde} a ${hasta} · ${datos.eventos.length} evento(s) de merma.`;
+    }
+
+    this._renderMermasResumen(datos);
+    this._renderMermasLimpieza(datos.limpieza);
+    this._renderMermasDescriptivas(datos.analisis.univariado.porTipo);
+    this._renderMermasCausas(datos.analisis.univariado.frecuenciaCausas);
+    this._renderMermasCorrelaciones(datos.analisis.bivariado);
+    this._renderMermasMultivariado(datos.analisis.multivariado);
+    this._renderMermasHipotesisProducto(datos.analisis.hipotesis.productoConMasMermaVsSegundo);
+    this._renderMermasHipotesisCausa(datos.analisis.hipotesis.causaEsIndependienteDelProducto);
+    this._renderMermasModelo(datos.analisis.modeloPredictivo);
+  },
+
+  _renderMermasResumen(datos) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasResumen);
+    if (!container) return;
+
+    const porTipo = new Map();
+    for (const ev of datos.eventos) porTipo.set(ev.tipo, (porTipo.get(ev.tipo) ?? 0) + 1);
+    const altoRiesgo = datos.eventos.filter(
+      (ev) => ev.esAtipico && ev.ladoAtipico === 'alto',
+    ).length;
+
+    container.innerHTML = `
+      <article class="stat-card">
+        <span class="stat-card__label">Eventos de merma</span>
+        <data class="stat-card__value" value="${datos.eventos.length}">${datos.eventos.length}</data>
+        <span class="stat-card__hint">
+          Cocción ${porTipo.get('coccion') ?? 0} · Ajustes ${porTipo.get('ajuste_manual') ?? 0} ·
+          Segunda calidad ${porTipo.get('segunda_calidad') ?? 0}
+        </span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Datos imputados</span>
+        <data class="stat-card__value" value="${datos.limpieza.nulosImputados}">${datos.limpieza.nulosImputados}</data>
+        <span class="stat-card__hint">de ${datos.limpieza.nulosDetectados} valor(es) ausente(s) detectado(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Eventos atípicos</span>
+        <data class="stat-card__value" value="${datos.limpieza.atipicosDetectados}">${datos.limpieza.atipicosDetectados}</data>
+        <span class="stat-card__hint">por la regla de Tukey (IQR), calculada por tipo</span>
+      </article>
+      <article class="stat-card${altoRiesgo > 0 ? ' stat-card--accent' : ''}">
+        <span class="stat-card__label">Lotes de alto riesgo</span>
+        <data class="stat-card__value" value="${altoRiesgo}">${altoRiesgo}</data>
+        <span class="stat-card__hint">merma de cocción marcada atípica hacia arriba</span>
+      </article>
+    `;
+  },
+
+  _renderMermasLimpieza(reporte) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasLimpieza);
+    if (!container) return;
+
+    if (reporte.nulosDetectados === 0) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Ningún valor ausente en el período: no hizo falta imputar nada.</p>';
+      return;
+    }
+
+    const porFuente = new Map();
+    for (const imp of reporte.imputaciones) {
+      porFuente.set(imp.fuente, (porFuente.get(imp.fuente) ?? 0) + 1);
+    }
+    const FUENTE_LABELS = {
+      mediana_producto: 'con la mediana del mismo producto',
+      mediana_global_tipo: 'con la mediana global de su tipo (poco historial propio)',
+    };
+
+    container.innerHTML = `
+      <p>
+        ${reporte.nulosImputados} de ${reporte.nulosDetectados} valor(es) ausente(s) se
+        imputaron${reporte.imputacionesSinResolver ? `, ${reporte.imputacionesSinResolver} quedaron sin resolver por falta total de datos del tipo` : ''}:
+      </p>
+      <ul class="lotes-hallazgos">
+        ${[...porFuente.entries()]
+          .map(
+            ([fuente, n]) =>
+              `<li><span>${n}</span><span>${escapeHTML(FUENTE_LABELS[fuente] ?? fuente)}</span></li>`,
+          )
+          .join('')}
+      </ul>
+    `;
+  },
+
+  _renderMermasDescriptivas(porTipo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasDescriptivas);
+    if (!container) return;
+
+    const fichas = Object.entries(porTipo)
+      .map(([tipo, datos]) => {
+        const label = this.MERMAS_TIPO_LABELS[tipo];
+        return this._renderLotesFichaDescriptiva({
+          ...datos.descriptivas,
+          etiqueta: label.texto,
+          unidad: label.unidad,
+        });
+      })
+      .join('');
+    container.innerHTML = `<div class="lotes-descriptivas">${fichas}</div>`;
+  },
+
+  _renderMermasCausas(frecuencias) {
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.mermasCausas,
+      frecuencias.map((f) => ({ etiqueta: f.valor, total: f.conteo })),
+    );
+  },
+
+  _renderMermasCorrelaciones(bivariado) {
+    const ETIQUETAS = {
+      mermaVsTemperatura: 'Merma vs. temperatura de horneado',
+      mermaVsTiempoHorneado: 'Merma vs. tiempo de horneado',
+      mermaVsVidaUtil: 'Merma vs. vida útil del producto',
+    };
+    const correlaciones = Object.entries(bivariado).map(([clave, valor]) => ({
+      etiqueta: ETIQUETAS[clave] ?? clave,
+      ...valor,
+    }));
+    this._renderCorrelaciones(CONFIG.SELECTORS.mermasCorrelaciones, correlaciones);
+  },
+
+  _renderMermasMultivariado(modelo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasMultivariado);
+    if (!container) return;
+
+    if (!modelo) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay suficientes lotes con temperatura, tiempo y vida útil registrados a la vez para ajustar el modelo.</p>';
+      return;
+    }
+
+    const NOMBRES = {
+      temperaturaC: 'Temperatura',
+      tiempoMin: 'Tiempo de horno',
+      vidaUtilHoras: 'Vida útil',
+    };
+    container.innerHTML = `
+      <p>
+        Merma de cocción (%) ≈ ${modelo.intercepto}
+        ${modelo.coeficientes.map((c, i) => ` ${c >= 0 ? '+' : '−'} ${Math.abs(c)} × ${escapeHTML(NOMBRES[modelo.variables[i]])}`).join('')}
+      </p>
+      <p class="insumo-form__hint">
+        R² = ${modelo.r2} (proporción de la variación de la merma que explican estas tres
+        variables juntas) sobre ${modelo.n} lote(s).
+      </p>
+    `;
+  },
+
+  _renderMermasHipotesis(container, resultado, nombreA, nombreB) {
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    const prueba = resultado.prueba;
+    if (!prueba.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(prueba.motivo)}</p>`;
+      return;
+    }
+    const badgeClase = prueba.hipotesisNulaRechazada
+      ? 'insumo-badge--bajo-stock'
+      : 'insumo-badge--neutral';
+    container.innerHTML = `
+      <p>
+        <strong>${escapeHTML(nombreA)}</strong> (n=${prueba.nA ?? resultado.productoA?.n}) vs.
+        <strong>${escapeHTML(nombreB)}</strong> (n=${prueba.nB ?? resultado.productoB?.n})
+      </p>
+      <p>
+        t = ${prueba.estadisticoT ?? prueba.estadistico}, gl = ${prueba.gradosLibertad},
+        p ${prueba.pValor !== undefined ? `= ${prueba.pValor}` : `${prueba.hipotesisNulaRechazada ? '<' : '≥'} ${prueba.alpha ?? 0.05} (vs. crítico ${prueba.valorCritico})`}
+        <span class="insumo-badge ${badgeClase}">${prueba.hipotesisNulaRechazada ? 'Significativo' : 'No significativo'}</span>
+      </p>
+      <p class="insumo-form__hint">${escapeHTML(prueba.interpretacion)}${prueba.advertenciaMuestraPequena ? ` ${escapeHTML(prueba.advertenciaMuestraPequena)}` : ''}</p>
+    `;
+  },
+
+  _renderMermasHipotesisProducto(resultado) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasHipotesisProducto);
+    if (!container) return;
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    this._renderMermasHipotesis(
+      container,
+      resultado,
+      resultado.productoA.nombre,
+      resultado.productoB.nombre,
+    );
+  },
+
+  _renderMermasHipotesisCausa(resultado) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasHipotesisCausa);
+    if (!container) return;
+    if (!resultado.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(resultado.motivo)}</p>`;
+      return;
+    }
+    const prueba = resultado.prueba;
+    if (!prueba.valido) {
+      container.innerHTML = `<p class="insumo-form__hint">${escapeHTML(prueba.motivo)}</p>`;
+      return;
+    }
+    const badgeClase = prueba.hipotesisNulaRechazada
+      ? 'insumo-badge--bajo-stock'
+      : 'insumo-badge--neutral';
+    container.innerHTML = `
+      <p>Causas: ${resultado.causas.map(escapeHTML).join(', ')} · Productos: ${resultado.productos.length} más frecuentes</p>
+      <p>
+        χ² = ${prueba.estadistico}, gl = ${prueba.gradosLibertad}
+        ${prueba.valorCritico !== null ? ` (crítico α=${prueba.alpha}: ${prueba.valorCritico})` : ''}
+        <span class="insumo-badge ${badgeClase}">${prueba.hipotesisNulaRechazada ? 'Dependientes' : 'Independientes'}</span>
+      </p>
+      <p class="insumo-form__hint">${escapeHTML(prueba.interpretacion)}${prueba.advertenciaMuestraPequena ? ` ${escapeHTML(prueba.advertenciaMuestraPequena)}` : ''}</p>
+    `;
+  },
+
+  _renderMermasModelo(modelo) {
+    const container = document.querySelector(CONFIG.SELECTORS.mermasModelo);
+    if (!container) return;
+
+    if (!modelo) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay suficientes lotes de alto riesgo (o suficiente historial en general) para entrenar el clasificador con confianza.</p>';
+      return;
+    }
+
+    const e = modelo.evaluacion;
+    container.innerHTML = `
+      <p>
+        Entrenado con ${modelo.n} lote(s) (${modelo.casosAltoRiesgo} de alto riesgo) usando
+        temperatura, tiempo de horno y vida útil.
+      </p>
+      <div class="stats">
+        <article class="stat-card">
+          <span class="stat-card__label">Exactitud</span>
+          <data class="stat-card__value" value="${e.exactitud}">${Math.round(e.exactitud * 100)}%</data>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Precisión</span>
+          <data class="stat-card__value" value="${e.precision ?? 0}">${e.precision === null ? '—' : `${Math.round(e.precision * 100)}%`}</data>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Exhaustividad</span>
+          <data class="stat-card__value" value="${e.exhaustividad ?? 0}">${e.exhaustividad === null ? '—' : `${Math.round(e.exhaustividad * 100)}%`}</data>
+        </article>
+      </div>
+      <p class="insumo-form__hint">
+        Evaluado sobre los mismos datos de entrenamiento (in-sample): mide qué tan bien el
+        modelo describe lo ya ocurrido, no cómo va a predecir un lote nunca visto.
+      </p>
+    `;
+  },
+
+  /* ───────────────────── CICLO DE PEDIDOS ─────────────────────
+     Todo llega calculado del backend (pedidos.js): acá solo se pinta.
+     Regla que se repite en cada bloque: un null es "no se midió" y se
+     muestra como "—", nunca como 0 — un lead time de 0 min se leería como
+     "instantáneo" cuando en realidad significa "sin historial". */
+
+  updatePedidosCount(total) {
+    const el = document.querySelector(CONFIG.SELECTORS.pedidosCount);
+    if (el) el.textContent = String(total);
+  },
+
+  /** Minutos en la unidad que se lee mejor: 45 min, 2.5 h, 1.2 d. */
+  _pedidosDuracion(minutos) {
+    if (minutos === null || minutos === undefined) return '—';
+    if (minutos < 60) return `${this._lotesNum(minutos)} min`;
+    if (minutos < 60 * 24) return `${this._lotesNum(minutos / 60)} h`;
+    return `${this._lotesNum(minutos / 1440)} d`;
+  },
+
+  PEDIDOS_DISPOSITIVO_ICONOS: {
+    movil: 'fa-mobile-screen',
+    tablet: 'fa-tablet-screen-button',
+    escritorio: 'fa-desktop',
+    bot: 'fa-robot',
+    desconocido: 'fa-circle-question',
+  },
+
+  /** Pinta la vista Ciclo de pedidos a partir de GET /ordenes/analisis. */
+  renderPedidos(analisis) {
+    if (!analisis) return;
+
+    const periodoEl = document.querySelector(CONFIG.SELECTORS.pedidosPeriodo);
+    if (periodoEl) {
+      const { desde, hasta } = analisis.periodo;
+      periodoEl.textContent = `Período analizado: ${desde} a ${hasta} · ${analisis.resumen.pedidos} pedido(s).`;
+    }
+
+    this._renderPedidosResumen(analisis.resumen);
+    this._renderPedidosLeadTime(analisis.leadTime);
+    this._renderPedidosTendencia(analisis.tendencias);
+    this._renderPedidosHistograma(analisis.histogramaLeadTime);
+    this._renderPedidosDescriptivas(analisis.descriptivas);
+    this._renderPedidosEmbudo(analisis.embudo);
+    this._renderPedidosDispositivos(analisis.porDispositivo, analisis.resumen);
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosGraficoHoraIngreso,
+      analisis.porHoraIngreso.map((h) => ({ etiqueta: `${h.clave}:00`, total: h.pedidos })),
+    );
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosGraficoHoraRetiro,
+      analisis.porHoraRetiro.map((h) => ({ etiqueta: `${h.clave}:00`, total: h.pedidos })),
+    );
+
+    this._renderPedidosAtipicos(analisis.atipicos);
+    this._renderPedidosCalidad(analisis.calidad, analisis.completitud);
+    this._renderPedidosTabla(analisis.pedidos);
+  },
+
+  _renderPedidosResumen(resumen) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosResumen);
+    if (!container) return;
+
+    container.innerHTML = `
+      <article class="stat-card stat-card--accent">
+        <span class="stat-card__label">Pedidos del período</span>
+        <data class="stat-card__value" value="${resumen.pedidos}">${resumen.pedidos}</data>
+        <span class="stat-card__hint">${resumen.unidades} unidad(es) vendida(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Entregados</span>
+        <data class="stat-card__value" value="${resumen.porcentajeEntregado ?? 0}">${this._lotesNum(resumen.porcentajeEntregado, '%')}</data>
+        <span class="stat-card__hint">${resumen.entregados} de ${resumen.pedidos} pedido(s)</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Ingresos</span>
+        <data class="stat-card__value" value="${resumen.ingresos}">${Format.currency(resumen.ingresos)}</data>
+        <span class="stat-card__hint">Ticket promedio: ${resumen.ticketPromedio === null ? '—' : Format.currency(resumen.ticketPromedio)}</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Checkout desde el teléfono</span>
+        <data class="stat-card__value" value="${resumen.porcentajeMovil ?? 0}">${this._lotesNum(resumen.porcentajeMovil, '%')}</data>
+        <span class="stat-card__hint">Sobre ${resumen.pedidosConMetadatos} pedido(s) con dato de dispositivo</span>
+      </article>
+    `;
+  },
+
+  /** Tiempo por etapa: la etapa más lenta por MEDIANA es el cuello de
+   *  botella (un solo pedido olvidado toda la noche movería el promedio lo
+   *  suficiente para señalar la etapa equivocada). */
+  _renderPedidosLeadTime(leadTime) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosLeadTime);
+    if (!container) return;
+
+    if (leadTime.datosInsuficientes) {
+      container.innerHTML = `
+        <p class="insumo-form__hint">
+          Todavía no hay transiciones de estado registradas en el período, así que no se puede medir
+          cuánto tarda cada etapa. Los tiempos aparecen a medida que los pedidos se avanzan desde el
+          panel (Recibida → En preparación → Preparada → Entregada).
+        </p>`;
+      return;
+    }
+
+    const maximo = Math.max(...leadTime.etapas.map((e) => e.mediana ?? 0), 1);
+    const barras = leadTime.etapas
+      .map((etapa) => {
+        const esCuello = leadTime.cuelloDeBotella?.estado === etapa.estado;
+        return `
+        <div class="auditoria-barra">
+          <span class="auditoria-barra__etiqueta">${escapeHTML(etapa.etiqueta)}${esCuello ? ' ⏱' : ''}</span>
+          <div class="auditoria-barra__pista">
+            <div class="auditoria-barra__relleno" style="width: ${((etapa.mediana ?? 0) / maximo) * 100}%"></div>
+          </div>
+          <span class="auditoria-barra__valor">${this._pedidosDuracion(etapa.mediana)}</span>
+        </div>`;
+      })
+      .join('');
+
+    const cuello = leadTime.cuelloDeBotella;
+    container.innerHTML = `
+      <div class="stats">
+        <article class="stat-card stat-card--accent">
+          <span class="stat-card__label">Lead time total (mediana)</span>
+          <data class="stat-card__value" value="${leadTime.total.mediana ?? 0}">${this._pedidosDuracion(leadTime.total.mediana)}</data>
+          <span class="stat-card__hint">Promedio ${this._pedidosDuracion(leadTime.total.media)} sobre ${leadTime.total.pedidosMedidos} pedido(s) entregado(s)</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Cuello de botella</span>
+          <data class="stat-card__value" value="${cuello ? cuello.medianaMin : 0}">${cuello ? escapeHTML(cuello.etiqueta) : '—'}</data>
+          <span class="stat-card__hint">${cuello ? `${this._pedidosDuracion(cuello.medianaMin)} de mediana en ${cuello.pedidosMedidos} pedido(s)` : 'Sin etapas medibles'}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Pedido más lento</span>
+          <data class="stat-card__value" value="${leadTime.total.maximo ?? 0}">${this._pedidosDuracion(leadTime.total.maximo)}</data>
+          <span class="stat-card__hint">El más rápido: ${this._pedidosDuracion(leadTime.total.minimo)}</span>
+        </article>
+      </div>
+      <p class="insumo-form__hint">
+        Mediana de minutos que el pedido pasa en cada etapa. Se usa la mediana y no el promedio: un
+        solo pedido olvidado de un día para otro bastaría para señalar la etapa equivocada.
+      </p>
+      ${barras}
+    `;
+  },
+
+  _renderPedidosTendencia(tendencias) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosTendencia);
+    if (!container) return;
+
+    const { pedidos, leadTime, comparacionPedidos } = tendencias;
+    const direccion = (t) => this.LOTES_TENDENCIA_LABELS[t.direccion] ?? { texto: '—', icono: '' };
+    const dirPedidos = direccion(pedidos);
+    const dirLeadTime = direccion(leadTime);
+
+    container.innerHTML = `
+      <ul class="lotes-veredictos">
+        <li>
+          <i class="fa-solid ${dirPedidos.icono}" aria-hidden="true"></i>
+          <strong>Pedidos por día: ${escapeHTML(dirPedidos.texto)}</strong>
+          ${
+            pedidos.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con datos (hay ${pedidos.dias}).</span>`
+              : `<span>${pedidos.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(pedidos.pendientePorDia, ' pedidos/día')} · la recta explica el ${Math.round(pedidos.r2 * 100)}% de la variación.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid ${dirLeadTime.icono}" aria-hidden="true"></i>
+          <strong>Lead time medio diario: ${escapeHTML(dirLeadTime.texto)}</strong>
+          ${
+            leadTime.datosInsuficientes
+              ? `<span>Hacen falta al menos 7 días con pedidos entregados (hay ${leadTime.dias}).</span>`
+              : `<span>${leadTime.pendientePorDia > 0 ? '+' : ''}${this._lotesNum(leadTime.pendientePorDia, ' min/día')}. Si sube, la cocina se está atrasando.</span>`
+          }
+        </li>
+        <li>
+          <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+          <strong>Últimos 7 días vs. los 7 anteriores</strong>
+          ${
+            comparacionPedidos.datosInsuficientes
+              ? '<span>El período es más corto que dos semanas.</span>'
+              : `<span>${comparacionPedidos.actual} pedidos/día vs. ${comparacionPedidos.previa} pedidos/día (${this._lotesNum(comparacionPedidos.variacionPct, '%')}).</span>`
+          }
+        </li>
+      </ul>
+    `;
+  },
+
+  _renderPedidosHistograma(histograma) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosHistograma);
+    if (!container) return;
+
+    if (!histograma.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Ningún pedido del período tiene lead time medible: hace falta que el pedido llegue a "Entregada" con su historial registrado.</p>';
+      return;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosHistograma,
+      histograma.map((tramo) => ({
+        etiqueta: `${tramo.desde}–${tramo.hasta} min`,
+        total: tramo.total,
+      })),
+    );
+  },
+
+  /** Mismas fichas que en Lotes (mín — P25 — mediana — P75 — máx): la
+   *  descriptiva se lee sin desplazarse en horizontal. */
+  _renderPedidosDescriptivas(descriptivas) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosDescriptivas);
+    if (!container) return;
+
+    container.innerHTML = `<div class="lotes-descriptivas">${descriptivas
+      .map((d) =>
+        this._renderLotesFichaDescriptiva({
+          ...d,
+          etiqueta: d.variable,
+          campo: d.variable,
+        }),
+      )
+      .join('')}</div>`;
+  },
+
+  /** Embudo: cuántos pedidos alcanzaron cada etapa. Donde cae el porcentaje
+   *  es donde se pierden los pedidos (o donde se dejó de registrar). */
+  _renderPedidosEmbudo(embudo) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosEmbudo);
+    if (!container) return;
+
+    const maximo = Math.max(...embudo.map((e) => e.pedidos), 1);
+    container.innerHTML = `
+      <div>
+        ${embudo
+          .map(
+            (paso) => `
+          <div class="auditoria-barra">
+            <span class="auditoria-barra__etiqueta">${escapeHTML(paso.etiqueta)}</span>
+            <div class="auditoria-barra__pista">
+              <div class="auditoria-barra__relleno" style="width: ${(paso.pedidos / maximo) * 100}%"></div>
+            </div>
+            <span class="auditoria-barra__valor">
+              ${paso.pedidos}
+              ${paso.conversionDesdeAnterior === null ? '' : `<small>(${this._lotesNum(paso.conversionDesdeAnterior, '%')})</small>`}
+            </span>
+          </div>`,
+          )
+          .join('')}
+      </div>
+      <p class="insumo-form__hint">
+        El porcentaje es la conversión desde la etapa anterior. Un pedido cuenta como que alcanzó la
+        etapa si su historial la registra o si su estado actual ya está más adelante.
+      </p>
+    `;
+  },
+
+  _renderPedidosDispositivos(porDispositivo, resumen) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosDispositivos);
+    if (!container) return;
+
+    if (!porDispositivo.length) {
+      container.innerHTML =
+        '<p class="insumo-form__hint">Todavía no hay pedidos en el período.</p>';
+      return;
+    }
+
+    const fichas = porDispositivo
+      .map(
+        (d) => `
+      <article class="stat-card">
+        <span class="stat-card__label">
+          <i class="fa-solid ${this.PEDIDOS_DISPOSITIVO_ICONOS[d.clave] ?? 'fa-circle-question'}" aria-hidden="true"></i>
+          ${escapeHTML(d.etiqueta)}
+        </span>
+        <data class="stat-card__value" value="${d.pedidos}">${this._lotesNum(d.porcentajePedidos, '%')}</data>
+        <span class="stat-card__hint">
+          ${d.pedidos} pedido(s) · ${Format.currency(d.ingresos)} (${this._lotesNum(d.porcentajeIngresos, '%')} de los ingresos) ·
+          ticket ${Format.currency(d.ticketPromedio)}
+        </span>
+      </article>`,
+      )
+      .join('');
+
+    container.innerHTML = `
+      <div class="stats">${fichas}</div>
+      <p class="insumo-form__hint">
+        El dispositivo se deduce del User-Agent que envía el navegador al crear el pedido. Los
+        pedidos anteriores a esta captura aparecen como "Sin dato" y no cuentan para el
+        ${this._lotesNum(resumen.porcentajeMovil, '%')} de checkout móvil.
+      </p>
+    `;
+  },
+
+  _renderPedidosAtipicos(atipicos) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.pedidosTablaAtipicos);
+    if (!tbody) return;
+
+    tbody.innerHTML = atipicos.length
+      ? atipicos
+          .map(
+            (a) => `
+        <tr>
+          <td data-label="Pedido"><code class="lotes-table__codigo">${escapeHTML(a.numero)}</code></td>
+          <td data-label="Cliente">${escapeHTML(a.cliente)}</td>
+          <td data-label="Fecha">${escapeHTML(a.fecha)}</td>
+          <td data-label="Lead time">
+            ${this._pedidosDuracion(a.valor)}
+            <span class="insumo-badge ${a.lado === 'alto' ? 'insumo-badge--bajo-stock' : 'insumo-badge--por-vencer'}">
+              ${a.lado === 'alto' ? 'Muy lento' : 'Muy rápido'}
+            </span>
+          </td>
+        </tr>`,
+          )
+          .join('')
+      : '<tr><td colspan="4">Ningún pedido se sale del rango habitual del período.</td></tr>';
+  },
+
+  _renderPedidosCalidad(calidad, completitud) {
+    const container = document.querySelector(CONFIG.SELECTORS.pedidosCalidad);
+    if (container) {
+      container.innerHTML = `
+        <div class="stats">
+          <article class="stat-card stat-card--accent">
+            <span class="stat-card__label">Pedidos sin observaciones</span>
+            <data class="stat-card__value" value="${calidad.porcentajeSano}">${calidad.porcentajeSano}%</data>
+            <span class="stat-card__hint">${calidad.pedidosConHallazgos} de ${calidad.totalPedidos} pedido(s) con algo que revisar</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-card__label">Hallazgos de severidad alta</span>
+            <data class="stat-card__value" value="${calidad.porSeveridad.alta}">${calidad.porSeveridad.alta}</data>
+            <span class="stat-card__hint">${calidad.porSeveridad.media} media(s), ${calidad.porSeveridad.baja} baja(s)</span>
+          </article>
+        </div>
+      `;
+    }
+
+    this._renderAuditoriaBarras(
+      CONFIG.SELECTORS.pedidosCompletitud,
+      Array.isArray(completitud)
+        ? completitud.map((c) => ({ etiqueta: c.etiqueta, total: c.porcentaje }))
+        : [],
+    );
+
+    const hallazgosEl = document.querySelector(CONFIG.SELECTORS.pedidosHallazgos);
+    if (!hallazgosEl) return;
+    hallazgosEl.innerHTML = calidad.porRegla.length
+      ? `<ul class="lotes-hallazgos">${calidad.porRegla
+          .map((r) => {
+            const sev = this.LOTES_SEVERIDAD_LABELS[r.severidad];
+            return `
+          <li>
+            <span class="insumo-badge ${sev.badgeClase}">${sev.texto}</span>
+            <strong>${r.total} pedido(s)</strong>
+            <span>${escapeHTML(r.mensaje)}</span>
+          </li>`;
+          })
+          .join('')}</ul>`
+      : '<p class="insumo-form__hint">Ninguna regla de validación se disparó en el período.</p>';
+  },
+
+  _renderPedidosTabla(pedidos) {
+    const tbody = document.querySelector(CONFIG.SELECTORS.pedidosTabla);
+    if (!tbody) return;
+
+    if (!pedidos.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No hay pedidos en el período seleccionado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = pedidos
+      .map(
+        (pedido) => `
+      <tr>
+        <td data-label="Pedido">
+          <code class="lotes-table__codigo">${escapeHTML(pedido.numero)}</code>
+          <span class="lotes-table__vendidas">${escapeHTML(pedido.fecha)} ${escapeHTML(pedido.hora)}</span>
+        </td>
+        <td data-label="Cliente">
+          ${escapeHTML(pedido.cliente)}
+          <span class="lotes-table__vendidas">${pedido.unidades} u · ${Format.currency(pedido.total)}</span>
+        </td>
+        <td data-label="Estado">
+          ${escapeHTML(pedido.etiquetaEstado)}
+          <span class="lotes-table__vendidas">
+            <i class="fa-solid ${this.PEDIDOS_DISPOSITIVO_ICONOS[pedido.dispositivo] ?? 'fa-circle-question'}" aria-hidden="true"></i>
+            ${escapeHTML(pedido.dispositivo ?? 'sin dato')}
+          </span>
+        </td>
+        <td data-label="Etapas (min)">
+          <span class="lotes-table__vendidas">Prep.: ${this._pedidosDuracion(pedido.minutosEnPreparacion)}</span>
+          <span class="lotes-table__vendidas">Espera: ${this._pedidosDuracion(pedido.minutosEsperandoRetiro)}</span>
+        </td>
+        <td data-label="Lead time">${this._pedidosDuracion(pedido.leadTimeTotalMin)}</td>
+        <td data-label="Historial">
+          <button
+            type="button"
+            class="btn btn--ghost btn--small"
+            data-pedido-accion="historial"
+            aria-label="Ver historial del pedido ${escapeHTML(pedido.numero)}"
+            data-numero="${escapeHTML(pedido.numero)}"
+          >
+            Ver
+          </button>
+        </td>
+      </tr>`,
+      )
+      .join('');
+  },
+
+  /** Cómo se lee una etapa de la línea de tiempo. La última etapa nunca
+   *  tiene duración (no hay transición siguiente que la cierre): en un
+   *  pedido entregado eso es el final del ciclo, no una espera abierta. */
+  _pedidosEstadoEtapa(etapa) {
+    if (!etapa.abierta) return `Duró ${this._pedidosDuracion(etapa.minutos)}`;
+    return etapa.estado === 'entregada' ? 'Fin del ciclo' : 'Etapa en curso';
+  },
+
+  /** Línea de tiempo de un pedido: cada transición con su hora, cuánto duró
+   *  la etapa y quién la movió. */
+  renderHistorialPedido(pedido) {
+    const body = document.querySelector(CONFIG.SELECTORS.pedidoHistorialBody);
+    if (!body) return;
+
+    const etapas = pedido.lineaTiempo.etapas;
+    const timeline = etapas.length
+      ? `<ul class="lotes-veredictos">${etapas
+          .map(
+            (etapa) => `
+        <li>
+          <i class="fa-solid fa-clock" aria-hidden="true"></i>
+          <strong>${escapeHTML(etapa.etiqueta)} · ${new Date(etapa.desde).toLocaleString('es-CO')}</strong>
+          <span>
+            ${this._pedidosEstadoEtapa(etapa)} ·
+            ${etapa.usuarioAdmin ? `movido por ${escapeHTML(etapa.usuarioAdmin)}` : 'sin operario declarado'}
+          </span>
+        </li>`,
+          )
+          .join('')}</ul>`
+      : `<p class="insumo-form__hint">
+           Este pedido no tiene transiciones registradas: se creó antes de que existiera el historial
+           de estados, así que su lead time no se puede reconstruir.
+         </p>`;
+
+    const problemas = pedido.problemas.length
+      ? `<ul class="lotes-hallazgos">${pedido.problemas
+          .map((p) => {
+            const sev = this.LOTES_SEVERIDAD_LABELS[p.severidad];
+            return `<li><span class="insumo-badge ${sev.badgeClase}">${sev.texto}</span><strong></strong><span>${escapeHTML(p.mensaje)}</span></li>`;
+          })
+          .join('')}</ul>`
+      : '';
+
+    body.innerHTML = `
+      <div class="stats">
+        <article class="stat-card stat-card--accent">
+          <span class="stat-card__label">${escapeHTML(pedido.numero)}</span>
+          <data class="stat-card__value" value="${pedido.total}">${Format.currency(pedido.total)}</data>
+          <span class="stat-card__hint">${escapeHTML(pedido.cliente)} · retiro ${escapeHTML(pedido.retiro)} · ${pedido.unidades} u</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Lead time total</span>
+          <data class="stat-card__value" value="${pedido.leadTimeTotalMin ?? 0}">${this._pedidosDuracion(pedido.leadTimeTotalMin)}</data>
+          <span class="stat-card__hint">${pedido.entregada ? 'Pedido entregado' : 'Todavía en curso'}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Checkout</span>
+          <data class="stat-card__value" value="0">${escapeHTML(pedido.dispositivo ?? 'sin dato')}</data>
+          <span class="stat-card__hint">${escapeHTML(pedido.zonaHoraria ?? 'zona horaria sin dato')} · ${escapeHTML(pedido.idioma ?? 'idioma sin dato')}</span>
+        </article>
+      </div>
+      ${timeline}
+      ${problemas}
     `;
   },
 
@@ -4416,6 +5554,8 @@ const App = {
   _lotesVariable: 'mermaRealPct',
   _pedidosFiltros: {},
   _lotesAnalisisCache: null,
+  // Mermas: mismo criterio de rango por defecto que Lotes (últimos 30 días).
+  _mermasFiltros: {},
 
   init() {
     this._bindEvents();
@@ -4572,6 +5712,29 @@ const App = {
     if (this._lotesAnalisisCache) {
       Render._renderLotesHistograma(this._lotesAnalisisCache.descriptivas, campo);
     }
+  },
+
+  /* ───────────────────────── MERMAS ─────────────────────────
+     Una sola llamada trae todo el pipeline resuelto (dataset limpio +
+     EDA + hipótesis + modelo predictivo) — ver GET /mermas/analisis. */
+  async refreshMermas() {
+    const datos = await MermasApi.analisis(this._mermasFiltros);
+
+    if (datos === 'UNAUTHORIZED') {
+      this._showCorrectView();
+      this._showLoginError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+    if (!datos) {
+      const periodoEl = document.querySelector(CONFIG.SELECTORS.mermasPeriodo);
+      if (periodoEl) {
+        periodoEl.textContent = 'No se pudo cargar el análisis de mermas. Intenta de nuevo.';
+      }
+      return;
+    }
+
+    Render.updateMermasCount(datos.eventos.length);
+    Render.renderMermas(datos);
   },
 
   /* ──────────────────── CICLO DE PEDIDOS ────────────────────
@@ -6441,6 +7604,24 @@ const App = {
       btn.addEventListener('click', () => this._cerrarModal(CONFIG.SELECTORS.loteTrazaModal));
     });
 
+    // Mermas: filtros (mismo patrón que Lotes).
+    document.querySelector(CONFIG.SELECTORS.btnMermasFiltrar)?.addEventListener('click', () => {
+      this._mermasFiltros = {
+        desde: document.querySelector(CONFIG.SELECTORS.mermasFiltroDesde).value,
+        hasta: document.querySelector(CONFIG.SELECTORS.mermasFiltroHasta).value,
+        productoId: document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto).value,
+      };
+      this.refreshMermas();
+    });
+
+    document.querySelector(CONFIG.SELECTORS.btnMermasLimpiar)?.addEventListener('click', () => {
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroDesde).value = '';
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroHasta).value = '';
+      document.querySelector(CONFIG.SELECTORS.mermasFiltroProducto).value = '';
+      this._mermasFiltros = {};
+      this.refreshMermas();
+    });
+
     // Ciclo de pedidos: filtros e historial de un pedido.
     document.querySelector(CONFIG.SELECTORS.btnPedidosFiltrar)?.addEventListener('click', () => {
       this._pedidosFiltros = {
@@ -6668,6 +7849,7 @@ const App = {
       CONFIG.SELECTORS.lotesView,
       CONFIG.SELECTORS.pedidosView,
       CONFIG.SELECTORS.auditoriaView,
+      CONFIG.SELECTORS.mermasView,
     ];
     views.forEach((sel) => {
       const el = document.querySelector(sel);
@@ -6708,6 +7890,7 @@ const App = {
         CONFIG.SELECTORS.recetasView,
         CONFIG.SELECTORS.produccionView,
         CONFIG.SELECTORS.lotesView,
+        CONFIG.SELECTORS.mermasView,
       ].some((sel) => targetId === sel.slice(1))
     ) {
       this.cargarProductosParaSelects();
@@ -6739,6 +7922,9 @@ const App = {
     if (targetId === CONFIG.SELECTORS.lotesView.slice(1)) {
       this.refreshLotes();
     }
+    if (targetId === CONFIG.SELECTORS.mermasView.slice(1)) {
+      this.refreshMermas();
+    }
     if (targetId === CONFIG.SELECTORS.pedidosView.slice(1)) {
       this.refreshPedidos();
     }
@@ -6764,6 +7950,7 @@ const App = {
     const recetasView = document.querySelector(CONFIG.SELECTORS.recetasView);
     const produccionView = document.querySelector(CONFIG.SELECTORS.produccionView);
     const lotesView = document.querySelector(CONFIG.SELECTORS.lotesView);
+    const mermasView = document.querySelector(CONFIG.SELECTORS.mermasView);
     const pedidosView = document.querySelector(CONFIG.SELECTORS.pedidosView);
     const navEl = document.querySelector(CONFIG.SELECTORS.adminNav);
 
@@ -6780,6 +7967,7 @@ const App = {
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
       if (lotesView) lotesView.hidden = true;
+      if (mermasView) mermasView.hidden = true;
       if (pedidosView) pedidosView.hidden = true;
 
       // Actualizar fecha
@@ -6803,6 +7991,7 @@ const App = {
       if (recetasView) recetasView.hidden = true;
       if (produccionView) produccionView.hidden = true;
       if (lotesView) lotesView.hidden = true;
+      if (mermasView) mermasView.hidden = true;
       if (pedidosView) pedidosView.hidden = true;
       const pwd = document.querySelector(CONFIG.SELECTORS.password);
       if (pwd) pwd.value = '';

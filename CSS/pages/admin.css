@@ -152,6 +152,35 @@ button {
   cursor: pointer;
 }
 
+/* Encabezados: línea base para TODOS los h1-h6 del panel — antes no
+   existía ninguna regla acá (a diferencia de _reset.css del sitio
+   público), así que cada título dependía del bold/tracking por defecto
+   del navegador. Casi todos ya se veían bien porque las clases
+   específicas (.section-subtitle, .modal__title, etc.) ya declaraban su
+   propio peso — pero las que NO lo hacían (h1 del dashboard, h3 de
+   Lotes, h4 de Lotes-correlación) quedaban a merced del user-agent, y
+   con fuentes del sistema muy condensadas eso se leía apretado. Esta
+   regla fija un piso de peso/tracking; cualquier clase más específica
+   sigue pudiendo pisarla, como ya hacen .order-group__time o
+   .login-card__title.
+   A propósito NO fija `color` acá: varios títulos (.order-group__time,
+   el h2 dentro de encabezados con fondo --color-primary) dependen de
+   HEREDAR el color claro de un contenedor coloreado — una regla de
+   elemento como esta les ganaría a esa herencia y los dejaría con texto
+   oscuro sobre fondo oscuro. El contraste de los títulos que sí estaban
+   apagados (.admin-nav__group-label, .lotes-ficha__titulo,
+   .produccion-card__horneadas h4) se corrigió en cada regla puntual. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+
 /* El navegador ya hace esto por defecto, pero cualquier regla del autor
    con `display` (ej. .view--login { display: flex }) le gana a la regla
    nativa [hidden] { display: none }, porque CSS de autor > CSS de UA.
@@ -656,11 +685,17 @@ button {
 }
 
 .admin-nav__group-label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  /* Antes era --color-text-muted directo: a 0.7rem y en mayúsculas, ese
+     contraste más bajo hacía que la etiqueta costara leerse. Mezclado
+     70/30 hacia --color-text sube la intensidad sin que deje de leerse
+     como una etiqueta secundaria (sigue siendo más suave que el resto
+     del nav) — y sigue el mismo criterio color-mix() ya usado en la
+     matriz de Auditoría, así que se adapta solo a modo oscuro. */
+  color: color-mix(in srgb, var(--color-text-muted) 60%, var(--color-text) 40%);
   margin: 0 0 var(--space-2) var(--space-3);
   white-space: nowrap;
 }
@@ -1121,8 +1156,10 @@ button {
 .produccion-card__horneadas h4 {
   font-size: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  /* Mismo criterio que .admin-nav__group-label: mezcla hacia --color-text
+     en vez del muted plano, para que la mayúscula siga siendo legible. */
+  color: color-mix(in srgb, var(--color-text-muted) 55%, var(--color-text) 45%);
   margin: 0 0 var(--space-2);
 }
 
@@ -3003,6 +3040,97 @@ button {
   }
 }
 
+/* Perfilado (completitud por campo) y las dos fichas de EDA (intervalo
+   entre bloques / tamaño del payload) reutilizan .auditoria-barra y
+   .lotes-ficha/.lotes-caja tal cual — mismo componente que ya pintan
+   Auditoría y Lotes, sin duplicar CSS por lo que cambia es solo el dato.
+   Lo que sigue es lo genuinamente nuevo de este pase: la matriz
+   entidad×acción, el badge de independencia y el mapa de dispersión. */
+
+.auditoria-matriz {
+  display: grid;
+  gap: 1px;
+  background: var(--color-border-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+.auditoria-matriz__celda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  text-align: center;
+}
+.auditoria-matriz__celda--header {
+  background: var(--color-surface-alt);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  justify-content: flex-start;
+}
+/* La celda de la esquina (fila de encabezado, columna de etiquetas) no
+   lleva ni texto de módulo ni de acción — se deja plana. */
+.auditoria-matriz__celda--header:first-child {
+  background: var(--color-surface);
+}
+.auditoria-matriz__valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+  .auditoria-matriz {
+    font-size: 0.72rem;
+  }
+  .auditoria-matriz__celda {
+    min-height: 2.25rem;
+    padding: var(--space-1);
+  }
+}
+
+/* Badge de independencia (χ²) — mismo componente-pastilla que .lotes-cv,
+   con un tono neutro/informativo para "sí hay relación" (no es ni bueno
+   ni malo, es una observación) en vez de reutilizar success/danger, que
+   acá leerían como un veredicto de calidad que no es lo que mide esto. */
+.lotes-cv--info {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+/* Mapa de dispersión intervalo×tamaño — mismo criterio SVG inline que
+   .lotes-serie (viewBox fijo, se estira al ancho disponible). Ver la nota
+   "cuarteto de Anscombe" en auditoriaAnalitica.js sobre por qué existe
+   este gráfico y no solo los agregados de arriba. */
+.auditoria-dispersion {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+.auditoria-dispersion__eje {
+  stroke: var(--color-border-dark);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.auditoria-dispersion__punto {
+  fill: var(--color-accent);
+  fill-opacity: 0.5;
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.auditoria-dispersion__punto--atipico {
+  fill: var(--color-danger);
+  fill-opacity: 0.85;
+  stroke: var(--color-danger);
+}
+
 /* ═══════════════════════════════════════════
    14c. LOTES — análisis exploratorio y tendencias
    ═══════════════════════════════════════════
@@ -3161,10 +3289,12 @@ button {
 .lotes-ficha__titulo {
   margin: 0;
   font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  /* Mismo criterio que .admin-nav__group-label/.produccion-card__horneadas
+     h4: a este tamaño, el muted plano en mayúsculas quedaba borroso. */
+  color: color-mix(in srgb, var(--color-text-muted) 55%, var(--color-text) 45%);
   /* El título puede ser largo ("Desvío de merma vs. receta"): se parte en
      varias líneas antes que estirar la columna del grid. */
   overflow-wrap: anywhere;
@@ -3304,15 +3434,16 @@ button {
    el <colgroup>. Sin esto la tabla crece con su contenido (el wrapper
    .tabla-shell usa width: max-content) y arrastra scroll horizontal a
    toda la página. Los datos secundarios van apilados dentro de su celda
-   en vez de en columnas propias. */
+   en vez de en columnas propias. Ya NO se deja overflow-x:auto como red
+   de seguridad: con 7 columnas fijas, cualquier contenido que no cupiera
+   se resolvía "corriendo" la tabla en vez de la celda — se ve poco
+   profesional. En su lugar, por debajo de 960px la tabla completa pasa
+   a vista de tarjetas (ver media query más abajo), así nunca hace falta
+   scroll horizontal en ningún ancho. */
 #lotes-view .tabla-shell {
   width: 100%;
   max-width: 100%;
   margin-inline: 0;
-  /* Red de seguridad: si aun con los anchos declarados el contenido no
-     cabe (pantallas muy angostas, zoom alto), el desplazamiento se queda
-     dentro del recuadro de la tabla en vez de mover toda la página. */
-  overflow-x: auto;
 }
 .lotes-table {
   table-layout: fixed;
@@ -3327,6 +3458,7 @@ button {
 .lotes-table__codigo {
   display: block;
   font-size: 0.8rem;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .lotes-table td .btn {
@@ -3338,6 +3470,103 @@ button {
   display: block;
   font-size: 0.75rem;
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+/* Los badges (Estado/Validación) son inline-block por defecto: pueden
+   envolver texto en dos líneas en vez de forzar el ancho de su columna. */
+.lotes-table .insumo-badge {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* Cebra + hover: ya los trae .insumo-table (line ~1466), que lotes-table
+   comparte como segunda clase — no hace falta repetirlos acá. */
+
+/* ═══════════════════════════════════════════════════════════
+   LOTES: tabla → tarjetas antes que el resto del panel (960px,
+   no 640px). Esta tabla y el modal de trazabilidad tienen más
+   columnas que las demás tablas del admin (hasta 7); en fixed
+   layout esas columnas se angostan antes de llegar al breakpoint
+   general y el badge/botón terminaba desbordando la celda,
+   arrastrando scroll horizontal a todo el wrapper. Se pasa a
+   tarjetas antes de que eso llegue a pasar. Reutiliza el mismo
+   patrón "etiqueta: valor" que ya usan las otras 6 tablas.
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  #lotes-view table.lotes-table {
+    display: block;
+    width: 100%;
+  }
+
+  #lotes-view table.lotes-table thead {
+    display: none;
+  }
+
+  #lotes-view table.lotes-table tbody {
+    display: block;
+  }
+
+  #lotes-view table.lotes-table tr {
+    display: block;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  #lotes-view table.lotes-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  #lotes-view table.lotes-table td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) 0;
+    border: none;
+    text-align: right;
+  }
+
+  #lotes-view table.lotes-table td:not(:last-child) {
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  #lotes-view table.lotes-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  #lotes-view table.lotes-table td:empty::before {
+    content: none;
+  }
+
+  /* La primera columna (Lote) queda como encabezado de la tarjeta,
+     alineada a la izquierda, en vez de empujada al extremo derecho
+     como el resto de los valores. */
+  #lotes-view table.lotes-table td:first-child {
+    justify-content: flex-start;
+    text-align: left;
+    padding-top: 0;
+  }
+
+  #lotes-view table.lotes-table td:first-child::before {
+    display: none;
+  }
+
+  #lotes-view .lotes-table__codigo {
+    font-size: 0.95rem;
+  }
 }
 
 .lotes-correlaciones {
